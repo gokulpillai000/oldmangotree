@@ -1,0 +1,14 @@
+{
+  "id": "packet-1",
+  "title": "PACKET 1",
+  "issueNumber": 1,
+  "theme": "Sports Culture & Global Perspectives",
+  "publishedAt": "2026-09-01T00:00:00Z",
+  "coverImage": "https://images.unsplash.com/photo-1579952363873-27f3bade9f55?auto=format&fit=crop&w=800&q=80",
+  "isPremium": false,
+  "featuredArticleSlug": "2026-09-03-messi-international-career",
+  "articleSlugs": [
+    "2026-09-03-messi-international-career",
+    "2026-09-07-river-dam-management"
+  ]
+}

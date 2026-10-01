@@ -1,0 +1,34 @@
+{
+  "slug": "news-bin-media-analysis",
+  "title": "News Bin: മാധ്യമ വിമർശനം",
+  "subtitle": "ടെലിവിഷൻ പ്രൈംടൈമും വ്യാജ വാർത്താ നിർമ്മിതിയും",
+  "description": "മുഖ്യധാരാ മാധ്യമങ്ങൾ വാർത്തകളെ വിനോദമാക്കുകയും ഭരണകൂട വിധേയത്വം പുലർത്തുകയും ചെയ്യുന്ന രീതിയെ തുറന്നുകാട്ടുന്ന പംക്തി.",
+  "coverImage": "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&q=80&w=1000",
+  "authorId": "anto-p-cheerotha",
+  "authorName": "ആന്റോ പി. ചിറയത്ത്",
+  "category": "media",
+  "totalEpisodes": 3,
+  "episodes": [
+    {
+      "episodeNumber": 1,
+      "title": "റേറ്റിംഗ് യുദ്ധവും വസ്തുതാ നിരാസവും",
+      "slug": "rating-wars-and-facts",
+      "publishedAt": "2026-08-10T12:00:00.000Z",
+      "excerpt": "ബ്രേക്കിംഗ് ന്യൂസ് സംസ്കാരം റിപ്പോർട്ടിംഗിലെ ആധികാരികതയെ ഇല്ലായ്മ ചെയ്യുന്നത് എങ്ങനെ."
+    },
+    {
+      "episodeNumber": 2,
+      "title": "ഡിജിറ്റൽ മാധ്യമങ്ങളും ക്ലിക്ക്ബെയ്റ്റ് തലക്കെട്ടുകളും",
+      "slug": "digital-media-clickbaits",
+      "publishedAt": "2026-08-17T12:00:00.000Z",
+      "excerpt": "അൽഗോരിതങ്ങൾക്ക് അടിമപ്പെടുന്ന ഓൺലൈൻ മാധ്യമ ലോകം."
+    },
+    {
+      "episodeNumber": 3,
+      "title": "സ്വതന്ത്ര മാധ്യമപ്രവർത്തനത്തിന്റെ സാധ്യതകൾ",
+      "slug": "future-of-independent-journalism",
+      "publishedAt": "2026-08-24T12:00:00.000Z",
+      "excerpt": "വായനക്കാരുടെ സാമ്പത്തിക പിന്തുണയോടെ നിലനിൽക്കുന്ന സ്വതന്ത്ര പ്ലാറ്റ്‌ഫോമുകളുടെ പ്രസക്തി."
+    }
+  ]
+}

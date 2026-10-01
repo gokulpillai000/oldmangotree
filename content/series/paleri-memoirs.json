@@ -1,0 +1,41 @@
+{
+  "slug": "paleri-memoirs",
+  "title": "വിസ്മയം പലേരി: ദേശവും ചരിത്രവും",
+  "subtitle": "ടി.പി. രാജീവന്റെ ഓർമ്മകളിലൂടെ പലേരിയുടെ ജീവചരിത്രം",
+  "description": "ഒരു നാടിന്റെ സാംസ്കാരിക-രാഷ്ട്രീയ പരിണാമങ്ങളും ടി.പി. രാജീവന്റെ എഴുത്തുലോകവും അനാവരണം ചെയ്യുന്ന അന്വേഷണാത്മക പരമ്പര.",
+  "coverImage": "https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&q=80&w=1000",
+  "authorId": "tp-rajeevan",
+  "authorName": "ടി.പി. രാജീവൻ / എഡിറ്റോറിയൽ ഡെസ്ക്",
+  "category": "literature",
+  "totalEpisodes": 4,
+  "episodes": [
+    {
+      "episodeNumber": 1,
+      "title": "പലേരി മാണിക്യം: യാഥാർത്ഥ്യവും ഭാവനയും",
+      "slug": "paleri-manikyam-fact-and-fiction",
+      "publishedAt": "2026-08-20T10:00:00.000Z",
+      "excerpt": "പലേരിയിലെ കൊലപാതകവും അമ്പതുകളിലെ ജന്മിത്ത വ്യവസ്ഥയും സാഹിത്യത്തിലേക്ക് പകർത്തിയ വഴി."
+    },
+    {
+      "episodeNumber": 2,
+      "title": "കെ.ടി.എൻ. കോട്ടൂർ: ചരിത്രത്തിലെ മനുഷ്യൻ",
+      "slug": "ktn-kottoor-man-in-history",
+      "publishedAt": "2026-08-27T10:00:00.000Z",
+      "excerpt": "ദേശീയ പ്രസ്ഥാനവും സ്വാതന്ത്ര്യാനന്തര മോഹഭംഗങ്ങളും ആവിഷ്കരിച്ച നോവലിന്റെ ഉൾക്കാഴ്ചകൾ."
+    },
+    {
+      "episodeNumber": 3,
+      "title": "കോട്ടൂർ എന്ന ഗ്രാമത്തിന്റെ ആത്മാവ്",
+      "slug": "soul-of-kottoor-village",
+      "publishedAt": "2026-09-03T10:00:00.000Z",
+      "excerpt": "സാധാരണ മനുഷ്യരുടെ ജീവിതവും നാടോടി വിശ്വാസങ്ങളും ചേർത്തെഴുതിയ അനുഭവ സാക്ഷ്യങ്ങൾ."
+    },
+    {
+      "episodeNumber": 4,
+      "title": "രാജീവന്റെ കവിതാ ലോകം",
+      "slug": "poetic-universe-of-rajeevan",
+      "publishedAt": "2026-09-07T10:00:00.000Z",
+      "excerpt": "മലയാള കവിതയിലെ ആധുനികതാനന്തര ചിന്തകളെ സ്വാധീനിച്ച കവിതാ പരീക്ഷണങ്ങൾ."
+    }
+  ]
+}

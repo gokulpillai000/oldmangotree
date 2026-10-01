@@ -1,0 +1,17 @@
+{
+  "slug": "literature",
+  "name": "Literature",
+  "icon": "📚",
+  "description": "Essays, critical dialogues, book reviews, and contemporary short stories.",
+  "color": "purple",
+  "subcategories": [
+    {
+      "slug": "book-review",
+      "name": "Book Review"
+    },
+    {
+      "slug": "short-stories",
+      "name": "Short Stories"
+    }
+  ]
+}

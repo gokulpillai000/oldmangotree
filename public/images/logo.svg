@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 70" fill="none">
+  <!-- Ground Line -->
+  <line x1="8" y1="58" x2="64" y2="58" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" />
+  
+  <!-- Bench under tree -->
+  <line x1="18" y1="53" x2="34" y2="53" stroke="#ea580c" stroke-width="2" stroke-linecap="round" />
+  <line x1="19" y1="47" x2="33" y2="47" stroke="#ea580c" stroke-width="1.8" stroke-linecap="round" />
+  <line x1="21" y1="47" x2="21" y2="53" stroke="#ea580c" stroke-width="1.2" />
+  <line x1="31" y1="47" x2="31" y2="53" stroke="#ea580c" stroke-width="1.2" />
+  <line x1="19" y1="53" x2="19" y2="58" stroke="#ea580c" stroke-width="1.5" stroke-linecap="round" />
+  <line x1="33" y1="53" x2="33" y2="58" stroke="#ea580c" stroke-width="1.5" stroke-linecap="round" />
+
+  <!-- Tree Trunk and Branches -->
+  <path d="M42 58C42 50 43 45 40 38C38 33 33 30 28 27M40 38C42 33 47 29 51 25M40 29C40 24 37 20 35 16M40 25C43 21 47 18 50 14" stroke="#0f172a" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" />
+
+  <!-- Foliage clusters -->
+  <circle cx="36" cy="18" r="10" fill="#fed7aa" fill-opacity="0.5" />
+  <circle cx="25" cy="24" r="9" fill="#fed7aa" fill-opacity="0.6" />
+  <circle cx="48" cy="23" r="10" fill="#fed7aa" fill-opacity="0.6" />
+  <circle cx="37" cy="25" r="11" fill="#fed7aa" fill-opacity="0.7" />
+
+  <path d="M24 32C18 30 13 25 15 19C17 13 23 10 29 12C31 7 37 5 43 6C48 7 52 11 53 15C59 15 63 20 62 26C61 31 57 34 51 35" stroke="#ea580c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+
+  <!-- Mango dots -->
+  <ellipse cx="27" cy="27" rx="1.8" ry="2.5" fill="#f97316" transform="rotate(-15 27 27)" />
+  <ellipse cx="46" cy="26" rx="1.8" ry="2.5" fill="#f97316" transform="rotate(15 46 26)" />
+  <ellipse cx="36" cy="18" rx="1.8" ry="2.5" fill="#f97316" transform="rotate(5 36 18)" />
+
+  <!-- Text: OLD MANGO TREE -->
+  <text x="74" y="38" font-family="'DzainTrueCopy', 'Georgia', 'Playfair Display', serif" font-weight="900" font-size="21" letter-spacing="1" fill="#0f172a">
+    OLD MANGO TREE
+  </text>
+  
+  <!-- Slogan: Where ideas come to sit -->
+  <text x="75" y="54" font-family="'DzainTrueCopy', 'Segoe UI', sans-serif" font-style="italic" font-size="11" letter-spacing="0.5" fill="#ea580c" font-weight="500">
+    Where ideas come to sit
+  </text>
+</svg>

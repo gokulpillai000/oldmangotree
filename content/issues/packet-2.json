@@ -1,0 +1,19 @@
+{
+  "id": "packet-2",
+  "title": "PACKET 2",
+  "issueNumber": 2,
+  "theme": "Modern Political & Cultural Debates",
+  "publishedAt": "2026-09-08T00:00:00Z",
+  "coverImage": "https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=800&q=80",
+  "isPremium": true,
+  "featuredArticleSlug": "the-woman-of-religion-and-the-woman-in-religion",
+  "articleSlugs": [
+    "the-woman-of-religion-and-the-woman-in-religion",
+    "2026-09-08-kerala-politics-analysis",
+    "editors-assembly-critique",
+    "cinema-obsession-study",
+    "barcelona-champions-league",
+    "2026-09-07-river-dam-management",
+    "2026-09-09-politics-cv6oph"
+  ]
+}

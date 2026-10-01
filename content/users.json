@@ -1,0 +1,42 @@
+{
+  "editor@oldmangotree.media": {
+    "name": "Kamalram Sajeev",
+    "passwordHash": "editor123",
+    "role": "publisher"
+  },
+  "gokulpillai000@gmail.com": {
+    "name": "Gokul Krishnan",
+    "passwordHash": "editorial123",
+    "role": "publisher"
+  },
+  "editorial@oldmangotree.com": {
+    "name": "Editorial Desk",
+    "passwordHash": "editorial123",
+    "role": "publisher"
+  },
+  "manila@oldmangotree.media": {
+    "name": "Manila C. Mohan",
+    "passwordHash": "publisher123",
+    "role": "publisher"
+  },
+  "admin@oldmangotree.media": {
+    "name": "Publisher Admin",
+    "passwordHash": "admin123",
+    "role": "publisher"
+  },
+  "reader@oldmangotree.media": {
+    "name": "Reader",
+    "passwordHash": "reader123",
+    "role": "publisher"
+  },
+  "subscriber@oldmangotree.media": {
+    "name": "Rahul Menon",
+    "passwordHash": "subscriber123",
+    "role": "reader"
+  },
+  "nahas@gmail.com": {
+    "name": "Nahas",
+    "passwordHash": "nahas123",
+    "role": "reader"
+  }
+}

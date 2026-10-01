@@ -1,0 +1,56 @@
+[
+  {
+    "id": "damodhar-prasad",
+    "name": "ദാമോദർ പ്രസാദ്",
+    "englishName": "Damodhar Prasad",
+    "role": "ചീഫ് എഡിറ്റർ (Editor-in-Chief)",
+    "bio": "മുതിർന്ന രാഷ്ട്രീയ നിരീക്ഷകൻ, സാംസ്കാരിക വിമർശകൻ, ചലച്ചിത്ര സൈദ്ധാന്തികൻ. കേരള സർവകലാശാല മുൻ ഇ.എം.എസ് ചെയർ വിസിറ്റിംഗ് പ്രൊഫസർ.",
+    "avatar": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=400",
+    "department": "Editorial Board"
+  },
+  {
+    "id": "manila-c-mohan",
+    "name": "മനില സി. മോഹൻ",
+    "englishName": "Manila C. Mohan",
+    "role": "എക്സിക്യൂട്ടീവ് എഡിറ്റർ (Executive Editor)",
+    "bio": "മുതിർന്ന മാധ്യമപ്രവർത്തക, കോളമിസ്റ്റ്, ഫെമിനിസ്റ്റ് ആക്ടിവിസ്റ്റ്. രാഷ്ട്രീയ സാമൂഹിക വിഷയങ്ങളിൽ പ്രമുഖ അനലിസ്റ്റ്.",
+    "avatar": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=400",
+    "department": "Editorial Board"
+  },
+  {
+    "id": "kamalram-sajeev",
+    "name": "കമൽറാം സജീവ്",
+    "englishName": "Kamalram Sajeev",
+    "role": "കൺസൾട്ടിംഗ് എഡിറ്റർ (Consulting Editor)",
+    "bio": "മാധ്യമ നിരൂപകൻ, സ്പോർട്സ് അനലിസ്റ്റ്, എഡിറ്റോറിയൽ ഡയലോഗ് മോഡറേറ്റർ.",
+    "avatar": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=400",
+    "department": "Editorial Board"
+  },
+  {
+    "id": "k-kannan",
+    "name": "കെ. കണ്ണൻ",
+    "englishName": "K. Kannan",
+    "role": "സീനിയർ അസോസിയേറ്റ് എഡിറ്റർ (Senior Associate Editor)",
+    "bio": "അന്വേഷണാത്മക പത്രപ്രവർത്തകൻ, വിദ്യാഭ്യാസ-സാമൂഹിക വിഷയങ്ങളുടെ വിശകലന വിദഗ്ധൻ.",
+    "avatar": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=400",
+    "department": "Editorial Board"
+  },
+  {
+    "id": "dileep-premachandran",
+    "name": "ദിലീപ് പ്രേമചന്ദ്രൻ",
+    "englishName": "Dileep Premachandran",
+    "role": "സ്പോർട്സ് കോളമിസ്റ്റ് & എഡിറ്റർ",
+    "bio": "അന്താരാഷ്ട്ര സ്പോർട്സ് പത്രപ്രവർത്തകൻ, മുൻ വിസ്ഡൻ ഇന്ത്യ എഡിറ്റർ-ഇൻ-ചീഫ്.",
+    "avatar": "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&q=80&w=400",
+    "department": "Sports & Culture"
+  },
+  {
+    "id": "kt-kunhikannan",
+    "name": "കെ.ടി. കുഞ്ഞിക്കണ്ണൻ",
+    "englishName": "K.T. Kunhikannan",
+    "role": "ചരിത്ര ഗവേഷകൻ & കോളമിസ്റ്റ്",
+    "bio": "ഇന്ത്യൻ സ്വാതന്ത്ര്യസമര ചരിത്ര ഗവേഷകൻ, പ്രഭാഷകൻ, ചിന്തകൻ.",
+    "avatar": "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=400",
+    "department": "History & Philosophy"
+  }
+]

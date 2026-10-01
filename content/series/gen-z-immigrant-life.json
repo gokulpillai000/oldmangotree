@@ -1,0 +1,34 @@
+{
+  "slug": "gen-z-immigrant-life",
+  "title": "മൂന്നാം ലോക GEN Z യുടെ കുടിയേറ്റ ജീവിതം",
+  "subtitle": "സ്വപ്നവും യാഥാർത്ഥ്യവും",
+  "description": "യൂറോപ്പിലേക്കും കാനഡയിലേക്കും യു.കെയിലേക്കും കുടിയേറുന്ന പുതിയ മലയാളി തലമുറയുടെ തൊഴിൽ പ്രതിസന്ധികളും സാംസ്കാരിക സംഘർഷങ്ങളും പരിശോധിക്കുന്ന കോളങ്ങൾ.",
+  "coverImage": "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&q=80&w=1000",
+  "authorId": "nayan-subramaniam",
+  "authorName": "നയൻ സുബ്രഹ്മണ്യം",
+  "category": "society",
+  "totalEpisodes": 3,
+  "episodes": [
+    {
+      "episodeNumber": 1,
+      "title": "സ്റ്റുഡന്റ് വിസയും പാർട്ട്-ടൈം സ്വപ്നങ്ങളും",
+      "slug": "student-visa-part-time-dreams",
+      "publishedAt": "2026-08-18T10:00:00.000Z",
+      "excerpt": "വിദേശ സർവകലാശാലകളിലെ വൻ ഫീസും വാടക പ്രതിസന്ധിയും നേരിടുന്ന വിദ്യാർത്ഥികളുടെ ജീവിതം."
+    },
+    {
+      "episodeNumber": 2,
+      "title": "ഏകാന്തതയുടെ യൂറോപ്യൻ ശീതകാലം",
+      "slug": "european-winter-loneliness",
+      "publishedAt": "2026-08-25T10:00:00.000Z",
+      "excerpt": "ബന്ധുക്കളും സുഹൃത്തുക്കളുമില്ലാത്ത വിദേശ നഗരങ്ങളിൽ മലയാളി യുവാക്കൾ അനുഭവിക്കുന്ന മാനസിക സംഘർഷം."
+    },
+    {
+      "episodeNumber": 3,
+      "title": "തിരിച്ചുവരവ് സാധ്യമാണോ?",
+      "slug": "is-return-possible",
+      "publishedAt": "2026-09-01T10:00:00.000Z",
+      "excerpt": "കടബാധ്യതകളും കേരളത്തിലെ തൊഴിലില്ലായ്മയും തിരിച്ചുവരവിനെ അസാധ്യമാക്കുമ്പോൾ."
+    }
+  ]
+}
