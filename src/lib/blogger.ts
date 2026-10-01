@@ -41,9 +41,13 @@ export interface BloggerFeedResponse {
   };
 }
 
-// In-memory cache for request deduplication
-let cachedArticles: Article[] | null = null;
-let lastFetchTime = 0;
+// Global in-memory cache and in-flight request deduplication for instant dev/prod routing
+const globalForBlogger = globalThis as unknown as {
+  cachedBloggerArticles?: Article[];
+  lastBloggerFetchTime?: number;
+  inFlightBloggerFetch?: Promise<Article[]> | null;
+};
+
 const CACHE_TTL_MS = 60 * 1000; // 60 seconds
 
 function cleanSlug(raw: string): string {
@@ -60,37 +64,61 @@ function cleanSlug(raw: string): string {
  */
 export async function fetchBloggerPosts(): Promise<Article[]> {
   const now = Date.now();
-  if (cachedArticles && now - lastFetchTime < CACHE_TTL_MS) {
-    return cachedArticles;
+  if (
+    globalForBlogger.cachedBloggerArticles &&
+    now - (globalForBlogger.lastBloggerFetchTime || 0) < CACHE_TTL_MS
+  ) {
+    return globalForBlogger.cachedBloggerArticles;
+  }
+
+  // Deduplicate concurrent requests so only 1 network fetch runs
+  if (globalForBlogger.inFlightBloggerFetch) {
+    return globalForBlogger.inFlightBloggerFetch;
   }
 
   const cleanUrl = BLOG_URL.replace(/\/+$/, '');
   const feedUrl = `${cleanUrl}/feeds/posts/default?alt=json&max-results=500`;
 
-  try {
-    const res = await fetch(feedUrl, {
-      next: { revalidate: 60 },
-      headers: {
-        Accept: 'application/json',
-      },
-    });
+  globalForBlogger.inFlightBloggerFetch = (async () => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2000); // 2s timeout max
 
-    if (!res.ok) {
-      console.warn(`Blogger feed returned status ${res.status} for ${feedUrl}`);
-      return [];
+    try {
+      const res = await fetch(feedUrl, {
+        signal: controller.signal,
+        next: { revalidate: 60 },
+        headers: {
+          Accept: 'application/json',
+        },
+      });
+      clearTimeout(timeoutId);
+
+      if (!res.ok) {
+        console.warn(`Blogger feed returned status ${res.status} for ${feedUrl}`);
+        globalForBlogger.cachedBloggerArticles = [];
+        globalForBlogger.lastBloggerFetchTime = now;
+        return [];
+      }
+
+      const data: BloggerFeedResponse = await res.json();
+      const entries = data.feed?.entry || [];
+
+      const articles = entries.map((entry) => parseBloggerEntry(entry));
+      globalForBlogger.cachedBloggerArticles = articles;
+      globalForBlogger.lastBloggerFetchTime = now;
+      return articles;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      // On network timeout or error, cache empty array for 60s so local fallback is instant
+      globalForBlogger.cachedBloggerArticles = globalForBlogger.cachedBloggerArticles || [];
+      globalForBlogger.lastBloggerFetchTime = now;
+      return globalForBlogger.cachedBloggerArticles;
+    } finally {
+      globalForBlogger.inFlightBloggerFetch = null;
     }
+  })();
 
-    const data: BloggerFeedResponse = await res.json();
-    const entries = data.feed?.entry || [];
-
-    const articles = entries.map((entry) => parseBloggerEntry(entry));
-    cachedArticles = articles;
-    lastFetchTime = now;
-    return articles;
-  } catch (error) {
-    console.warn(`Could not fetch Blogger feed from ${feedUrl}:`, error instanceof Error ? error.message : error);
-    return [];
-  }
+  return globalForBlogger.inFlightBloggerFetch;
 }
 
 /**
