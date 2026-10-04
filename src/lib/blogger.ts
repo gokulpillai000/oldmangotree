@@ -159,7 +159,11 @@ export function parseBloggerEntry(entry: BloggerEntry): Article {
   // Resolve author ID mapped to known authors (e.g. kamalram-sajeev, damodhar-prasad, manila-c-mohan, editorial-desk)
   let authorId = cleanSlug(authorName);
   const lowerAuthor = authorName.toLowerCase();
-  if (lowerAuthor.includes('kamalram') || lowerAuthor.includes('കമൽറാം')) {
+  if (lowerAuthor.includes('akhil') || lowerAuthor.includes('അഖിൽ')) {
+    authorId = 'akhil-u-krishnan';
+  } else if (lowerAuthor.includes('amala') || lowerAuthor.includes('അമല')) {
+    authorId = 'amala-thomas';
+  } else if (lowerAuthor.includes('kamalram') || lowerAuthor.includes('കമൽറാം')) {
     authorId = 'kamalram-sajeev';
   } else if (lowerAuthor.includes('damodhar') || lowerAuthor.includes('ദാമോദർ')) {
     authorId = 'damodhar-prasad';
@@ -226,9 +230,9 @@ export function parseBloggerEntry(entry: BloggerEntry): Article {
   }
 
   // Category determination
-  const standardCategories = ['politics', 'cinema', 'sports', 'literature', 'media', 'society', 'environment', 'economy', 'science'];
+  const standardCategories = ['politics', 'cinema', 'sports', 'literature', 'media', 'society', 'environment', 'economy', 'science', 'arts & culture', 'arts-culture', 'culture'];
   const matchedCategory = labels.find((l) => standardCategories.includes(l.toLowerCase()));
-  const category = matchedCategory ? matchedCategory.toLowerCase() : 'politics';
+  const category = matchedCategory ? matchedCategory.toLowerCase().replace(/\s*&\s*|\s+/g, '-') : 'politics';
 
   // Packet & Issue tags (e.g. "Packet 1", "Packet 2", "packet-2")
   let webzineIssue: string | undefined;

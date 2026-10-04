@@ -1,12 +1,11 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Article } from '@/lib/content';
 import { formatDate } from '@/lib/format';
-import { Lock, BookOpen, PlusCircle, Edit3, ShieldCheck, ArrowRight } from 'lucide-react';
-import { getStoredSession, UserSession } from '@/lib/clientAuth';
+import { Lock, BookOpen } from 'lucide-react';
 
 interface CategoryFeedClientProps {
   category: string;
@@ -20,25 +19,6 @@ export function CategoryFeedClient({
   articles,
 }: CategoryFeedClientProps) {
   const [activeSubcategory, setActiveSubcategory] = useState<string>('all');
-  const [publisherSession, setPublisherSession] = useState<UserSession | null>(null);
-
-  useEffect(() => {
-    const syncSession = () => {
-      const sess = getStoredSession();
-      if (sess && sess.role === 'publisher') {
-        setPublisherSession(sess);
-      } else {
-        setPublisherSession(null);
-      }
-    };
-    syncSession();
-    window.addEventListener('omt-auth-changed', syncSession);
-    window.addEventListener('storage', syncSession);
-    return () => {
-      window.removeEventListener('omt-auth-changed', syncSession);
-      window.removeEventListener('storage', syncSession);
-    };
-  }, []);
 
   const filteredArticles = useMemo(() => {
     if (activeSubcategory === 'all') {
@@ -63,48 +43,6 @@ export function CategoryFeedClient({
 
   return (
     <div className="space-y-6">
-      {/* Publisher View Section Toolbar */}
-      {publisherSession && (
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 sm:p-4 rounded-2xl bg-[#0C2340] text-white border border-slate-700 shadow-md">
-          <div className="flex items-center gap-2.5">
-            <span className="relative flex h-2.5 w-2.5 shrink-0">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-            </span>
-            <div>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <ShieldCheck className="w-4 h-4 text-[#E27A2B]" />
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-200">
-                  Publisher View Active
-                </span>
-                <span className="text-slate-400 text-xs hidden md:inline">
-                  • Curating {category.replace(/-/g, ' ').toUpperCase()} section
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-400 pt-0.5">
-                Click any story below to edit, or write new content for this section.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-            <Link
-              href={`/publisher?category=${category}&tab=editor`}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#E27A2B] hover:bg-[#c9661d] text-white font-bold text-xs shadow-sm transition-colors"
-            >
-              <PlusCircle className="w-3.5 h-3.5" />
-              <span>+ Write in {category.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}</span>
-            </Link>
-            <Link
-              href="/publisher"
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-900 font-bold text-xs shadow-sm transition-colors"
-            >
-              <span>Desk</span>
-              <ArrowRight className="w-3 h-3" />
-            </Link>
-          </div>
-        </div>
-      )}
 
       {/* Subcategory Tabs (e.g. for Literature: Book Review, Short Stories) */}
       {subcategories && subcategories.length > 0 && (
@@ -182,20 +120,6 @@ export function CategoryFeedClient({
                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                     className="object-cover"
                   />
-                  {/* In-Context Edit Story Button for Publisher */}
-                  {publisherSession && (
-                    <div className="absolute top-2.5 right-2.5 z-30">
-                      <Link
-                        href={`/publisher?edit=${article.slug}`}
-                        onClick={(e) => e.stopPropagation()}
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-neutral-950/90 hover:bg-[#E27A2B] text-white text-xs font-bold shadow-lg backdrop-blur-md transition-colors border border-white/20"
-                        title={`Edit "${article.title}" in Publisher Desk`}
-                      >
-                        <Edit3 className="w-3.5 h-3.5 text-[#E27A2B] group-hover:text-white" />
-                        <span>Edit Story</span>
-                      </Link>
-                    </div>
-                  )}
                 </div>
 
                 <div className="pt-3 space-y-1.5">

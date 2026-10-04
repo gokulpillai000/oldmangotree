@@ -135,12 +135,6 @@ export default function RootLayout({
 
                 <div className="pt-6 border-t border-neutral-200 dark:border-neutral-800/80 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm sm:text-base text-neutral-800 dark:text-neutral-200 font-medium">
                   <p>© {new Date().getFullYear()} oldmangotree. All rights reserved.</p>
-                  <Link
-                    href="/publisher"
-                    className="text-xs text-neutral-500 dark:text-neutral-400 hover:text-[#E27A2B] dark:hover:text-[#E27A2B] transition-colors flex items-center gap-1.5"
-                  >
-                    <span>Editorial Desk</span>
-                  </Link>
                 </div>
               </div>
             </footer>

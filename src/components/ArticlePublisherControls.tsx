@@ -10,7 +10,7 @@ interface ArticlePublisherControlsProps {
   category?: string;
 }
 
-export function ArticlePublisherControls({ slug, category }: ArticlePublisherControlsProps) {
+export function ArticlePublisherControls({ slug }: ArticlePublisherControlsProps) {
   const [session, setSession] = useState<UserSession | null>(null);
 
   useEffect(() => {
@@ -32,7 +32,8 @@ export function ArticlePublisherControls({ slug, category }: ArticlePublisherCon
     };
   }, []);
 
-  if (!session) return null;
+  // Normal users never see this
+  if (!session || session.role !== 'publisher') return null;
 
   return (
     <div className="flex items-center gap-2 p-2.5 sm:p-3 rounded-2xl bg-[#0C2340] text-white border border-slate-700 shadow-sm justify-between flex-wrap text-xs">
