@@ -24,6 +24,7 @@ import {
   Send,
   MessageSquare
 } from 'lucide-react';
+import { getStoredSession, setStoredSession } from '@/lib/clientAuth';
 
 export default function EditorialDeskPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -52,7 +53,8 @@ export default function EditorialDeskPage() {
   // Check existing session
   useEffect(() => {
     const savedAuth = sessionStorage.getItem('omt_editorial_auth');
-    if (savedAuth === 'true') {
+    const storedSess = getStoredSession();
+    if (savedAuth === 'true' || storedSess?.role === 'publisher') {
       setIsAuthenticated(true);
     }
 
@@ -71,6 +73,13 @@ export default function EditorialDeskPage() {
     if (pinInput.trim() === 'omt2026' || pinInput.trim() === 'admin' || pinInput.trim() === 'editorial') {
       setIsAuthenticated(true);
       sessionStorage.setItem('omt_editorial_auth', 'true');
+      setStoredSession({
+        name: 'Editorial Desk',
+        email: 'editor@oldmangotree.media',
+        role: 'publisher',
+        authenticatedAt: new Date().toISOString(),
+      });
+      window.dispatchEvent(new Event('omt-auth-changed'));
       setPinError('');
     } else {
       setPinError('Invalid editorial PIN. Please check with the lead editor.');
@@ -80,6 +89,8 @@ export default function EditorialDeskPage() {
   const handleLogout = () => {
     setIsAuthenticated(false);
     sessionStorage.removeItem('omt_editorial_auth');
+    setStoredSession(null);
+    window.dispatchEvent(new Event('omt-auth-changed'));
   };
 
   // Live Edge Cache Revalidation

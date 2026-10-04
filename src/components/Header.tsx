@@ -205,7 +205,7 @@ export function Header() {
                 >
                   <Search className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />
                 </button>
-                {publisherSession && (
+                {publisherSession ? (
                   <Link
                     href="/publisher"
                     className="inline-flex items-center gap-1.5 px-3 py-1 rounded-none bg-[#E27A2B] hover:bg-[#d0691c] text-white font-bold text-xs sm:text-sm shadow-sm transition-all tracking-normal"
@@ -217,6 +217,16 @@ export function Header() {
                     </span>
                     <PenTool className="w-3.5 h-3.5" />
                     <span>Editorial Desk</span>
+                  </Link>
+                ) : (
+                  <Link
+                    href="/publisher"
+                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-none border border-white/20 hover:border-[#E27A2B] text-white/90 hover:text-white hover:bg-white/5 transition-all text-xs font-semibold"
+                    title="Editorial Desk"
+                    aria-label="Editorial Desk"
+                  >
+                    <PenTool className="w-3.5 h-3.5 text-[#E27A2B]" />
+                    <span>Desk</span>
                   </Link>
                 )}
               </div>
@@ -247,18 +257,19 @@ export function Header() {
                   })}
                 </nav>
 
-                {/* Mobile utility: Search & Theme */}
+                {/* Mobile utility: Search & Theme & Desk */}
                 <div className="flex lg:hidden items-center gap-1.5 text-white">
-                  {publisherSession && (
-                    <Link
-                      href="/publisher"
-                      className="p-1.5 text-[#E27A2B] hover:text-white rounded-none hover:bg-white/10 flex items-center gap-1"
-                      title={`Editorial Desk • ${publisherSession.name}`}
-                    >
-                      <PenTool className="w-4 h-4" />
-                      <span className="text-xs font-bold uppercase hidden sm:inline">Desk</span>
-                    </Link>
-                  )}
+                  <Link
+                    href="/publisher"
+                    className={`p-1.5 rounded-none hover:bg-white/10 flex items-center gap-1 transition-colors ${
+                      publisherSession ? 'text-[#E27A2B] font-bold' : 'text-white/80 hover:text-[#E27A2B]'
+                    }`}
+                    title={publisherSession ? `Editorial Desk • ${publisherSession.name}` : 'Editorial Desk'}
+                    aria-label="Editorial Desk"
+                  >
+                    <PenTool className="w-4 h-4" />
+                    <span className="text-xs font-bold uppercase hidden sm:inline">Desk</span>
+                  </Link>
                   <button
                     onClick={toggleDarkMode}
                     className="p-1.5 hover:text-[#E27A2B] transition-colors rounded-none hover:bg-white/10"
@@ -310,8 +321,8 @@ export function Header() {
           </div>
 
           <div className="p-2.5 flex flex-col gap-2.5 flex-1 overflow-y-auto pb-10">
-            {/* Publisher View Active Card in Drawer */}
-            {publisherSession && (
+            {/* Publisher View Active Card or Editorial Desk in Drawer */}
+            {publisherSession ? (
               <div className="p-2 rounded-none bg-[#E27A2B]/10 border border-[#E27A2B]/30">
                 <div className="flex items-center justify-between text-xs font-bold text-[#E27A2B] mb-1">
                   <span className="flex items-center gap-1.5">
@@ -329,6 +340,25 @@ export function Header() {
                   href="/publisher"
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="flex items-center justify-between w-full py-1.5 px-2 rounded-none bg-[#E27A2B] text-white text-xs font-bold shadow-xs hover:bg-[#c9661d] transition-colors"
+                >
+                  <span>Open Desk</span>
+                  <ArrowRight className="w-3 h-3" />
+                </Link>
+              </div>
+            ) : (
+              <div className="p-2 rounded-none bg-gray-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700/60">
+                <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">
+                  <span className="flex items-center gap-1.5">
+                    <PenTool className="w-3.5 h-3.5 text-[#E27A2B]" /> Publisher View
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-1.5 leading-tight">
+                  Editorial Desk &amp; Tools
+                </p>
+                <Link
+                  href="/publisher"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center justify-between w-full py-1.5 px-2 rounded-none bg-[#0C2340] hover:bg-[#E27A2B] text-white text-xs font-bold shadow-xs transition-colors"
                 >
                   <span>Open Desk</span>
                   <ArrowRight className="w-3 h-3" />
@@ -360,6 +390,19 @@ export function Header() {
                   </Link>
                 );
               })}
+
+              {/* Persistent Editorial Desk link */}
+              <Link
+                href="/publisher"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="flex items-center justify-between py-2.5 px-1.5 border-b border-gray-100 dark:border-slate-800/80 font-bold text-[#E27A2B] hover:underline hover:decoration-[#E27A2B]"
+              >
+                <span className="flex items-center gap-1.5">
+                  <PenTool className="w-3.5 h-3.5" />
+                  Editorial Desk
+                </span>
+                <ArrowRight className="w-3 h-3" />
+              </Link>
             </nav>
           </div>
         </aside>
