@@ -174,17 +174,11 @@ export function Header() {
               {/* Top Utility Icons (Search, Theme, Library, Profile) */}
               <div className="hidden lg:flex items-center gap-4 text-white text-xs sm:text-sm pb-1.5 pr-1">
                 <button
-                  type="button"
-                  onClick={() => {
-                    setIsMobileMenuOpen(false);
-                    setSearchInitialQuery('');
-                    setIsSearchOpen(true);
-                  }}
-                  className="p-1 hover:text-[#E27A2B] transition-colors cursor-pointer"
-                  title="Search"
-                  aria-label="Search articles"
+                  onClick={toggleDarkMode}
+                  className="p-1 hover:text-[#E27A2B] transition-colors"
+                  title="Toggle Theme"
                 >
-                  <Search className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />
+                  {isDarkMode ? <Sun className="w-4 h-4 sm:w-[18px] sm:h-[18px] text-amber-400" /> : <Moon className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />}
                 </button>
                 <button
                   onClick={() => setIsLibraryOpen(true)}
@@ -199,11 +193,17 @@ export function Header() {
                   )}
                 </button>
                 <button
-                  onClick={toggleDarkMode}
-                  className="p-1 hover:text-[#E27A2B] transition-colors"
-                  title="Toggle Theme"
+                  type="button"
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    setSearchInitialQuery('');
+                    setIsSearchOpen(true);
+                  }}
+                  className="p-1 hover:text-[#E27A2B] transition-colors cursor-pointer"
+                  title="Search"
+                  aria-label="Search articles"
                 >
-                  {isDarkMode ? <Sun className="w-4 h-4 sm:w-[18px] sm:h-[18px] text-amber-400" /> : <Moon className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />}
+                  <Search className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />
                 </button>
                 {publisherSession && (
                   <Link
@@ -260,6 +260,13 @@ export function Header() {
                     </Link>
                   )}
                   <button
+                    onClick={toggleDarkMode}
+                    className="p-1.5 hover:text-[#E27A2B] transition-colors rounded-none hover:bg-white/10"
+                    aria-label="Toggle Theme"
+                  >
+                    {isDarkMode ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5" />}
+                  </button>
+                  <button
                     type="button"
                     onClick={() => {
                       setIsMobileMenuOpen(false);
@@ -270,13 +277,6 @@ export function Header() {
                     aria-label="Search articles"
                   >
                     <Search className="w-5 h-5" />
-                  </button>
-                  <button
-                    onClick={toggleDarkMode}
-                    className="p-1.5 hover:text-[#E27A2B] transition-colors rounded-none hover:bg-white/10"
-                    aria-label="Toggle Theme"
-                  >
-                    {isDarkMode ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5" />}
                   </button>
                 </div>
               </div>

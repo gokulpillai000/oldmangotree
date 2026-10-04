@@ -9,6 +9,9 @@
 /out/
 /build
 
+# Blogger xml
+/blogger-theme
+
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
