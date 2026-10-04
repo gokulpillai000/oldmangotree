@@ -1,19 +1,9 @@
-const isGithubActions = process.env.GITHUB_ACTIONS === 'true';
-const repoName = process.env.GITHUB_REPOSITORY
-  ? `/${process.env.GITHUB_REPOSITORY.split('/')[1]}`
-  : '/oldmangotree-NEW';
-const basePath = isGithubActions ? (process.env.NEXT_PUBLIC_BASE_PATH ?? repoName) : '';
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  ...(isGithubActions
-    ? {
-        output: 'export',
-        basePath: basePath,
-        trailingSlash: true,
-      }
-    : {}),
+  ...(basePath ? { basePath, trailingSlash: true } : {}),
   env: {
     NEXT_PUBLIC_BASE_PATH: basePath,
   },
@@ -55,22 +45,18 @@ const nextConfig = {
       },
     ],
   },
-  ...(!isGithubActions
-    ? {
-        async rewrites() {
-          return [
-            {
-              source: '/magazine-archives',
-              destination: '/magazine',
-            },
-            {
-              source: '/app-podcasts',
-              destination: '/podcasts',
-            },
-          ];
-        },
-      }
-    : {}),
+  async rewrites() {
+    return [
+      {
+        source: '/magazine-archives',
+        destination: '/magazine',
+      },
+      {
+        source: '/app-podcasts',
+        destination: '/podcasts',
+      },
+    ];
+  },
 };
 
 export default nextConfig;
