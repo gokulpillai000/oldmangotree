@@ -42,20 +42,20 @@ export default async function SeriesDetailPage({ params }: SeriesPageProps) {
       </div>
 
       {/* Series Hero Section */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-6 sm:gap-8 items-start bg-paper-card dark:bg-paper-cardDark p-4 sm:p-8 rounded-2xl border border-neutral-200 dark:border-neutral-800 shadow-sm">
-        <div className="md:col-span-5 relative aspect-[4/3] md:aspect-square w-full rounded-xl overflow-hidden shadow-md">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-6 sm:gap-8 items-start pb-8 border-b border-neutral-200 dark:border-neutral-800">
+        <div className="md:col-span-5 relative aspect-[4/3] md:aspect-square w-full rounded-none overflow-hidden">
           <Image
             src={series.coverImage}
             alt={series.title}
             fill
-            className="object-cover"
+            className="object-cover rounded-none"
             priority
           />
         </div>
 
         <div className="md:col-span-7 space-y-4 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="px-3 py-1 rounded-full text-xs font-bold bg-brand-50 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300 border border-brand-200 dark:border-brand-800">
+            <span className="text-xs sm:text-sm font-bold uppercase tracking-wider text-[#E27A2B] underline decoration-[#E27A2B] underline-offset-4 decoration-1">
               {series.totalEpisodes} Episodes
             </span>
           </div>
@@ -65,19 +65,19 @@ export default async function SeriesDetailPage({ params }: SeriesPageProps) {
           </h1>
 
           {series.subtitle && (
-            <p className="text-base sm:text-lg font-medium text-brand-700 dark:text-brand-400 break-words">
+            <p className="text-base sm:text-lg font-semibold text-[#E27A2B] break-words">
               {series.subtitle}
             </p>
           )}
 
-          <div className="flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400 border-t border-b border-neutral-100 dark:border-neutral-800 py-3">
-            <span className="font-bold text-neutral-900 dark:text-neutral-200">
+          <div className="flex items-center gap-2 text-sm sm:text-base text-neutral-800 dark:text-neutral-200 border-t border-b border-neutral-200 dark:border-neutral-800 py-3">
+            <span className="font-bold text-neutral-900 dark:text-neutral-100">
               Author:
             </span>
-            <span>{series.authorName}</span>
+            <span className="font-medium">{series.authorName}</span>
           </div>
 
-          <p className="text-neutral-600 dark:text-neutral-300 text-sm sm:text-base leading-relaxed">
+          <p className="text-neutral-800 dark:text-neutral-200 text-base sm:text-lg leading-relaxed">
             {series.description}
           </p>
         </div>
@@ -87,10 +87,9 @@ export default async function SeriesDetailPage({ params }: SeriesPageProps) {
       <div className="space-y-6">
         <div className="border-b border-neutral-200 dark:border-neutral-800 pb-4">
           <h2 className="font-serif text-2xl sm:text-3xl font-bold text-neutral-900 dark:text-neutral-50 flex items-center gap-2 break-words">
-            <Layers className="w-6 h-6 text-brand-600 shrink-0" />
             <span>Episodes Directory</span>
           </h2>
-          <p className="text-neutral-500 text-sm mt-1">
+          <p className="text-neutral-700 dark:text-neutral-300 text-sm sm:text-base mt-1">
             Click on any chapter below to begin reading in sequence.
           </p>
         </div>
@@ -99,28 +98,31 @@ export default async function SeriesDetailPage({ params }: SeriesPageProps) {
           {series.episodes.map((episode) => (
             <div
               key={episode.slug}
-              className="group p-4 sm:p-6 bg-paper-card dark:bg-paper-cardDark rounded-xl border border-neutral-200 dark:border-neutral-800 hover:border-brand-500/50 hover:shadow-md transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+              className="group relative pb-6 border-b border-neutral-200 dark:border-neutral-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer transition-colors"
             >
-              <div className="flex items-start gap-3 sm:gap-4 min-w-0 flex-1">
-                <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-brand-100 dark:bg-brand-950 text-brand-700 dark:text-brand-300 font-serif font-bold text-sm sm:text-base flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                  {episode.episodeNumber}
-                </div>
+              <div className="flex items-start gap-4 min-w-0 flex-1">
+                <span className="font-serif text-2xl sm:text-3xl font-bold text-neutral-300 dark:text-neutral-700 group-hover:text-brand-600 transition-colors shrink-0">
+                  {String(episode.episodeNumber).padStart(2, '0')}
+                </span>
                 <div className="space-y-1 min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs font-bold uppercase tracking-wider text-brand-600 dark:text-brand-400">
+                    <span className="text-xs sm:text-sm font-bold uppercase tracking-wider text-[#E27A2B]">
                       Episode {episode.episodeNumber}
                     </span>
                     <span className="text-neutral-300 dark:text-neutral-700">•</span>
-                    <span className="text-xs text-neutral-500 flex items-center gap-1">
-                      <Calendar className="w-3 h-3" />
+                    <span className="text-xs sm:text-sm font-medium text-neutral-600 dark:text-neutral-400 flex items-center gap-1">
+                      <Calendar className="w-3.5 h-3.5" />
                       {formatDate(episode.publishedAt)}
                     </span>
                   </div>
-                  <h3 className="font-serif text-base sm:text-xl font-bold text-neutral-900 dark:text-neutral-100 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors break-words">
-                    {episode.title}
-                  </h3>
+                  <Link href={`/articles/${episode.slug}`}>
+                    <span className="absolute inset-0 z-10" aria-hidden="true" />
+                    <h3 className="font-serif text-base sm:text-xl font-bold text-neutral-900 dark:text-neutral-100 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors break-words">
+                      {episode.title}
+                    </h3>
+                  </Link>
                   {episode.excerpt && (
-                    <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 line-clamp-2 break-words">
+                    <p className="text-sm sm:text-base text-neutral-800 dark:text-neutral-200 line-clamp-2 leading-relaxed break-words">
                       {episode.excerpt}
                     </p>
                   )}
@@ -128,13 +130,12 @@ export default async function SeriesDetailPage({ params }: SeriesPageProps) {
               </div>
 
               <div className="shrink-0 w-full sm:w-auto">
-                <Link
-                  href={`/articles/${episode.slug}`}
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 sm:py-2 rounded-lg bg-neutral-100 dark:bg-neutral-800 hover:bg-brand-600 hover:text-white dark:hover:bg-brand-600 text-neutral-900 dark:text-neutral-100 text-xs sm:text-sm font-bold transition-colors"
+                <span
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 text-xs sm:text-sm font-bold text-[#E27A2B] group-hover:underline transition-colors"
                 >
                   <BookOpen className="w-4 h-4" />
                   <span>Read Chapter</span>
-                </Link>
+                </span>
               </div>
             </div>
           ))}

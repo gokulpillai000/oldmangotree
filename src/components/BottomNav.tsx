@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, BookOpen, Radio, Film, Bookmark } from 'lucide-react';
+import { Home, BookOpen, Radio, Bookmark } from 'lucide-react';
 import { getBookmarks } from '@/lib/readerStore';
 import { MyLibraryModal } from './MyLibraryModal';
 
@@ -25,9 +25,8 @@ export function BottomNav() {
 
   const navItems = [
     { label: 'Home', href: '/', icon: Home },
-    { label: 'Packets', href: '/magazine', icon: BookOpen },
+    { label: 'Webzine', href: '/magazine', icon: BookOpen },
     { label: 'Audio', href: '/podcasts', icon: Radio },
-    { label: 'Videos', href: '/videos', icon: Film },
   ];
 
   return (
@@ -45,14 +44,14 @@ export function BottomNav() {
               <Link
                 key={item.label}
                 href={item.href}
-                className={`flex flex-col items-center justify-center py-1 px-1 flex-1 max-w-[72px] min-h-[44px] rounded-xl transition-all ${
+                className={`flex flex-col items-center justify-center py-1 px-1 flex-1 max-w-[76px] min-h-[44px] transition-all ${
                   isActive
-                    ? 'text-brand-600 dark:text-brand-400 font-bold scale-105'
-                    : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200'
+                    ? 'text-[#E27A2B] font-bold scale-105'
+                    : 'text-neutral-800 dark:text-neutral-200 hover:text-[#E27A2B] dark:hover:text-[#E27A2B]'
                 }`}
               >
-                <Icon className={`w-5 h-5 mb-0.5 ${isActive ? 'stroke-[2.5px]' : 'stroke-[1.75px]'}`} />
-                <span className="text-[10px] tracking-tight">{item.label}</span>
+                <Icon className={`w-5 h-5 mb-0.5 ${isActive ? 'stroke-[2.5px]' : 'stroke-[2px]'}`} />
+                <span className="text-xs sm:text-sm font-bold tracking-tight">{item.label}</span>
               </Link>
             );
           })}
@@ -60,18 +59,18 @@ export function BottomNav() {
           {/* Library / Bookmarks Tab */}
           <button
             onClick={() => setIsLibraryOpen(true)}
-            className="flex flex-col items-center justify-center py-1 px-1 flex-1 max-w-[72px] min-h-[44px] rounded-xl text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200 transition-all relative"
+            className="flex flex-col items-center justify-center py-1 px-1 flex-1 max-w-[76px] min-h-[44px] text-neutral-800 dark:text-neutral-200 hover:text-[#E27A2B] dark:hover:text-[#E27A2B] transition-all relative"
             aria-label="My Library"
           >
             <div className="relative">
-              <Bookmark className="w-5 h-5 mb-0.5 stroke-[1.75px]" />
+              <Bookmark className="w-5 h-5 mb-0.5 stroke-[2px]" />
               {bookmarkCount > 0 && (
-                <span className="absolute -top-1 -right-1.5 w-4 h-4 rounded-full bg-brand-700 text-white text-[9px] font-bold flex items-center justify-center shadow-xs animate-in zoom-in">
+                <span className="absolute -top-1 -right-1.5 w-4 h-4 rounded-full bg-[#E27A2B] text-white text-[9px] font-bold flex items-center justify-center shadow-xs animate-in zoom-in">
                   {bookmarkCount > 9 ? '9+' : bookmarkCount}
                 </span>
               )}
             </div>
-            <span className="text-[10px] tracking-tight">Library</span>
+            <span className="text-xs sm:text-sm font-bold tracking-tight">Library</span>
           </button>
         </div>
       </nav>

@@ -95,14 +95,25 @@
 
 .prose p {
   font-family: 'Dzain-TrueCopy Text', 'DzainTrueCopy', serif;
-  @apply text-navy-900/90 dark:text-neutral-300 leading-relaxed mb-5 text-lg sm:text-xl;
+  @apply text-neutral-900 dark:text-neutral-100 leading-relaxed mb-6 text-lg sm:text-xl md:text-[21px];
 }
 
 .prose blockquote {
   font-family: 'Dzain-TrueCopy Text', 'DzainTrueCopy', serif;
-  @apply border-l-4 border-brand-600 pl-4 my-6 italic text-navy-900 dark:text-neutral-200 bg-brand-50/60 dark:bg-navy-900/50 py-2.5 rounded-r-lg text-lg sm:text-xl;
+  @apply border-l-4 border-brand-600 pl-5 my-6 italic text-neutral-900 dark:text-neutral-100 bg-brand-50/70 dark:bg-navy-900/60 py-3 rounded-r-lg text-lg sm:text-xl;
 }
 
 .prose ul {
-  @apply list-disc list-inside space-y-2 mb-4 text-navy-900/80 dark:text-neutral-300 text-base sm:text-lg;
+  @apply list-disc list-inside space-y-2.5 mb-5 text-neutral-900 dark:text-neutral-100 text-lg sm:text-xl;
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.scrollbar-none {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
 }

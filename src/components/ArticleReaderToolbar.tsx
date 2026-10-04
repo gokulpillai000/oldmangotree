@@ -37,7 +37,7 @@ export function ArticleReaderToolbar({
   };
 
   return (
-    <div className="relative z-10 bg-paper-card dark:bg-paper-cardDark border border-neutral-200 dark:border-neutral-800 py-2.5 px-3.5 sm:px-4 my-4 flex items-center justify-between gap-2 shadow-xs rounded-xl">
+    <div className="relative z-10 border-y border-neutral-200 dark:border-neutral-800 py-2.5 my-4 flex items-center justify-between gap-2 transition-colors">
       {/* Audio Play Trigger */}
       {audioNarrationUrl ? (
         <button
@@ -49,37 +49,38 @@ export function ArticleReaderToolbar({
               articleSlug: slug,
             })
           }
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-brand-700 hover:bg-brand-600 active:scale-95 text-white text-xs font-bold shadow transition-all"
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-700 hover:bg-brand-600 active:scale-95 text-white text-xs sm:text-sm font-bold transition-all shrink-0"
         >
-          <Volume2 className="w-4 h-4" /> Listen Audio
+          <Volume2 className="w-4 h-4" />
+          <span>Listen<span className="hidden sm:inline"> Audio</span></span>
         </button>
       ) : (
-        <span className="text-xs font-medium text-neutral-500">Long-form Reader</span>
+        <span className="text-xs sm:text-sm font-medium text-neutral-600 dark:text-neutral-400">Long-form Reader</span>
       )}
 
       {/* Font Size Adjuster & Share */}
       <div className="flex items-center gap-2">
-        <div className="flex items-center bg-neutral-100 dark:bg-neutral-800 rounded-lg p-0.5 border border-neutral-200 dark:border-neutral-700">
+        <div className="flex items-center bg-neutral-100 dark:bg-neutral-800 p-0.5 border border-neutral-200 dark:border-neutral-700">
           <button
             onClick={() => handleSizeClick('sm')}
-            className={`px-2 py-1 text-xs font-serif rounded ${
-              activeSize === 'sm' ? 'bg-white dark:bg-neutral-700 font-bold shadow-xs' : 'text-neutral-500'
+            className={`px-2.5 py-1 text-xs sm:text-sm font-serif ${
+              activeSize === 'sm' ? 'bg-white dark:bg-neutral-700 font-bold shadow-xs text-neutral-900 dark:text-neutral-100' : 'text-neutral-600 dark:text-neutral-400'
             }`}
           >
             A-
           </button>
           <button
             onClick={() => handleSizeClick('md')}
-            className={`px-2 py-1 text-xs font-serif rounded ${
-              activeSize === 'md' ? 'bg-white dark:bg-neutral-700 font-bold shadow-xs' : 'text-neutral-500'
+            className={`px-2.5 py-1 text-xs sm:text-sm font-serif ${
+              activeSize === 'md' ? 'bg-white dark:bg-neutral-700 font-bold shadow-xs text-neutral-900 dark:text-neutral-100' : 'text-neutral-600 dark:text-neutral-400'
             }`}
           >
             A
           </button>
           <button
             onClick={() => handleSizeClick('lg')}
-            className={`px-2 py-1 text-xs font-serif rounded ${
-              activeSize === 'lg' ? 'bg-white dark:bg-neutral-700 font-bold shadow-xs' : 'text-neutral-500'
+            className={`px-2.5 py-1 text-xs sm:text-sm font-serif ${
+              activeSize === 'lg' ? 'bg-white dark:bg-neutral-700 font-bold shadow-xs text-neutral-900 dark:text-neutral-100' : 'text-neutral-600 dark:text-neutral-400'
             }`}
           >
             A+
@@ -88,12 +89,12 @@ export function ArticleReaderToolbar({
 
         <button
           onClick={handleShare}
-          className="p-2 rounded-lg bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 transition-colors"
+          className="p-2 bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white transition-colors"
           title="Share Article Link"
         >
           <Share2 className="w-4 h-4" />
         </button>
-        {copied && <span className="text-[10px] text-brand-700 dark:text-brand-300 font-bold">Copied!</span>}
+        {copied && <span className="text-xs text-[#E27A2B] font-bold">Copied!</span>}
       </div>
     </div>
   );

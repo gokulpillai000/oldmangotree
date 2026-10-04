@@ -3,6 +3,8 @@
 import React, { useState } from 'react';
 import { X, Send, Mail, CheckCircle2, MessageSquare } from 'lucide-react';
 
+import { submitLetterToEditor } from '@/lib/supabase';
+
 interface LetterToEditorModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -21,14 +23,32 @@ export function LetterToEditorModal({
   const [location, setLocation] = useState('');
   const [message, setMessage] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !email.trim() || !message.trim()) return;
 
+    setIsSubmitting(true);
+
     try {
+      // 1. Dispatch via /api/feedback email endpoint
+      await fetch('/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          articleSlug: articleSlug || 'general',
+          articleTitle: articleTitle || 'General Feedback',
+          senderName: name.trim(),
+          senderEmail: email.trim(),
+          location: location.trim(),
+          message: message.trim(),
+        }),
+      });
+
+      // 2. Also keep in localStorage as an instant local record
       const lettersKey = 'omt_reader_letters';
       const raw = localStorage.getItem(lettersKey);
       const list = raw ? JSON.parse(raw) : [];
@@ -42,15 +62,18 @@ export function LetterToEditorModal({
         submittedAt: new Date().toISOString(),
       });
       localStorage.setItem(lettersKey, JSON.stringify(list));
-    } catch {}
-
-    setSubmitted(true);
-    setTimeout(() => {
-      setName('');
-      setEmail('');
-      setLocation('');
-      setMessage('');
-    }, 1000);
+    } catch (err) {
+      console.error('Failed to submit feedback:', err);
+    } finally {
+      setIsSubmitting(false);
+      setSubmitted(true);
+      setTimeout(() => {
+        setName('');
+        setEmail('');
+        setLocation('');
+        setMessage('');
+      }, 1000);
+    }
   };
 
   const handleClose = () => {
@@ -60,7 +83,8 @@ export function LetterToEditorModal({
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-4 bg-neutral-900/60 backdrop-blur-sm animate-in fade-in">
-      <div className="relative w-full max-w-lg bg-paper-card dark:bg-paper-cardDark rounded-2xl border border-neutral-200 dark:border-neutral-800 shadow-2xl p-5 sm:p-7 overflow-hidden max-h-[92vh] overflow-y-auto">
+      <div className="fixed inset-0" onClick={handleClose} aria-hidden="true" />
+      <div className="relative z-10 w-full max-w-lg bg-paper-card dark:bg-paper-cardDark rounded-2xl border border-neutral-200 dark:border-neutral-800 shadow-2xl p-5 sm:p-7 overflow-hidden max-h-[92vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-start justify-between pb-4 border-b border-neutral-100 dark:border-neutral-800/80">
           <div className="space-y-1">
@@ -165,7 +189,7 @@ export function LetterToEditorModal({
             </div>
 
             <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
-              Selected reader letters will be reviewed and featured on Old Mango Tree editorial pages.
+              Selected reader letters will be reviewed and featured on oldmangotree editorial pages.
             </p>
 
             <div className="flex items-center justify-end gap-3 pt-2 border-t border-neutral-100 dark:border-neutral-800">

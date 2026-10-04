@@ -127,16 +127,53 @@ export interface TeamMember {
   name: string;
   englishName?: string;
   role: string;
-  bio: string;
-  avatar: string;
-  department: string;
+  bio?: string;
+  avatar?: string;
+  department?: string;
 }
 
 // -------------------------------------------------------------
-// LOCAL CONTENT LOADERS (Offline Fallbacks)
+// LOCAL CONTENT LOADERS (With In-Memory Cache for Instant Routing)
 // -------------------------------------------------------------
 
+interface ContentMemoryCache {
+  articles?: Article[];
+  articlesWithScheduled?: Article[];
+  authorsMap?: Record<string, string>;
+  categories?: Category[];
+  issues?: IssuePacket[];
+  authors?: Author[];
+  series?: Series[];
+  podcasts?: Podcast[];
+  videos?: Video[];
+  htmlBySlug: Map<string, string>;
+}
+
+const memoryCache: ContentMemoryCache = {
+  htmlBySlug: new Map<string, string>(),
+};
+
+export function clearLocalContentCache(): void {
+  memoryCache.articles = undefined;
+  memoryCache.articlesWithScheduled = undefined;
+  memoryCache.authorsMap = undefined;
+  memoryCache.categories = undefined;
+  memoryCache.issues = undefined;
+  memoryCache.authors = undefined;
+  memoryCache.series = undefined;
+  memoryCache.podcasts = undefined;
+  memoryCache.videos = undefined;
+  memoryCache.htmlBySlug.clear();
+}
+
 export function getLocalArticles(includeScheduled: boolean = false): Article[] {
+  if (includeScheduled && memoryCache.articlesWithScheduled) {
+    return memoryCache.articlesWithScheduled;
+  }
+  if (!includeScheduled && memoryCache.articles) {
+    return memoryCache.articles;
+  }
+
   const articlesDir = path.join(contentDirectory, 'articles');
   if (!fs.existsSync(articlesDir)) return [];
 
@@ -144,7 +181,7 @@ export function getLocalArticles(includeScheduled: boolean = false): Article[] {
   const now = new Date().getTime();
   const fileNames = fs.readdirSync(articlesDir);
 
-  const articles = fileNames
+  const allArticles = fileNames
     .filter((file) => file.endsWith('.md'))
     .map((fileName) => {
       const fullPath = path.join(articlesDir, fileName);
@@ -174,10 +211,12 @@ export function getLocalArticles(includeScheduled: boolean = false): Article[] {
         isScheduled,
       };
     })
-    .filter((article) => includeScheduled || !article.isScheduled)
     .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
 
-  return articles;
+  memoryCache.articlesWithScheduled = allArticles;
+  memoryCache.articles = allArticles.filter((article) => !article.isScheduled);
+
+  return includeScheduled ? memoryCache.articlesWithScheduled : memoryCache.articles;
 }
 
 export function getAllArticlesSync(includeScheduled: boolean = false): Article[] {
@@ -185,6 +224,8 @@ export function getAllArticlesSync(includeScheduled: boolean = false): Article[]
 }
 
 function getAuthorsMap(): Record<string, string> {
+  if (memoryCache.authorsMap) return memoryCache.authorsMap;
+
   const authorsDir = path.join(contentDirectory, 'authors');
   const authorsMap: Record<string, string> = {};
   if (fs.existsSync(authorsDir)) {
@@ -198,6 +239,7 @@ function getAuthorsMap(): Record<string, string> {
       } catch {}
     }
   }
+  memoryCache.authorsMap = authorsMap;
   return authorsMap;
 }
 
@@ -233,8 +275,19 @@ export async function getArticleBySlug(slug: string, includeScheduled: boolean =
   const article = articles.find((a) => a.slug === slug);
   if (!article) return null;
 
+  if (article.contentHtml) return article;
+
+  const cachedHtml = memoryCache.htmlBySlug.get(slug);
+  if (cachedHtml) {
+    return {
+      ...article,
+      contentHtml: cachedHtml,
+    };
+  }
+
   const processedContent = await remark().use(html).process(article.content);
   const contentHtml = processedContent.toString();
+  memoryCache.htmlBySlug.set(slug, contentHtml);
 
   return {
     ...article,
@@ -279,11 +332,13 @@ export function getRelatedArticles(article: Article, limit: number = 3, pool?: A
 // -------------------------------------------------------------
 
 export function getLocalIssues(): IssuePacket[] {
+  if (memoryCache.issues) return memoryCache.issues;
+
   const issuesDir = path.join(contentDirectory, 'issues');
   if (!fs.existsSync(issuesDir)) return [];
 
   const fileNames = fs.readdirSync(issuesDir);
-  return fileNames
+  const issues = fileNames
     .filter((file) => file.endsWith('.json'))
     .map((fileName) => {
       const fullPath = path.join(issuesDir, fileName);
@@ -291,6 +346,9 @@ export function getLocalIssues(): IssuePacket[] {
       return JSON.parse(fileContents) as IssuePacket;
     })
     .sort((a, b) => b.issueNumber - a.issueNumber);
+
+  memoryCache.issues = issues;
+  return issues;
 }
 
 export async function getAllIssues(): Promise<IssuePacket[]> {
@@ -315,22 +373,30 @@ export async function getIssueById(id: string): Promise<IssuePacket | null> {
 // -------------------------------------------------------------
 
 export function getAllAuthors(): Author[] {
+  if (memoryCache.authors) return memoryCache.authors;
+
   const authorsDir = path.join(contentDirectory, 'authors');
   if (!fs.existsSync(authorsDir)) return [];
 
   const fileNames = fs.readdirSync(authorsDir);
-  return fileNames
+  const authors = fileNames
     .filter((file) => file.endsWith('.json'))
     .map((fileName) => {
       const fullPath = path.join(authorsDir, fileName);
       const fileContents = fs.readFileSync(fullPath, 'utf8');
       return JSON.parse(fileContents) as Author;
     });
+
+  memoryCache.authors = authors;
+  return authors;
 }
 
 export function getAuthorById(id: string): Author | null {
   const authors = getAllAuthors();
-  return authors.find((a) => a.id === id) || null;
+  if (!id) return authors.find((a) => a.id === 'editorial-desk') || null;
+  const direct = authors.find((a) => a.id.toLowerCase() === id.toLowerCase());
+  if (direct) return direct;
+  return authors.find((a) => a.id === 'editorial-desk') || null;
 }
 
 // -------------------------------------------------------------
@@ -338,17 +404,22 @@ export function getAuthorById(id: string): Author | null {
 // -------------------------------------------------------------
 
 export function getAllCategories(): Category[] {
+  if (memoryCache.categories) return memoryCache.categories;
+
   const categoriesDir = path.join(contentDirectory, 'categories');
   if (!fs.existsSync(categoriesDir)) return [];
 
   const fileNames = fs.readdirSync(categoriesDir);
-  return fileNames
+  const categories = fileNames
     .filter((file) => file.endsWith('.json'))
     .map((fileName) => {
       const fullPath = path.join(categoriesDir, fileName);
       const fileContents = fs.readFileSync(fullPath, 'utf8');
       return JSON.parse(fileContents) as Category;
     });
+
+  memoryCache.categories = categories;
+  return categories;
 }
 
 // -------------------------------------------------------------
@@ -356,11 +427,13 @@ export function getAllCategories(): Category[] {
 // -------------------------------------------------------------
 
 export function getLocalPodcasts(): Podcast[] {
+  if (memoryCache.podcasts) return memoryCache.podcasts;
+
   const podcastsDir = path.join(contentDirectory, 'podcasts');
   if (!fs.existsSync(podcastsDir)) return [];
 
   const fileNames = fs.readdirSync(podcastsDir);
-  return fileNames
+  const podcasts = fileNames
     .filter((file) => file.endsWith('.json'))
     .map((fileName) => {
       const fullPath = path.join(podcastsDir, fileName);
@@ -368,6 +441,9 @@ export function getLocalPodcasts(): Podcast[] {
       return JSON.parse(fileContents) as Podcast;
     })
     .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+
+  memoryCache.podcasts = podcasts;
+  return podcasts;
 }
 
 export async function getAllPodcasts(): Promise<Podcast[]> {
@@ -387,17 +463,22 @@ export async function getAllPodcasts(): Promise<Podcast[]> {
 // -------------------------------------------------------------
 
 export function getLocalSeries(): Series[] {
+  if (memoryCache.series) return memoryCache.series;
+
   const seriesDir = path.join(contentDirectory, 'series');
   if (!fs.existsSync(seriesDir)) return [];
 
   const fileNames = fs.readdirSync(seriesDir);
-  return fileNames
+  const series = fileNames
     .filter((file) => file.endsWith('.json'))
     .map((fileName) => {
       const fullPath = path.join(seriesDir, fileName);
       const fileContents = fs.readFileSync(fullPath, 'utf8');
       return JSON.parse(fileContents) as Series;
     });
+
+  memoryCache.series = series;
+  return series;
 }
 
 export async function getAllSeries(): Promise<Series[]> {
@@ -422,11 +503,15 @@ export async function getSeriesBySlug(slug: string): Promise<Series | null> {
 // -------------------------------------------------------------
 
 export function getLocalVideos(): Video[] {
+  if (memoryCache.videos) return memoryCache.videos;
+
   const filePath = path.join(contentDirectory, 'videos.json');
   if (!fs.existsSync(filePath)) return [];
   try {
     const fileContents = fs.readFileSync(filePath, 'utf8');
-    return JSON.parse(fileContents) as Video[];
+    const videos = JSON.parse(fileContents) as Video[];
+    memoryCache.videos = videos;
+    return videos;
   } catch {
     return [];
   }

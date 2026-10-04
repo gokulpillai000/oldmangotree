@@ -48,7 +48,13 @@ const globalForBlogger = globalThis as unknown as {
   inFlightBloggerFetch?: Promise<Article[]> | null;
 };
 
-const CACHE_TTL_MS = 60 * 1000; // 60 seconds
+const CACHE_TTL_MS = 120 * 1000; // 120 seconds in-memory cache
+
+export function clearBloggerCache(): void {
+  globalForBlogger.cachedBloggerArticles = undefined;
+  globalForBlogger.lastBloggerFetchTime = 0;
+  globalForBlogger.inFlightBloggerFetch = null;
+}
 
 function cleanSlug(raw: string): string {
   return raw
@@ -81,12 +87,12 @@ export async function fetchBloggerPosts(): Promise<Article[]> {
 
   globalForBlogger.inFlightBloggerFetch = (async () => {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2000); // 2s timeout max
+    const timeoutId = setTimeout(() => controller.abort(), 6000); // 6s timeout for reliability
 
     try {
       const res = await fetch(feedUrl, {
         signal: controller.signal,
-        next: { revalidate: 60 },
+        next: { revalidate: 120, tags: ['blogger-posts'] },
         headers: {
           Accept: 'application/json',
         },
@@ -122,7 +128,7 @@ export async function fetchBloggerPosts(): Promise<Article[]> {
 }
 
 /**
- * 2. Parse Single Entry to OldmanGoTree Article
+ * 2. Parse Single Entry to oldmangotree Article
  */
 export function parseBloggerEntry(entry: BloggerEntry): Article {
   const title = entry.title?.$t || 'Untitled';
@@ -139,8 +145,29 @@ export function parseBloggerEntry(entry: BloggerEntry): Article {
     slug = cleanSlug(title) || `post-${Date.now()}`;
   }
 
-  // Author details
-  const authorName = entry.author?.[0]?.name?.$t || 'Editorial Desk';
+  // Author details (Supports logged-in Blogger author OR custom "Author: <Name>" label override)
+  const authorTag = labels.find((l) => /^(?:author|by):\s*(.+)$/i.test(l));
+  let authorName = '';
+  if (authorTag) {
+    const match = authorTag.match(/^(?:author|by):\s*(.+)$/i);
+    if (match) authorName = match[1].trim();
+  }
+  if (!authorName) {
+    authorName = entry.author?.[0]?.name?.$t || 'Editorial Desk';
+  }
+
+  // Resolve author ID mapped to known authors (e.g. kamalram-sajeev, damodhar-prasad, manila-c-mohan, editorial-desk)
+  let authorId = cleanSlug(authorName);
+  const lowerAuthor = authorName.toLowerCase();
+  if (lowerAuthor.includes('kamalram') || lowerAuthor.includes('കമൽറാം')) {
+    authorId = 'kamalram-sajeev';
+  } else if (lowerAuthor.includes('damodhar') || lowerAuthor.includes('ദാമോദർ')) {
+    authorId = 'damodhar-prasad';
+  } else if (lowerAuthor.includes('manila') || lowerAuthor.includes('മനില')) {
+    authorId = 'manila-c-mohan';
+  } else if (lowerAuthor.includes('editorial') || !authorId) {
+    authorId = 'editorial-desk';
+  }
 
   // High-Resolution Cover Image extraction
   let coverImage = '';
@@ -171,16 +198,30 @@ export function parseBloggerEntry(entry: BloggerEntry): Article {
   const wordCount = plainText.split(/\s+/).filter(Boolean).length;
   const readTimeMinutes = Math.max(1, Math.ceil(wordCount / 200));
 
-  // Audio link extraction (e.g. [audio: https://...mp3] or <audio src="...">)
+  // Audio link extraction (Supports: [audio: URL], <audio src="URL">, direct MP3/M4A/WAV, and Google Drive audio links)
   let audioNarrationUrl: string | undefined;
   const audioMatch = contentHtml.match(/(?:\[audio:\s*|<audio[^>]+src=["'])(https?:\/\/[^"\]\s]+)/i);
   if (audioMatch) {
     audioNarrationUrl = audioMatch[1];
   } else {
-    // Direct mp3 link detection
-    const mp3Match = contentHtml.match(/https?:\/\/[^\s"'<>]+\.mp3/i);
-    if (mp3Match) {
-      audioNarrationUrl = mp3Match[0];
+    // Direct audio link detection (.mp3, .m4a, .wav, .aac, .ogg)
+    const directAudioMatch = contentHtml.match(/https?:\/\/[^\s"'<>]+\.(?:mp3|m4a|wav|aac|ogg)(?:\?[^\s"'<>]*)?/i);
+    if (directAudioMatch) {
+      audioNarrationUrl = directAudioMatch[0];
+    } else {
+      // Check for Google Drive audio link
+      const driveMatch = contentHtml.match(/https?:\/\/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/i);
+      if (driveMatch) {
+        audioNarrationUrl = `https://docs.google.com/uc?export=download&id=${driveMatch[1]}`;
+      }
+    }
+  }
+
+  // If audio URL is a Google Drive share link, convert it to direct stream
+  if (audioNarrationUrl && /drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/i.test(audioNarrationUrl)) {
+    const dMatch = audioNarrationUrl.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/i);
+    if (dMatch) {
+      audioNarrationUrl = `https://docs.google.com/uc?export=download&id=${dMatch[1]}`;
     }
   }
 
@@ -207,7 +248,7 @@ export function parseBloggerEntry(entry: BloggerEntry): Article {
     slug,
     excerpt,
     category,
-    authors: [authorName.toLowerCase().replace(/\s+/g, '-')],
+    authors: [authorId],
     authorNames: authorName,
     publishedAt,
     coverImage,
@@ -345,7 +386,8 @@ export async function fetchBloggerVideos(): Promise<Video[]> {
   const videoArticles = articles.filter(
     (art) =>
       art.tags?.some((t) => t.toLowerCase() === 'video') ||
-      /(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/i.test(art.contentHtml || '')
+      /(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/i.test(art.contentHtml || '') ||
+      /(?:blogger\.com\/video\.g\?token=|video\.google\.com)/i.test(art.contentHtml || '')
   );
 
   return videoArticles.map((art) => {

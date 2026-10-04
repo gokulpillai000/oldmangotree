@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useAudio } from './AudioContext';
-import { Play, Pause, Radio, ChevronUp, ChevronDown, Volume2, X } from 'lucide-react';
+import { Play, Pause, Radio, ChevronUp, ChevronDown, Volume2, VolumeX, X } from 'lucide-react';
 
 function formatTime(seconds: number) {
   if (isNaN(seconds)) return '00:00';
@@ -12,7 +12,7 @@ function formatTime(seconds: number) {
 }
 
 export function AudioPlayer() {
-  const { currentTrack, isPlaying, currentTime, duration, togglePlayPause, seekTo } = useAudio();
+  const { currentTrack, isPlaying, isMuted, currentTime, duration, togglePlayPause, toggleMute, seekTo, closeTrack } = useAudio();
   const [isExpanded, setIsExpanded] = useState(false);
 
   if (!currentTrack) return null;
@@ -26,19 +26,40 @@ export function AudioPlayer() {
             <span className="text-xs font-bold uppercase tracking-wider text-brand-400 flex items-center gap-1.5">
               <Radio className="w-4 h-4 animate-pulse" /> High-Fidelity Audio Stream
             </span>
-            <button
-              onClick={() => setIsExpanded(false)}
-              className="p-1 rounded-full text-neutral-400 hover:text-white"
-            >
-              <ChevronDown className="w-5 h-5" />
-            </button>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={toggleMute}
+                className="p-1.5 text-neutral-400 hover:text-white"
+                title={isMuted ? "Unmute audio" : "Mute audio"}
+                aria-label={isMuted ? "Unmute audio" : "Mute audio"}
+              >
+                {isMuted ? <VolumeX className="w-5 h-5 text-red-400" /> : <Volume2 className="w-5 h-5" />}
+              </button>
+              <button
+                onClick={() => setIsExpanded(false)}
+                className="p-1.5 text-neutral-400 hover:text-white"
+                title="Minimize player"
+                aria-label="Minimize player"
+              >
+                <ChevronDown className="w-5 h-5" />
+              </button>
+              <button
+                onClick={closeTrack}
+                className="p-1.5 text-neutral-400 hover:text-white"
+                title="Close player"
+                aria-label="Close audio player"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
           </div>
 
           <div className="space-y-1 text-center py-2">
             <h4 className="font-serif font-bold text-base text-neutral-100 line-clamp-2">
               {currentTrack.title}
             </h4>
-            <p className="text-xs text-brand-300 font-medium">OldmanGoTree High-Fidelity Audio</p>
+            <p className="text-xs text-brand-300 font-medium">oldmangotree High-Fidelity Audio</p>
           </div>
 
           <div className="space-y-1">
@@ -48,7 +69,7 @@ export function AudioPlayer() {
               max={duration || 100}
               value={currentTime}
               onChange={(e) => seekTo(Number(e.target.value))}
-              className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-brand-500"
+              className="w-full h-1.5 bg-neutral-800 appearance-none cursor-pointer accent-brand-500"
             />
             <div className="flex justify-between text-[11px] text-neutral-400 font-mono">
               <span>{formatTime(currentTime)}</span>
@@ -62,17 +83,17 @@ export function AudioPlayer() {
       <div className="max-w-7xl mx-auto px-4 py-2.5 sm:py-3 flex items-center justify-between gap-3">
         {/* Track Info */}
         <div className="flex items-center gap-3 min-w-0 flex-1 md:w-1/4">
-          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-brand-700 flex items-center justify-center text-white shrink-0 shadow">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 bg-brand-700 flex items-center justify-center text-white shrink-0 shadow">
             <Radio className={`w-4 h-4 sm:w-5 sm:h-5 ${isPlaying ? 'animate-pulse' : ''}`} />
           </div>
           <div className="truncate min-w-0">
-            <p className="text-[10px] uppercase text-brand-300 font-bold tracking-wider hidden sm:block">
+            <p className="text-xs uppercase text-[#E27A2B] font-bold tracking-wider hidden sm:block">
               Now Playing
             </p>
-            <p className="text-xs sm:text-sm font-medium truncate text-neutral-100 leading-tight">
+            <p className="text-sm sm:text-base font-semibold truncate text-neutral-100 leading-tight">
               {currentTrack.title}
             </p>
-            <p className="text-[10px] text-neutral-400 sm:hidden">
+            <p className="text-xs text-neutral-300 font-medium sm:hidden">
               {formatTime(currentTime)} / {formatTime(duration)}
             </p>
           </div>
@@ -83,49 +104,91 @@ export function AudioPlayer() {
           <div className="flex items-center gap-4">
             <button
               onClick={togglePlayPause}
-              className="w-9 h-9 rounded-full bg-brand-600 hover:bg-brand-500 flex items-center justify-center text-white transition-colors shadow"
+              className="w-9 h-9 bg-brand-600 hover:bg-brand-500 flex items-center justify-center text-white transition-colors shadow"
               aria-label={isPlaying ? 'Pause' : 'Play'}
             >
               {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
             </button>
           </div>
 
-          <div className="flex items-center gap-2 w-full text-xs text-neutral-400">
-            <span className="font-mono text-[11px]">{formatTime(currentTime)}</span>
+          <div className="flex items-center gap-2 w-full text-xs sm:text-sm text-neutral-300">
+            <span className="font-mono text-xs sm:text-sm font-medium">{formatTime(currentTime)}</span>
             <input
               type="range"
               min={0}
               max={duration || 100}
               value={currentTime}
               onChange={(e) => seekTo(Number(e.target.value))}
-              className="w-full h-1 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-brand-500"
+              className="w-full h-1.5 bg-neutral-700 appearance-none cursor-pointer accent-brand-500"
             />
-            <span className="font-mono text-[11px]">{formatTime(duration)}</span>
+            <span className="font-mono text-xs sm:text-sm font-medium">{formatTime(duration)}</span>
           </div>
         </div>
 
         {/* Mobile Controls */}
-        <div className="flex items-center gap-2 md:hidden">
+        <div className="flex items-center gap-1.5 md:hidden">
+          <button
+            type="button"
+            onClick={toggleMute}
+            className="p-1.5 text-neutral-400 hover:text-white"
+            title={isMuted ? "Unmute audio" : "Mute audio"}
+            aria-label={isMuted ? "Unmute audio" : "Mute audio"}
+          >
+            {isMuted ? <VolumeX className="w-4 h-4 text-red-400" /> : <Volume2 className="w-4 h-4" />}
+          </button>
           <button
             onClick={togglePlayPause}
-            className="w-9 h-9 rounded-full bg-brand-600 active:bg-brand-500 flex items-center justify-center text-white shadow"
+            className="w-9 h-9 bg-brand-600 active:bg-brand-500 flex items-center justify-center text-white shadow"
+            aria-label={isPlaying ? 'Pause' : 'Play'}
           >
             {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
           </button>
           <button
             onClick={() => setIsExpanded(!isExpanded)}
-            className="p-1.5 rounded-lg text-neutral-400 hover:text-white"
+            className="p-1.5 text-neutral-400 hover:text-white"
+            aria-label={isExpanded ? 'Collapse' : 'Expand'}
           >
             {isExpanded ? <ChevronDown className="w-5 h-5" /> : <ChevronUp className="w-5 h-5" />}
+          </button>
+          <button
+            onClick={closeTrack}
+            className="p-1.5 text-neutral-400 hover:text-white"
+            title="Close audio player"
+            aria-label="Close audio player"
+          >
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Auxiliary info / Volume (Desktop) */}
-        <div className="hidden md:flex items-center justify-end gap-3 w-1/4 text-neutral-400 text-xs">
-          <Volume2 className="w-4 h-4" />
-          <span className="uppercase tracking-wider text-[10px] bg-neutral-800 px-2 py-1 rounded border border-neutral-700">
+        <div className="hidden md:flex items-center justify-end gap-3 w-1/4 text-neutral-300 text-xs sm:text-sm">
+          <button
+            type="button"
+            onClick={toggleMute}
+            className="p-1.5 hover:text-white hover:bg-neutral-800 transition-colors flex items-center gap-1.5 cursor-pointer"
+            title={isMuted ? "Unmute audio" : "Mute audio"}
+            aria-label={isMuted ? "Unmute audio" : "Mute audio"}
+          >
+            {isMuted ? (
+              <VolumeX className="w-4 h-4 text-red-400" />
+            ) : (
+              <Volume2 className="w-4 h-4 text-neutral-200" />
+            )}
+            <span className="text-xs font-semibold text-neutral-200">
+              {isMuted ? 'Unmute' : 'Mute'}
+            </span>
+          </button>
+          <span className="uppercase tracking-wider text-xs font-bold bg-neutral-800 px-2 py-1 border border-neutral-700 text-neutral-200">
             High-Fidelity Audio
           </span>
+          <button
+            onClick={closeTrack}
+            className="p-1.5 text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors ml-1"
+            title="Close audio player"
+            aria-label="Close audio player"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
       </div>
     </div>

@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getArticleBySlug, getAllArticles, getAuthorById, getRelatedArticles } from '@/lib/content';
 import { formatDate } from '@/lib/format';
-import { Paywall } from '@/components/Paywall';
 import { CommentSection } from '@/components/CommentSection';
 import { ArticleBody } from '@/components/ArticleBody';
 import { ReadingProgressBar } from '@/components/ReadingProgressBar';
@@ -70,23 +69,23 @@ export default async function CategoryArticlePage({ params }: CategoryArticlePag
 
         {/* Article Header */}
         <header className="space-y-4 sm:space-y-6">
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-3">
             <Link
               href={`/${article.category.toLowerCase()}`}
-              className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-brand-100 dark:bg-brand-950 text-brand-700 dark:text-brand-300 hover:bg-brand-200 transition-colors"
+              className="text-xs sm:text-sm font-bold uppercase tracking-wider text-brand-600 dark:text-brand-400 underline decoration-brand-600 dark:decoration-brand-400 underline-offset-4 decoration-2 hover:decoration-brand-700 transition-all"
             >
               {article.category}
             </Link>
             {article.webzineIssue && (
               <Link
                 href={`/magazine/${article.webzineIssue}`}
-                className="px-3 py-1 rounded-full text-xs font-semibold bg-neutral-200 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 hover:underline"
+                className="text-xs sm:text-sm font-semibold uppercase tracking-wider text-neutral-600 dark:text-neutral-400 underline decoration-neutral-300 dark:decoration-neutral-700 underline-offset-4 decoration-1 hover:decoration-brand-600 transition-all"
               >
-                {article.webzineIssue.toUpperCase()}
+                {article.webzineIssue.toUpperCase()} Issue
               </Link>
             )}
             {article.isPremium && (
-              <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300">
+              <span className="text-xs font-semibold text-amber-700 dark:text-amber-400 underline decoration-amber-600 underline-offset-4 decoration-1">
                 Premium Read
               </span>
             )}
@@ -96,7 +95,7 @@ export default async function CategoryArticlePage({ params }: CategoryArticlePag
             {article.title}
           </h1>
 
-          <p className="text-base sm:text-xl lg:text-2xl text-neutral-600 dark:text-neutral-300 font-serif leading-relaxed italic break-words">
+          <p className="text-base sm:text-xl lg:text-2xl text-neutral-800 dark:text-neutral-200 font-serif leading-relaxed italic break-words">
             {article.excerpt}
           </p>
 
@@ -117,14 +116,14 @@ export default async function CategoryArticlePage({ params }: CategoryArticlePag
                   {article.authorNames}
                 </p>
                 {authorObj?.role && (
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5 truncate">
+                  <p className="text-xs sm:text-sm font-medium text-neutral-600 dark:text-neutral-400 mt-0.5 truncate">
                     {authorObj.role}
                   </p>
                 )}
               </div>
             </div>
 
-            <div className="flex items-center gap-3 sm:gap-4 text-xs sm:text-sm text-neutral-500 dark:text-neutral-400">
+            <div className="flex items-center gap-3 sm:gap-4 text-xs sm:text-sm font-medium text-neutral-600 dark:text-neutral-400">
               <span className="flex items-center gap-1.5">
                 <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-neutral-400" />
                 {formatDate(article.publishedAt)}
@@ -160,9 +159,6 @@ export default async function CategoryArticlePage({ params }: CategoryArticlePag
           publishedAt={article.publishedAt}
         />
 
-        {/* Paywall Banner for Premium Articles */}
-        {article.isPremium ? <Paywall articleTitle={article.title} /> : null}
-
         {/* Interactive Reader Toolbar & Content */}
         <ArticleBody
           title={article.title}
@@ -189,13 +185,13 @@ export default async function CategoryArticlePage({ params }: CategoryArticlePag
         {/* Tags */}
         {article.tags && article.tags.length > 0 && (
           <div className="flex items-center gap-2 pt-4 border-t border-neutral-200 dark:border-neutral-800">
-            <Tag className="w-4 h-4 text-neutral-400" />
-            <div className="flex flex-wrap gap-1.5">
+            <Tag className="w-4 h-4 text-brand-600 dark:text-brand-400" />
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
               {article.tags.map((tag) => (
                 <Link
                   key={tag}
                   href={`/tag/${encodeURIComponent(tag)}`}
-                  className="px-2.5 py-1 rounded-md text-xs bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 font-sans hover:bg-brand-50 hover:text-brand-600 transition-colors"
+                  className="text-xs sm:text-sm font-medium text-neutral-700 dark:text-neutral-300 hover:text-brand-600 dark:hover:text-brand-400 underline decoration-brand-600 dark:decoration-brand-400 underline-offset-4 decoration-1 hover:decoration-2 transition-all font-sans"
                 >
                   #{tag}
                 </Link>
@@ -218,37 +214,42 @@ export default async function CategoryArticlePage({ params }: CategoryArticlePag
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5 sm:gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 sm:gap-8">
               {relatedArticles.map((rel) => (
                 <article
                   key={rel.slug}
-                  className="group flex flex-col justify-between bg-paper-card dark:bg-paper-cardDark rounded-xl border border-neutral-200 dark:border-neutral-800 overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+                  className="group relative flex flex-col justify-between pb-6 border-b border-neutral-200 dark:border-neutral-800 transition-colors cursor-pointer"
                 >
                   <div>
-                    <div className="relative h-36 w-full overflow-hidden bg-neutral-100 dark:bg-neutral-800">
+                    <div className="relative aspect-[16/10] sm:aspect-[16/9] w-full overflow-hidden bg-neutral-100 dark:bg-neutral-800">
                       <Image
                         src={rel.coverImage}
                         alt={rel.title}
                         fill
-                        className="object-cover group-hover:scale-105 transition-transform duration-300"
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                        className="object-cover group-hover:scale-[1.02] transition-transform duration-300"
                       />
                     </div>
-                    <div className="p-4 space-y-2">
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-brand-600 dark:text-brand-400">
+                    <div className="pt-3 space-y-1.5">
+                      <Link
+                        href={`/${rel.category.toLowerCase()}`}
+                        className="relative z-20 inline-block text-xs sm:text-sm font-bold uppercase tracking-wider text-[#E27A2B] underline decoration-[#E27A2B] underline-offset-2 decoration-1 hover:decoration-2"
+                      >
                         {rel.category}
-                      </span>
+                      </Link>
                       <Link href={`/${rel.category.toLowerCase()}/${rel.slug}`}>
-                        <h4 className="font-serif text-base font-bold text-neutral-900 dark:text-neutral-50 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors line-clamp-2 leading-snug">
+                        <span className="absolute inset-0 z-10" aria-hidden="true" />
+                        <h4 className="font-serif text-base sm:text-lg font-bold text-neutral-900 dark:text-neutral-50 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors line-clamp-2 leading-snug">
                           {rel.title}
                         </h4>
                       </Link>
                     </div>
                   </div>
-                  <div className="p-4 pt-0 text-xs text-neutral-500">
-                    <p className="font-serif font-bold text-neutral-700 dark:text-neutral-300 line-clamp-1">
+                  <div className="mt-3 pt-2 border-t border-neutral-200 dark:border-neutral-800 space-y-1 text-xs sm:text-sm">
+                    <p className="font-serif font-bold text-sm sm:text-base text-neutral-900 dark:text-neutral-100 line-clamp-1">
                       {rel.authorNames}
                     </p>
-                    <p className="mt-1">{formatDate(rel.publishedAt)}</p>
+                    <p className="text-neutral-600 dark:text-neutral-400 font-medium">{formatDate(rel.publishedAt)}</p>
                   </div>
                 </article>
               ))}

@@ -12,6 +12,7 @@ import {
   Heart,
   Mail,
 } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import {
   isBookmarked,
   toggleBookmark,
@@ -19,7 +20,11 @@ import {
   toggleReaction,
   recordReadArticle,
 } from '@/lib/readerStore';
-import { LetterToEditorModal } from './LetterToEditorModal';
+
+const LetterToEditorModal = dynamic(
+  () => import('./LetterToEditorModal').then((m) => m.LetterToEditorModal),
+  { ssr: false }
+);
 
 interface SocialShareBarProps {
   title: string;
@@ -121,17 +126,17 @@ export function SocialShareBar({
   };
 
   const shareUrl = encodeURIComponent(url || `https://oldmangotree.media/articles/${slug}`);
-  const shareText = encodeURIComponent(`${title} — OldmanGoTree`);
+  const shareText = encodeURIComponent(`${title} — oldmangotree`);
 
   return (
     <>
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 py-3 px-3.5 sm:px-4 rounded-2xl bg-neutral-50 dark:bg-neutral-900/60 border border-neutral-200 dark:border-neutral-800 text-xs font-medium">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 py-3 px-3.5 sm:px-4 rounded-none bg-neutral-50 dark:bg-neutral-900/60 border border-neutral-200 dark:border-neutral-800 text-xs sm:text-sm font-medium">
         {/* Reader Engagement Actions (Reactions, Bookmark, Letter) */}
         <div className="flex items-center justify-between sm:justify-start gap-2">
           {/* Reaction / Like */}
           <button
             onClick={handleReactionToggle}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl transition-all ${
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-none transition-all ${
               reaction.hasReacted
                 ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900 font-bold scale-105'
                 : 'bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700 hover:border-neutral-300'
@@ -150,7 +155,7 @@ export function SocialShareBar({
           {/* Bookmark / Save */}
           <button
             onClick={handleBookmarkToggle}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl transition-all ${
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-none transition-all ${
               bookmarked
                 ? 'bg-brand-50 dark:bg-brand-950/40 text-brand-700 dark:text-brand-300 border border-brand-200 dark:border-brand-900 font-bold scale-105'
                 : 'bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700 hover:border-neutral-300'
@@ -169,7 +174,7 @@ export function SocialShareBar({
           {/* Letter to Editor */}
           <button
             onClick={() => setIsLetterModalOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-none bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 transition-colors"
             title="Send letter to editor about this piece"
             aria-label="Send letter to editor"
           >
@@ -180,7 +185,7 @@ export function SocialShareBar({
 
         {/* Social Share Toolbar */}
         <div className="flex items-center justify-around sm:justify-end gap-1.5 pt-2 sm:pt-0 border-t sm:border-t-0 border-neutral-200/60 dark:border-neutral-800">
-          <span className="hidden xl:inline text-neutral-500 dark:text-neutral-400 mr-1 text-[11px]">
+          <span className="hidden xl:inline text-neutral-600 dark:text-neutral-400 mr-1 text-xs font-semibold">
             Share:
           </span>
 
@@ -190,10 +195,10 @@ export function SocialShareBar({
             target="_blank"
             rel="noopener noreferrer"
             aria-label="Share on WhatsApp"
-            className="flex items-center gap-1 px-2.5 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 transition-colors"
+            className="flex items-center gap-1 px-2.5 py-2 rounded-none bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 transition-colors"
           >
             <MessageCircle className="w-4 h-4" />
-            <span className="hidden md:inline text-xs">WhatsApp</span>
+            <span className="hidden md:inline text-xs sm:text-sm font-medium">WhatsApp</span>
           </a>
 
           {/* X / Twitter */}
@@ -202,7 +207,7 @@ export function SocialShareBar({
             target="_blank"
             rel="noopener noreferrer"
             aria-label="Share on X"
-            className="flex items-center gap-1 px-2.5 py-2 rounded-xl bg-neutral-200/80 dark:bg-neutral-800 hover:bg-neutral-300 text-neutral-800 dark:text-neutral-200 transition-colors"
+            className="flex items-center gap-1 px-2.5 py-2 rounded-none bg-neutral-200/80 dark:bg-neutral-800 hover:bg-neutral-300 text-neutral-800 dark:text-neutral-200 transition-colors"
           >
             <Twitter className="w-3.5 h-3.5" />
           </a>
@@ -213,7 +218,7 @@ export function SocialShareBar({
             target="_blank"
             rel="noopener noreferrer"
             aria-label="Share on Facebook"
-            className="flex items-center gap-1 px-2.5 py-2 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-700 dark:text-blue-400 transition-colors"
+            className="flex items-center gap-1 px-2.5 py-2 rounded-none bg-blue-500/10 hover:bg-blue-500/20 text-blue-700 dark:text-blue-400 transition-colors"
           >
             <Facebook className="w-3.5 h-3.5" />
           </a>
@@ -222,7 +227,7 @@ export function SocialShareBar({
           <button
             onClick={handleNativeShare}
             aria-label="Copy article link"
-            className={`flex items-center gap-1 px-2.5 py-2 rounded-xl transition-colors ${
+            className={`flex items-center gap-1 px-2.5 py-2 rounded-none transition-colors ${
               copied
                 ? 'bg-brand-700 text-white font-bold'
                 : 'bg-neutral-200/80 dark:bg-neutral-800 hover:bg-neutral-300 text-neutral-800 dark:text-neutral-200'
@@ -230,13 +235,13 @@ export function SocialShareBar({
           >
             {copied ? (
               <>
-                <Check className="w-3.5 h-3.5" />
-                <span className="text-xs">Copied</span>
+                <Check className="w-3.5 h-3.5 text-emerald-300" />
+                <span className="hidden sm:inline text-xs sm:text-sm font-medium">Copied</span>
               </>
             ) : (
               <>
                 <Copy className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline text-xs">Copy</span>
+                <span className="hidden sm:inline text-xs sm:text-sm font-medium">Copy</span>
               </>
             )}
           </button>

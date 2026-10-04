@@ -23,7 +23,7 @@ export function generateMetadata({ params }: CategoryPageProps): Metadata {
   if (!catObj) return { title: 'Category Not Found' };
 
   return {
-    title: `${catObj.name} — Old Mango Tree`,
+    title: `${catObj.name} — oldmangotree`,
     description: catObj.description,
   };
 }
@@ -44,12 +44,13 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
   return (
     <div className="space-y-8 pb-6 sm:pb-8 max-w-7xl mx-auto">
       <header className="border-b border-neutral-200 dark:border-neutral-800 pb-6 space-y-2.5">
-        <div className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold uppercase tracking-widest text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-950/50 px-3 py-1 rounded-full border border-brand-200 dark:border-brand-900">
-          <span>{catObj.icon || '📖'}</span>
+        <div className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold uppercase tracking-widest text-[#E27A2B]">
           <span>Section Feed</span>
         </div>
         <h1 className="font-serif text-3xl sm:text-5xl font-bold text-navy-950 dark:text-neutral-50 tracking-tight break-words">
-          {catObj.name}
+          <span className="inline-block underline decoration-[#E27A2B] underline-offset-4 decoration-2">
+            {catObj.name}
+          </span>
         </h1>
         <p className="text-neutral-600 dark:text-neutral-400 text-sm sm:text-base max-w-2xl leading-relaxed">
           {catObj.description}

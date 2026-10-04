@@ -18,12 +18,12 @@ export const Logo: React.FC<LogoProps> = ({
   // Reference variant: Square box with white border + 3-line stacked brand name (old / mango / tree)
   if (variant === 'reference') {
     return (
-      <div className={`inline-flex items-center gap-2.5 sm:gap-3.5 group ${className}`}>
-        {/* Hanging Square Logo Box */}
-        <div className="relative w-14 h-14 sm:w-20 sm:h-20 md:w-[86px] md:h-[86px] bg-[#fdf9ee] border-2 sm:border-[3px] border-[#E27A2B] shadow-[0_6px_16px_rgba(0,0,0,0.35)] translate-y-2 sm:translate-y-3.5 z-30 shrink-0 flex items-center justify-center p-0.5 group-hover:scale-105 transition-transform duration-200 overflow-hidden">
+      <div className={`inline-flex items-center gap-2 min-[360px]:gap-2.5 sm:gap-3.5 group ${className}`}>
+        {/* Logo Mark with rounded corners and orange border matching hero bottom border */}
+        <div className="relative w-12 h-12 min-[360px]:w-[52px] min-[360px]:h-[52px] sm:w-16 sm:h-16 md:w-[72px] md:h-[72px] bg-[#fdf9ee] border-2 border-[#E27A2B] rounded-xl sm:rounded-2xl shadow-xs shrink-0 flex items-center justify-center p-0.5 sm:p-1 overflow-hidden">
           <Image
             src={logoSrc}
-            alt="Old Mango Tree"
+            alt="oldmangotree"
             fill
             className="object-contain"
             priority
@@ -31,12 +31,12 @@ export const Logo: React.FC<LogoProps> = ({
         </div>
 
         {/* Website Name as in the past */}
-        <div className="flex flex-col justify-center select-none">
-          <span className="font-serif text-xl sm:text-2xl md:text-[26px] font-bold tracking-tight text-white leading-tight">
-            oldman<span className="text-brand-500">go</span>tree
+        <div className="flex flex-col justify-center select-none min-w-0">
+          <span className="font-serif text-lg min-[360px]:text-xl sm:text-2xl md:text-[28px] font-bold tracking-tight text-white leading-tight whitespace-nowrap">
+            oldmang<span className="text-brand-500">o</span>tree
           </span>
-          <span className="text-[9px] sm:text-[10px] md:text-[11px] tracking-wide text-slate-300 font-sans italic font-medium">
-            A shade for wandering thoughts
+          <span className="text-xs sm:text-sm tracking-normal text-[#f97316] font-sans italic font-medium whitespace-nowrap block">
+            A shade for wondering thoughts
           </span>
         </div>
       </div>
@@ -48,7 +48,7 @@ export const Logo: React.FC<LogoProps> = ({
       <div className={`relative inline-block overflow-hidden rounded-2xl ${className}`}>
         <Image
           src={logoSrc}
-          alt="Old Mango Tree Logo"
+          alt="oldmangotree Logo"
           width={220}
           height={220}
           className="object-contain"
@@ -64,7 +64,7 @@ export const Logo: React.FC<LogoProps> = ({
       <div className={`relative inline-flex items-center justify-center overflow-hidden rounded-xl bg-[#fdf9ee] border border-amber-200/80 dark:border-navy-800 shadow-xs ${className}`}>
         <Image
           src={logoSrc}
-          alt="Old Mango Tree Emblem"
+          alt="oldmangotree Emblem"
           width={44}
           height={44}
           className="object-contain"
@@ -78,24 +78,24 @@ export const Logo: React.FC<LogoProps> = ({
   if (variant === 'stacked') {
     return (
       <div className={`flex flex-col items-center text-center gap-2 group ${className}`}>
-        <div className="relative w-24 h-24 sm:w-28 sm:h-28 overflow-hidden rounded-2xl bg-[#fdf9ee] border border-amber-200/60 dark:border-navy-800 shadow-sm p-1 transition-transform group-hover:scale-105">
+        <div className="relative w-24 h-24 sm:w-28 sm:h-28 overflow-hidden rounded-2xl bg-[#fdf9ee] border border-amber-200/60 dark:border-navy-800 shadow-sm p-1">
           <Image
             src={logoSrc}
-            alt="Old Mango Tree"
+            alt="oldmangotree"
             fill
             className="object-contain p-1"
             priority
           />
         </div>
         <div>
-          <div className="font-serif text-xl sm:text-2xl font-bold tracking-widest leading-tight">
+          <div className="font-serif text-xl sm:text-2xl font-bold tracking-widest leading-tight whitespace-nowrap">
             <span className="text-navy-950 dark:text-neutral-100">oldmang</span>
-            <span className="text-brand-600 dark:text-brand-500">o</span>
+            <span className="text-brand-500">o</span>
             <span className="text-navy-950 dark:text-neutral-100">tree</span>
           </div>
           {showTagline && (
-            <p className="font-sans text-xs italic tracking-wider text-brand-600 dark:text-brand-400 mt-0.5 font-medium">
-              Where ideas come to sit
+            <p className="font-sans text-xs sm:text-sm italic tracking-normal text-[#f97316] mt-0.5 font-medium whitespace-nowrap">
+              A shade for wondering thoughts
             </p>
           )}
         </div>
@@ -103,27 +103,27 @@ export const Logo: React.FC<LogoProps> = ({
     );
   }
 
-  // Horizontal variant (default): Perfect for Header bar masthead
+  // Horizontal variant (default): Perfect for Header bar masthead / Footer
   return (
     <div className={`inline-flex items-center gap-2.5 sm:gap-3 group ${className}`}>
-      <div className="relative w-10 h-10 sm:w-11 sm:h-11 md:w-12 md:h-12 shrink-0 overflow-hidden rounded-xl bg-[#fdf9ee] border border-amber-200/80 dark:border-navy-800 shadow-xs transition-transform group-hover:scale-105">
+      <div className="relative w-10 h-10 sm:w-11 sm:h-11 md:w-12 md:h-12 shrink-0 overflow-hidden rounded-xl bg-[#fdf9ee] border border-amber-200/80 dark:border-navy-800 shadow-xs">
         <Image
           src={logoSrc}
-          alt="Old Mango Tree Mark"
+          alt="oldmangotree Mark"
           fill
           className="object-contain p-0.5"
           priority
         />
       </div>
-      <div className="flex flex-col justify-center">
-        <span className="font-serif text-lg sm:text-xl md:text-2xl font-bold tracking-wider leading-none">
+      <div className="flex flex-col justify-center min-w-0">
+        <span className="font-serif text-lg sm:text-xl md:text-2xl font-bold tracking-wider leading-none whitespace-nowrap">
           <span className="text-navy-950 dark:text-neutral-100">oldmang</span>
-          <span className="text-brand-600 dark:text-brand-500">o</span>
+          <span className="text-brand-500">o</span>
           <span className="text-navy-950 dark:text-neutral-100">tree</span>
         </span>
         {showTagline && (
-          <span className="text-[10px] sm:text-[11px] font-sans italic tracking-wide text-brand-600 dark:text-brand-400 font-medium leading-tight mt-1">
-            Where ideas come to sit
+          <span className="text-xs sm:text-sm font-sans italic tracking-normal text-[#f97316] font-medium leading-tight mt-1 whitespace-nowrap">
+            A shade for wondering thoughts
           </span>
         )}
       </div>

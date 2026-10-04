@@ -34,7 +34,7 @@ export default function NotFound() {
           className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-paper-card dark:bg-paper-cardDark border border-neutral-300 dark:border-neutral-700 text-neutral-800 dark:text-neutral-200 hover:border-brand-500 font-medium text-sm transition-colors"
         >
           <BookOpen className="w-4 h-4" />
-          <span>Webzine Editions</span>
+          <span>Webzine</span>
         </Link>
       </div>
     </div>

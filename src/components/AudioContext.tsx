@@ -13,11 +13,14 @@ export interface AudioTrack {
 interface AudioContextType {
   currentTrack: AudioTrack | null;
   isPlaying: boolean;
+  isMuted: boolean;
   currentTime: number;
   duration: number;
   playTrack: (track: AudioTrack) => void;
   togglePlayPause: () => void;
+  toggleMute: () => void;
   seekTo: (time: number) => void;
+  closeTrack: () => void;
 }
 
 const AudioContext = createContext<AudioContextType | undefined>(undefined);
@@ -25,6 +28,7 @@ const AudioContext = createContext<AudioContextType | undefined>(undefined);
 export function AudioProvider({ children }: { children: React.ReactNode }) {
   const [currentTrack, setCurrentTrack] = useState<AudioTrack | null>(null);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
+  const [isMuted, setIsMuted] = useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState<number>(0);
   const [duration, setDuration] = useState<number>(0);
 
@@ -63,6 +67,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
     setCurrentTrack(track);
     audioRef.current.src = track.url;
+    audioRef.current.muted = isMuted;
     audioRef.current
       .play()
       .then(() => setIsPlaying(true))
@@ -82,6 +87,13 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const toggleMute = () => {
+    if (!audioRef.current) return;
+    const nextMuted = !audioRef.current.muted;
+    audioRef.current.muted = nextMuted;
+    setIsMuted(nextMuted);
+  };
+
   const seekTo = (time: number) => {
     if (audioRef.current) {
       audioRef.current.currentTime = time;
@@ -89,16 +101,29 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const closeTrack = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.src = '';
+    }
+    setIsPlaying(false);
+    setCurrentTrack(null);
+    setCurrentTime(0);
+  };
+
   return (
     <AudioContext.Provider
       value={{
         currentTrack,
         isPlaying,
+        isMuted,
         currentTime,
         duration,
         playTrack,
         togglePlayPause,
+        toggleMute,
         seekTo,
+        closeTrack,
       }}
     >
       {children}

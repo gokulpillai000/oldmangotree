@@ -14,7 +14,7 @@ export function PodcastList({ podcasts }: PodcastListProps) {
   const { currentTrack, isPlaying, playTrack, togglePlayPause } = useAudio();
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
       {podcasts.map((pod) => {
         const isCurrent = currentTrack?.url === pod.audioUrl;
         const isThisPlaying = isCurrent && isPlaying;
@@ -22,49 +22,67 @@ export function PodcastList({ podcasts }: PodcastListProps) {
         return (
           <div
             key={pod.id}
-            className="bg-paper-card dark:bg-paper-cardDark rounded-2xl p-4 sm:p-6 border border-neutral-200 dark:border-neutral-800 shadow-sm flex flex-col justify-between gap-5 sm:gap-6"
+            onClick={() =>
+              isCurrent
+                ? togglePlayPause()
+                : playTrack({
+                    title: pod.title,
+                    url: pod.audioUrl,
+                    durationSeconds: pod.durationSeconds,
+                  })
+            }
+            className="group cursor-pointer flex flex-col justify-between pb-6 border-b border-neutral-200 dark:border-neutral-800 transition-colors"
           >
-            <div className="flex items-start gap-3.5 sm:gap-4">
-              <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-xl overflow-hidden shrink-0 shadow">
-                <Image src={pod.coverImage} alt={pod.title} fill className="object-cover" />
+            <div>
+              <div className="relative aspect-[16/10] sm:aspect-[16/9] w-full overflow-hidden bg-neutral-100 dark:bg-neutral-800">
+                <Image
+                  src={pod.coverImage}
+                  alt={pod.title}
+                  fill
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                  className="object-cover group-hover:scale-[1.02] transition-transform duration-300"
+                />
               </div>
-              <div className="space-y-1.5 min-w-0 flex-1">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-brand-600 dark:text-brand-400 flex items-center gap-1">
-                  <Mic className="w-3 h-3" /> {pod.speaker}
+
+              <div className="pt-3 space-y-1.5">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#E27A2B] underline decoration-[#E27A2B] underline-offset-2 decoration-1">
+                  {pod.speaker}
                 </span>
-                <h2 className="font-serif text-base sm:text-lg font-bold text-neutral-900 dark:text-neutral-50 leading-snug line-clamp-2 break-words">
+                <h2 className="font-serif text-lg sm:text-xl font-bold text-neutral-900 dark:text-neutral-50 group-hover:text-[#E27A2B] transition-colors leading-snug line-clamp-2 break-words">
                   {pod.title}
                 </h2>
-                <p className="text-xs text-neutral-600 dark:text-neutral-400 line-clamp-2 break-words">
+                <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 line-clamp-2 break-words leading-relaxed">
                   {pod.excerpt}
                 </p>
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-4 border-t border-neutral-100 dark:border-neutral-800 text-xs text-neutral-500">
+            <div className="pt-3 border-t border-neutral-100 dark:border-neutral-800/80 mt-3 flex items-center justify-between gap-3 text-xs text-neutral-500">
               <span className="flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5" /> {Math.floor(pod.durationSeconds / 60)} minutes
+                <Clock className="w-3.5 h-3.5" /> {Math.floor(pod.durationSeconds / 60)} mins
               </span>
 
               <button
-                onClick={() =>
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
                   isCurrent
                     ? togglePlayPause()
                     : playTrack({
                         title: pod.title,
                         url: pod.audioUrl,
                         durationSeconds: pod.durationSeconds,
-                      })
-                }
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 sm:py-2 rounded-xl bg-brand-700 hover:bg-brand-600 text-white font-semibold shadow transition-colors"
+                      });
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-brand-700 hover:bg-brand-600 text-white font-semibold transition-colors"
               >
                 {isThisPlaying ? (
                   <>
-                    <Pause className="w-4 h-4" /> Pause
+                    <Pause className="w-3.5 h-3.5" /> <span>Pause</span>
                   </>
                 ) : (
                   <>
-                    <Play className="w-4 h-4" /> Play Episode
+                    <Play className="w-3.5 h-3.5" /> <span>Play Episode</span>
                   </>
                 )}
               </button>
