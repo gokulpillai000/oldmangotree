@@ -36,7 +36,7 @@ export const Logo: React.FC<LogoProps> = ({
             oldmang<span className="text-brand-500">o</span>tree
           </span>
           <span className="text-xs sm:text-sm tracking-normal text-[#f97316] font-sans italic font-medium whitespace-nowrap block">
-            A shade for wondering thoughts
+            A shade for wandering thoughts
           </span>
         </div>
       </div>
@@ -95,7 +95,7 @@ export const Logo: React.FC<LogoProps> = ({
           </div>
           {showTagline && (
             <p className="font-sans text-xs sm:text-sm italic tracking-normal text-[#f97316] mt-0.5 font-medium whitespace-nowrap">
-              A shade for wondering thoughts
+              A shade for wandering thoughts
             </p>
           )}
         </div>
@@ -123,7 +123,7 @@ export const Logo: React.FC<LogoProps> = ({
         </span>
         {showTagline && (
           <span className="text-xs sm:text-sm font-sans italic tracking-normal text-[#f97316] font-medium leading-tight mt-1 whitespace-nowrap">
-            A shade for wondering thoughts
+            A shade for wandering thoughts
           </span>
         )}
       </div>

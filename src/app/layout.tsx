@@ -17,7 +17,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: 'oldmangotree — A shade for wondering thoughts',
+  title: 'oldmangotree — A shade for wandering thoughts',
   description: 'Flat-file digital webzine, long-form journalism, cinema, sports, politics, arts & culture, literature, and audio streaming.',
 };
 
