@@ -3,7 +3,7 @@ name: Deploy Next.js to GitHub Pages
 on:
   # Trigger deployment on push to master or main
   push:
-    branches: ["master", "main"]
+    branches: ["master", "main", "develop"]
   # Allows triggering deployment manually from GitHub Actions tab
   workflow_dispatch:
 

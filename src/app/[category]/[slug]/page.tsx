@@ -227,7 +227,7 @@ export default async function CategoryArticlePage({ params }: CategoryArticlePag
                         alt={rel.title}
                         fill
                         sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                        className="object-cover group-hover:scale-[1.02] transition-transform duration-300"
+                        className="object-cover"
                       />
                     </div>
                     <div className="pt-3 space-y-1.5">
