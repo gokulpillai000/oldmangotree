@@ -10,7 +10,6 @@ import {
   Lock,
   Radio,
   Film,
-  Tag,
   ArrowLeft,
   Mail,
   Layers,
@@ -56,6 +55,42 @@ const STANDARD_CATEGORIES = [
   'Economy',
   'Science',
 ];
+
+function EntryInfoTip({ text, title }: { text: string; title?: string }) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <span className="relative inline-flex items-center ml-1.5 align-middle select-none">
+      <button
+        type="button"
+        onClick={() => setIsOpen((prev) => !prev)}
+        onMouseEnter={() => setIsOpen(true)}
+        onMouseLeave={() => setIsOpen(false)}
+        onFocus={() => setIsOpen(true)}
+        onBlur={() => setIsOpen(false)}
+        className="p-1 rounded text-neutral-400 hover:text-[#E27A2B] hover:bg-neutral-200/80 dark:hover:bg-neutral-800 transition-colors cursor-pointer"
+        aria-label={title || 'Field information'}
+        title={title || 'Click or hover for info'}
+      >
+        <Info className="w-3.5 h-3.5" />
+      </button>
+      {isOpen && (
+        <span
+          role="tooltip"
+          className="absolute left-0 sm:left-1/2 sm:-translate-x-1/2 bottom-full mb-2 z-50 w-64 sm:w-72 p-2.5 bg-neutral-900 dark:bg-neutral-950 text-white text-[11px] sm:text-xs leading-relaxed shadow-xl border border-neutral-700 pointer-events-none animate-in fade-in zoom-in-95 block text-left"
+        >
+          {title && (
+            <span className="font-bold text-[#E27A2B] mb-1 font-serif text-[11px] uppercase tracking-wider block">
+              {title}
+            </span>
+          )}
+          <span className="text-neutral-200 block normal-case font-sans">{text}</span>
+          <span className="absolute top-full left-3 sm:left-1/2 sm:-translate-x-1/2 -mt-1 border-4 border-transparent border-t-neutral-900 dark:border-t-neutral-950 block" />
+        </span>
+      )}
+    </span>
+  );
+}
 
 export default function EditorialDeskPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -106,6 +141,9 @@ export default function EditorialDeskPage() {
   const [composerHasAudio, setComposerHasAudio] = useState(false);
   const [composerHasVideo, setComposerHasVideo] = useState(false);
   const [composerIsPremium, setComposerIsPremium] = useState(false);
+  const [composerIsLongform, setComposerIsLongform] = useState(false);
+  const [composerIsInterview, setComposerIsInterview] = useState(false);
+  const [composerIsOpinion, setComposerIsOpinion] = useState(false);
 
   // Series Builder State
   const [composerIsSeries, setComposerIsSeries] = useState(false);
@@ -113,14 +151,8 @@ export default function EditorialDeskPage() {
   const [composerSeriesEpisode, setComposerSeriesEpisode] = useState('1');
   const [composerIsSeriesInfo, setComposerIsSeriesInfo] = useState(false);
 
-  // Standalone Quick Series Generator State
-  const [quickSeriesTitle, setQuickSeriesTitle] = useState('');
-  const [quickSeriesPart, setQuickSeriesPart] = useState('1');
-
   // Copy States
   const [copiedAll, setCopiedAll] = useState(false);
-  const [copiedSeriesTag, setCopiedSeriesTag] = useState(false);
-  const [copiedTag, setCopiedTag] = useState<string | null>(null);
 
   // Reader Letters State
   const [readerLetters, setReaderLetters] = useState<any[]>([]);
@@ -272,9 +304,6 @@ export default function EditorialDeskPage() {
     if (identifier === 'audio') {
       setCopiedAudio(true);
       setTimeout(() => setCopiedAudio(false), 2000);
-    } else {
-      setCopiedTag(text);
-      setTimeout(() => setCopiedTag(null), 1800);
     }
   };
 
@@ -413,6 +442,9 @@ export default function EditorialDeskPage() {
     if (composerHasAudio) list.push('Audio Story');
     if (composerHasVideo) list.push('Video');
     if (composerIsPremium) list.push('Premium');
+    if (composerIsLongform) list.push('Longform');
+    if (composerIsInterview) list.push('Interview');
+    if (composerIsOpinion) list.push('Opinion');
 
     // 6. Multi-Part Series
     if (composerIsSeries && composerSeriesTitle.trim()) {
@@ -434,6 +466,9 @@ export default function EditorialDeskPage() {
     composerHasAudio,
     composerHasVideo,
     composerIsPremium,
+    composerIsLongform,
+    composerIsInterview,
+    composerIsOpinion,
     composerIsSeries,
     composerSeriesTitle,
     composerSeriesEpisode,
@@ -462,6 +497,9 @@ export default function EditorialDeskPage() {
     setComposerHasAudio(false);
     setComposerHasVideo(false);
     setComposerIsPremium(false);
+    setComposerIsLongform(false);
+    setComposerIsInterview(false);
+    setComposerIsOpinion(false);
     setComposerIsSeries(false);
     setComposerSeriesTitle('');
     setComposerSeriesEpisode('1');
@@ -469,22 +507,6 @@ export default function EditorialDeskPage() {
     setAuthorPendingDelete(null);
     setPacketPendingDelete(null);
   };
-
-  const handleCopyQuickSeries = () => {
-    if (!quickSeriesTitle.trim()) return;
-    const tag = `Series: ${quickSeriesTitle.trim()}, Part: ${quickSeriesPart.trim() || '1'}`;
-    navigator.clipboard.writeText(tag);
-    setCopiedSeriesTag(true);
-    setTimeout(() => setCopiedSeriesTag(false), 2000);
-  };
-
-  const formatTags = [
-    'Audio Story',
-    'Video',
-    'Premium',
-    'Lead Story',
-    'Issue Cover',
-  ];
 
   // 1. PIN Guard Screen
   if (!isAuthenticated) {
@@ -553,9 +575,20 @@ export default function EditorialDeskPage() {
           <div className="flex items-center gap-2 text-xs sm:text-sm font-bold uppercase tracking-widest text-[#E27A2B]">
             <span>Production &amp; Headless Operations</span>
           </div>
-          <h1 className="font-serif text-3xl sm:text-4xl font-bold text-neutral-900 dark:text-neutral-50">
-            Editorial Desk Command
-          </h1>
+          <div className="flex items-center gap-2.5">
+            <h1 className="font-serif text-3xl sm:text-4xl font-bold text-neutral-900 dark:text-neutral-50">
+              Editorial Desk Command
+            </h1>
+            <button
+              type="button"
+              onClick={() => setShowInfoModal(true)}
+              className="p-1.5 rounded text-neutral-500 hover:text-[#E27A2B] bg-neutral-100 dark:bg-neutral-800 hover:bg-[#E27A2B]/10 border border-neutral-300 dark:border-neutral-700 transition-colors cursor-pointer"
+              title="Overall Publisher Working Guide"
+              aria-label="Overall Publisher Working Guide"
+            >
+              <Info className="w-4 h-4 text-[#E27A2B]" />
+            </button>
+          </div>
           <p className="text-neutral-700 dark:text-neutral-300 text-sm sm:text-base max-w-2xl pt-1">
             Publish stories via Blogger, store audio in Google Drive, and instantly refresh the live reader site.
           </p>
@@ -720,8 +753,12 @@ export default function EditorialDeskPage() {
 
         <div className="space-y-3 pt-2">
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-neutral-600 dark:text-neutral-400 mb-1">
-              Paste Google Drive Sharing URL:
+            <label className="block text-xs font-bold uppercase tracking-wider text-neutral-600 dark:text-neutral-400 mb-1 flex items-center">
+              <span>Paste Google Drive Sharing URL:</span>
+              <EntryInfoTip
+                title="Audio Embed Tag"
+                text="Paste any public audio share link ('Anyone with the link'). Generates the streamable [audio:...] embed tag to paste into your Blogger story."
+              />
             </label>
             <input
               type="text"
@@ -778,15 +815,6 @@ export default function EditorialDeskPage() {
               <h2 className="font-serif text-xl sm:text-2xl font-bold text-neutral-900 dark:text-neutral-50">
                 3. All-in-One Blogger Label Composer
               </h2>
-              <button
-                type="button"
-                onClick={() => setShowInfoModal(true)}
-                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-xs font-semibold text-neutral-600 dark:text-neutral-300 hover:text-[#E27A2B] bg-neutral-100 dark:bg-neutral-800 hover:bg-[#E27A2B]/10 border border-neutral-300 dark:border-neutral-700 transition-colors cursor-pointer ml-1"
-                title="How Blogger Labels work (Click for guide)"
-              >
-                <Info className="w-3.5 h-3.5 text-[#E27A2B]" />
-                <span>Info Guide</span>
-              </button>
             </div>
             <span className="text-xs font-bold uppercase tracking-wider text-[#E27A2B]">
               Real-Time Tag Generator
@@ -800,19 +828,14 @@ export default function EditorialDeskPage() {
           {/* Generated Label Preview Card */}
           <div className="p-5 bg-neutral-100 dark:bg-neutral-900/90 border-2 border-[#E27A2B]/40 space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-[#E27A2B]">
-                  Generated Blogger Labels:
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-bold uppercase tracking-wider text-[#E27A2B] flex items-center">
+                  <span>Generated Blogger Labels:</span>
+                  <EntryInfoTip
+                    title="Blogger Labels Output"
+                    text="The assembled label string. Click 'Copy All Labels for Blogger' and paste directly into Blogger's Labels sidebar box before publishing."
+                  />
                 </span>
-                <button
-                  type="button"
-                  onClick={() => setShowInfoModal(true)}
-                  className="p-1 rounded text-neutral-500 hover:text-[#E27A2B] hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors cursor-pointer"
-                  title="How Blogger Labels work (Click for guide)"
-                  aria-label="Blogger Labels Information"
-                >
-                  <Info className="w-4 h-4" />
-                </button>
                 <span className="text-xs font-mono px-2 py-0.5 bg-neutral-200 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200">
                   {assembledLabels.length} {assembledLabels.length === 1 ? 'tag' : 'tags'}
                 </span>
@@ -894,18 +917,13 @@ export default function EditorialDeskPage() {
             <div className="p-4 bg-neutral-50 dark:bg-neutral-900/60 border border-neutral-200 dark:border-neutral-800 space-y-3">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
-                  <label className="block text-xs font-bold uppercase tracking-wider text-neutral-900 dark:text-neutral-100">
-                    1. Departments / Categories (Multi-Select):
+                  <label className="block text-xs font-bold uppercase tracking-wider text-neutral-900 dark:text-neutral-100 flex items-center">
+                    <span>1. Departments / Categories (Multi-Select):</span>
+                    <EntryInfoTip
+                      title="Departments / Categories"
+                      text="Select one or more departments (e.g. Kerala, Cinema, Literature). The story will automatically appear in all selected topic feeds and archives."
+                    />
                   </label>
-                  <button
-                    type="button"
-                    onClick={() => setShowInfoModal(true)}
-                    className="p-1 rounded text-neutral-400 hover:text-[#E27A2B] hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors cursor-pointer"
-                    title="A story can belong to multiple departments. Click for info."
-                    aria-label="Category information"
-                  >
-                    <Info className="w-3.5 h-3.5" />
-                  </button>
                   <span className="text-[11px] font-mono px-2 py-0.5 bg-[#E27A2B]/10 text-[#E27A2B] border border-[#E27A2B]/30 font-bold">
                     {selectedCategories.length} selected
                   </span>
@@ -995,8 +1013,12 @@ export default function EditorialDeskPage() {
               {/* Control 2: Author */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <label className="block text-xs font-bold uppercase tracking-wider text-neutral-700 dark:text-neutral-300">
-                    2. Author / Columnist:
+                  <label className="block text-xs font-bold uppercase tracking-wider text-neutral-700 dark:text-neutral-300 flex items-center">
+                    <span>2. Author / Columnist:</span>
+                    <EntryInfoTip
+                      title="Author Byline"
+                      text="Assigns the writer byline (Author: Name) to link their bio card, photo, and article archives. Use '+ New Author' to add a contributor."
+                    />
                   </label>
                   {composerAuthor &&
                     composerAuthor !== 'Akhil U Krishnan' &&
@@ -1081,8 +1103,12 @@ export default function EditorialDeskPage() {
               {/* Control 3: Webzine Packet */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <label className="block text-xs font-bold uppercase tracking-wider text-neutral-700 dark:text-neutral-300">
-                    3. Webzine Edition / Packet:
+                  <label className="block text-xs font-bold uppercase tracking-wider text-neutral-700 dark:text-neutral-300 flex items-center">
+                    <span>3. Webzine Edition / Packet:</span>
+                    <EntryInfoTip
+                      title="Webzine Packet"
+                      text="Assigns the article to a specific digital webzine issue (e.g. Packet 1, Packet 2). Leave as 'None' for regular daily stories."
+                    />
                   </label>
                   {composerPacket &&
                     composerPacket !== 'Packet 1' &&
@@ -1169,8 +1195,12 @@ export default function EditorialDeskPage() {
 
           {/* Checkboxes Row: Placements & Formats */}
           <div className="space-y-3 pt-2 border-t border-neutral-200 dark:border-neutral-800">
-            <label className="block text-xs font-bold uppercase tracking-wider text-neutral-700 dark:text-neutral-300">
-              4. Placement &amp; Format Badges:
+            <label className="block text-xs font-bold uppercase tracking-wider text-neutral-700 dark:text-neutral-300 flex items-center">
+              <span>4. Placement &amp; Format Badges:</span>
+              <EntryInfoTip
+                title="Placement & Formats"
+                text="'Lead Story' spotlights the post as hero, 'Issue Cover' sets cover art, 'Audio'/'Video' mounts players, and 'Premium' reserves for subscribers."
+              />
             </label>
             <div className="flex flex-wrap gap-3 sm:gap-6">
               <label className="inline-flex items-center gap-2 text-xs sm:text-sm font-medium text-neutral-800 dark:text-neutral-200 cursor-pointer select-none">
@@ -1222,20 +1252,56 @@ export default function EditorialDeskPage() {
                 />
                 <span>Premium (Subscribers)</span>
               </label>
+
+              <label className="inline-flex items-center gap-2 text-xs sm:text-sm font-medium text-neutral-800 dark:text-neutral-200 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={composerIsLongform}
+                  onChange={(e) => setComposerIsLongform(e.target.checked)}
+                  className="w-4 h-4 text-[#E27A2B] accent-[#E27A2B]"
+                />
+                <span>Longform (Deep Dive)</span>
+              </label>
+
+              <label className="inline-flex items-center gap-2 text-xs sm:text-sm font-medium text-neutral-800 dark:text-neutral-200 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={composerIsInterview}
+                  onChange={(e) => setComposerIsInterview(e.target.checked)}
+                  className="w-4 h-4 text-[#E27A2B] accent-[#E27A2B]"
+                />
+                <span>Interview (Q&amp;A)</span>
+              </label>
+
+              <label className="inline-flex items-center gap-2 text-xs sm:text-sm font-medium text-neutral-800 dark:text-neutral-200 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={composerIsOpinion}
+                  onChange={(e) => setComposerIsOpinion(e.target.checked)}
+                  className="w-4 h-4 text-[#E27A2B] accent-[#E27A2B]"
+                />
+                <span>Opinion / Essay</span>
+              </label>
             </div>
           </div>
 
           {/* Series Builder Toggle & Form */}
           <div className="space-y-3 pt-2 border-t border-neutral-200 dark:border-neutral-800">
-            <label className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold text-neutral-900 dark:text-neutral-100 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={composerIsSeries}
-                onChange={(e) => setComposerIsSeries(e.target.checked)}
-                className="w-4 h-4 text-[#E27A2B] accent-[#E27A2B]"
+            <div className="flex items-center">
+              <label className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold text-neutral-900 dark:text-neutral-100 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={composerIsSeries}
+                  onChange={(e) => setComposerIsSeries(e.target.checked)}
+                  className="w-4 h-4 text-[#E27A2B] accent-[#E27A2B]"
+                />
+                <span>Include in Multi-Part Investigative / Feature Series</span>
+              </label>
+              <EntryInfoTip
+                title="Multi-Part Series"
+                text="Groups investigative stories. Enter the Series Title and Part number to automatically link sequential episodes for readers."
               />
-              <span>Include in Multi-Part Investigative / Feature Series</span>
-            </label>
+            </div>
 
             {composerIsSeries && (
               <div className="p-4 bg-neutral-50 dark:bg-neutral-900/60 border border-neutral-200 dark:border-neutral-800 grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -1283,198 +1349,6 @@ export default function EditorialDeskPage() {
           </div>
         </div>
 
-        {/* Active Pools & Quick Taxonomy Bank (Clean, No Confusion) */}
-        <div className="p-6 bg-paper-card dark:bg-paper-cardDark border border-neutral-200 dark:border-neutral-800 space-y-6">
-          <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 pb-3">
-            <div className="flex items-center gap-2">
-              <Tag className="w-5 h-5 text-[#E27A2B]" />
-              <h3 className="font-serif text-lg sm:text-xl font-bold text-neutral-900 dark:text-neutral-50">
-                Active Editorial Pools &amp; Quick Copy
-              </h3>
-            </div>
-            <span className="text-xs text-neutral-500 font-sans">
-              Click any chip to copy; click &times; on custom items to delete
-            </span>
-          </div>
-
-          <div className="space-y-5">
-            {/* Active Authors Pool */}
-            <div className="space-y-2">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-500 flex items-center justify-between">
-                <span>Active Authors ({authors.length}):</span>
-                <span className="text-[11px] text-neutral-400 font-normal">Founding editors protected</span>
-              </h4>
-              <div className="flex flex-wrap gap-2">
-                {authors.map((authorName) => {
-                  const tag = `Author: ${authorName}`;
-                  const isProtected = authorName === 'Akhil U Krishnan' || authorName === 'Amala Thomas';
-                  return (
-                    <div
-                      key={authorName}
-                      className={`inline-flex items-center border transition-all text-xs font-semibold ${
-                        copiedTag === tag
-                          ? 'bg-emerald-600 text-white border-emerald-600'
-                          : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 border-neutral-300 dark:border-neutral-700 hover:border-[#E27A2B]'
-                      }`}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => copyToClipboard(tag, tag)}
-                        className="px-2.5 py-1.5 flex items-center gap-1.5 cursor-pointer"
-                        title={`Click to copy: ${tag}`}
-                      >
-                        {copiedTag === tag ? (
-                          <Check className="w-3 h-3 text-white" />
-                        ) : (
-                          <Copy className="w-3 h-3 text-neutral-400" />
-                        )}
-                        <span>{authorName}</span>
-                      </button>
-                      {!isProtected && (
-                        <button
-                          type="button"
-                          onClick={() => requestDeleteAuthor(authorName)}
-                          className="px-1.5 py-1.5 text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer border-l border-neutral-300 dark:border-neutral-700"
-                          title={`Delete ${authorName} from newsroom pool`}
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Active Packets Pool */}
-            <div className="space-y-2">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-500">
-                Active Webzine Packets ({packets.length}):
-              </h4>
-              <div className="flex flex-wrap gap-2">
-                {packets.map((pkt) => (
-                  <div
-                    key={pkt}
-                    className={`inline-flex items-center border transition-all text-xs font-semibold ${
-                      copiedTag === pkt
-                        ? 'bg-emerald-600 text-white border-emerald-600'
-                        : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 border-neutral-300 dark:border-neutral-700 hover:border-[#E27A2B]'
-                    }`}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => copyToClipboard(pkt, pkt)}
-                      className="px-2.5 py-1.5 flex items-center gap-1.5 cursor-pointer"
-                      title={`Click to copy: ${pkt}`}
-                    >
-                      {copiedTag === pkt ? (
-                        <Check className="w-3 h-3 text-white" />
-                      ) : (
-                        <Copy className="w-3 h-3 text-neutral-400" />
-                      )}
-                      <span>{pkt}</span>
-                    </button>
-                    {pkt !== 'Packet 1' && pkt !== 'Packet 2' && pkt !== 'Packet 3' && (
-                      <button
-                        type="button"
-                        onClick={() => requestDeletePacket(pkt)}
-                        className="px-1.5 py-1.5 text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer border-l border-neutral-300 dark:border-neutral-700"
-                        title={`Delete ${pkt} from webzine packets`}
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Quick Series Generator */}
-            <div className="space-y-2 p-4 bg-neutral-50 dark:bg-neutral-900/60 border border-neutral-200 dark:border-neutral-800">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-600 dark:text-neutral-400">
-                Quick Series Tag Generator:
-              </h4>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <input
-                  type="text"
-                  value={quickSeriesTitle}
-                  onChange={(e) => setQuickSeriesTitle(e.target.value)}
-                  placeholder="Series Title (e.g. Paleri Memoirs)..."
-                  className="flex-1 px-3 py-1.5 bg-white dark:bg-neutral-950 border border-neutral-300 dark:border-neutral-700 text-xs font-sans text-neutral-900 dark:text-neutral-100 focus:outline-none focus:border-[#E27A2B]"
-                />
-                <input
-                  type="number"
-                  min="1"
-                  value={quickSeriesPart}
-                  onChange={(e) => setQuickSeriesPart(e.target.value)}
-                  placeholder="Part #"
-                  className="w-20 px-3 py-1.5 bg-white dark:bg-neutral-950 border border-neutral-300 dark:border-neutral-700 text-xs font-sans text-neutral-900 dark:text-neutral-100 focus:outline-none focus:border-[#E27A2B]"
-                />
-                <button
-                  type="button"
-                  onClick={handleCopyQuickSeries}
-                  disabled={!quickSeriesTitle.trim()}
-                  className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wider border transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-1.5 ${
-                    copiedSeriesTag
-                      ? 'bg-emerald-600 text-white border-emerald-600'
-                      : 'bg-[#0C2340] text-[#E27A2B] border-[#E27A2B]/40 hover:bg-[#123157]'
-                  }`}
-                >
-                  {copiedSeriesTag ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                  <span>{copiedSeriesTag ? 'Copied!' : 'Copy Series Tags'}</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Standard Departments */}
-            <div className="space-y-2">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-500">
-                Departments &amp; Categories ({STANDARD_CATEGORIES.length}):
-              </h4>
-              <div className="flex flex-wrap gap-2">
-                {STANDARD_CATEGORIES.map((cat) => (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() => copyToClipboard(cat, cat)}
-                    className={`px-3 py-1.5 text-xs font-semibold border transition-all cursor-pointer flex items-center gap-1.5 ${
-                      copiedTag === cat
-                        ? 'bg-emerald-600 text-white border-emerald-600'
-                        : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 border-neutral-300 dark:border-neutral-700 hover:border-[#E27A2B]'
-                    }`}
-                  >
-                    {copiedTag === cat ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3 h-3 text-neutral-400" />}
-                    <span>{cat}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Formats & Placement Badges */}
-            <div className="space-y-2">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-500">
-                Formats &amp; Placement Badges:
-              </h4>
-              <div className="flex flex-wrap gap-2">
-                {formatTags.map((ft) => (
-                  <button
-                    key={ft}
-                    type="button"
-                    onClick={() => copyToClipboard(ft, ft)}
-                    className={`px-3 py-1.5 text-xs font-semibold border transition-all cursor-pointer flex items-center gap-1.5 ${
-                      copiedTag === ft
-                        ? 'bg-emerald-600 text-white border-emerald-600'
-                        : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 border-neutral-300 dark:border-neutral-700 hover:border-[#E27A2B]'
-                    }`}
-                  >
-                    {copiedTag === ft ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3 h-3 text-neutral-400" />}
-                    <span>{ft}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
       </section>
 
       {/* Section 4: Reader Letters & Feedback Inbox */}
@@ -1482,8 +1356,12 @@ export default function EditorialDeskPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Mail className="w-5 h-5 text-[#E27A2B]" />
-            <h2 className="font-serif text-xl sm:text-2xl font-bold text-neutral-900 dark:text-neutral-50">
-              4. Reader Letters &amp; Feedback
+            <h2 className="font-serif text-xl sm:text-2xl font-bold text-neutral-900 dark:text-neutral-50 flex items-center">
+              <span>4. Reader Letters &amp; Feedback</span>
+              <EntryInfoTip
+                title="Reader Feedback"
+                text="Displays letters submitted by readers via the 'Letter to Editor' modal on published articles, also forwarded to editorial email."
+              />
             </h2>
           </div>
           <span className="text-xs font-bold uppercase tracking-wider text-neutral-500">
@@ -1631,21 +1509,21 @@ export default function EditorialDeskPage() {
         </div>
       )}
 
-      {/* Editorial Labels Info Guide Modal Dialog */}
+      {/* Editorial Desk Quick Working Guide Modal Dialog */}
       {showInfoModal && (
         <div
           role="dialog"
           aria-modal="true"
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
         >
-          <div className="w-full max-w-lg bg-paper-card dark:bg-paper-cardDark border border-[#E27A2B]/40 shadow-2xl p-6 space-y-4 animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
+          <div className="w-full max-w-md bg-paper-card dark:bg-paper-cardDark border border-[#E27A2B]/40 shadow-2xl p-6 space-y-4 animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between pb-3 border-b border-neutral-200 dark:border-neutral-800">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-full bg-[#0C2340] text-[#E27A2B] flex items-center justify-center border border-[#E27A2B]/40">
+                <div className="w-7 h-7 bg-[#0C2340] text-[#E27A2B] flex items-center justify-center border border-[#E27A2B]/40">
                   <Info className="w-4 h-4" />
                 </div>
                 <h3 className="font-serif text-lg font-bold text-neutral-900 dark:text-neutral-50">
-                  Blogger Labels Guide &amp; Taxonomy
+                  Quick Working Guide
                 </h3>
               </div>
               <button
@@ -1654,60 +1532,48 @@ export default function EditorialDeskPage() {
                 className="p-1.5 text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 transition-colors cursor-pointer"
                 title="Close"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
             <div className="space-y-3 text-xs sm:text-sm text-neutral-700 dark:text-neutral-300 leading-relaxed">
-              <p>
-                <strong>oldmangotree</strong> connects headlessly to Blogger without requiring any database. All article categories, author attribution, magazine packets, and format badges are parsed automatically from Blogger&apos;s <strong>&quot;Labels&quot;</strong> field.
+              <p className="text-xs text-neutral-600 dark:text-neutral-400">
+                Follow this simple 4-step workflow to publish and sync articles onto Old Mango Tree:
               </p>
 
-              <div className="space-y-2 pt-1">
-                <div className="p-3 bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 space-y-1">
-                  <span className="font-bold text-neutral-900 dark:text-neutral-100 block">
-                    1. Departments &amp; Categories (Multi-Select)
-                  </span>
-                  <p className="text-xs text-neutral-600 dark:text-neutral-400">
-                    A story can belong to multiple departments (e.g. <code>Politics</code>, <code>Cinema</code>). The story will automatically appear in all selected department sections and archives.
-                  </p>
-                </div>
+              <ol className="space-y-2 text-xs">
+                <li className="flex items-start gap-2.5 p-2 bg-neutral-50 dark:bg-neutral-900/60 border border-neutral-200 dark:border-neutral-800">
+                  <span className="w-5 h-5 bg-[#0C2340] text-[#E27A2B] font-bold text-[11px] flex items-center justify-center shrink-0">1</span>
+                  <div>
+                    <strong className="text-neutral-900 dark:text-neutral-100 block">Draft on Blogger</strong>
+                    Write, format text, and insert photos in standard Blogger editor.
+                  </div>
+                </li>
+                <li className="flex items-start gap-2.5 p-2 bg-neutral-50 dark:bg-neutral-900/60 border border-neutral-200 dark:border-neutral-800">
+                  <span className="w-5 h-5 bg-[#0C2340] text-[#E27A2B] font-bold text-[11px] flex items-center justify-center shrink-0">2</span>
+                  <div>
+                    <strong className="text-neutral-900 dark:text-neutral-100 block">Compose Labels</strong>
+                    Pick Departments, Author, Packet, and Formats in Section 3 below. Click <strong>&quot;Copy All Labels&quot;</strong>.
+                  </div>
+                </li>
+                <li className="flex items-start gap-2.5 p-2 bg-neutral-50 dark:bg-neutral-900/60 border border-neutral-200 dark:border-neutral-800">
+                  <span className="w-5 h-5 bg-[#0C2340] text-[#E27A2B] font-bold text-[11px] flex items-center justify-center shrink-0">3</span>
+                  <div>
+                    <strong className="text-neutral-900 dark:text-neutral-100 block">Paste &amp; Publish</strong>
+                    Paste copied labels into Blogger&apos;s right sidebar <em>Labels</em> field and hit <strong>Publish</strong>.
+                  </div>
+                </li>
+                <li className="flex items-start gap-2.5 p-2 bg-neutral-50 dark:bg-neutral-900/60 border border-neutral-200 dark:border-neutral-800">
+                  <span className="w-5 h-5 bg-emerald-700 text-white font-bold text-[11px] flex items-center justify-center shrink-0">4</span>
+                  <div>
+                    <strong className="text-neutral-900 dark:text-neutral-100 block">Refresh Live Website</strong>
+                    Click <strong>&quot;Revalidate Edge Cache&quot;</strong> to stream the new post to readers immediately.
+                  </div>
+                </li>
+              </ol>
 
-                <div className="p-3 bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 space-y-1">
-                  <span className="font-bold text-neutral-900 dark:text-neutral-100 block">
-                    2. Author Attribution
-                  </span>
-                  <p className="text-xs text-neutral-600 dark:text-neutral-400">
-                    Adding <code>Author: [Name]</code> links the article to that writer&apos;s profile card, bio, and archive. If left unselected, Blogger&apos;s account default is used.
-                  </p>
-                </div>
-
-                <div className="p-3 bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 space-y-1">
-                  <span className="font-bold text-neutral-900 dark:text-neutral-100 block">
-                    3. Webzine Edition / Packet
-                  </span>
-                  <p className="text-xs text-neutral-600 dark:text-neutral-400">
-                    Adding <code>Packet 1</code>, <code>Packet 2</code>, etc. groups the post into a specific digital webzine issue. Leave unselected for standalone stories.
-                  </p>
-                </div>
-
-                <div className="p-3 bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 space-y-1">
-                  <span className="font-bold text-neutral-900 dark:text-neutral-100 block">
-                    4. Placement &amp; Format Badges
-                  </span>
-                  <p className="text-xs text-neutral-600 dark:text-neutral-400">
-                    <code>Lead Story</code> places the story in the top hero spotlight. <code>Audio Story</code> &amp; <code>Video</code> mount streaming players for the reader.
-                  </p>
-                </div>
-              </div>
-
-              <div className="p-3 bg-[#E27A2B]/10 border border-[#E27A2B]/30 text-neutral-900 dark:text-neutral-100 text-xs">
-                <strong>📋 How to publish:</strong>
-                <ol className="list-decimal pl-5 mt-1 space-y-0.5">
-                  <li>Manually select your categories, author, or edition below.</li>
-                  <li>Click <strong>&quot;Copy All Labels for Blogger&quot;</strong>.</li>
-                  <li>In Blogger editor, paste into the <strong>Labels</strong> box on the right sidebar and hit Publish.</li>
-                </ol>
+              <div className="p-2.5 bg-[#E27A2B]/10 border border-[#E27A2B]/30 text-[11px] text-neutral-800 dark:text-neutral-200">
+                🎙️ <strong>Audio Stories:</strong> Paste your Google Drive audio link into Section 2 to generate the streamable tag for your story.
               </div>
             </div>
 
@@ -1715,9 +1581,9 @@ export default function EditorialDeskPage() {
               <button
                 type="button"
                 onClick={() => setShowInfoModal(false)}
-                className="px-4 py-2 bg-[#0C2340] text-[#E27A2B] hover:bg-[#123157] text-xs font-bold uppercase tracking-wider border border-[#E27A2B]/40 transition-colors cursor-pointer"
+                className="px-4 py-1.5 bg-[#0C2340] text-[#E27A2B] hover:bg-[#123157] text-xs font-bold uppercase tracking-wider border border-[#E27A2B]/40 transition-colors cursor-pointer"
               >
-                Close Guide
+                Got It
               </button>
             </div>
           </div>
