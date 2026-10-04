@@ -8,11 +8,9 @@ import {
   ArrowRight,
   PlusCircle,
   Edit3,
-  X,
-  LogOut,
   ShieldCheck,
 } from 'lucide-react';
-import { getStoredSession, setStoredSession, UserSession } from '@/lib/clientAuth';
+import { getStoredSession, UserSession } from '@/lib/clientAuth';
 
 export function PublisherBar() {
   const [session, setSession] = useState<UserSession | null>(null);
@@ -20,15 +18,24 @@ export function PublisherBar() {
 
   useEffect(() => {
     const syncSession = () => {
-      setSession(getStoredSession());
+      const sess = getStoredSession();
+      if (sess && sess.role === 'publisher') {
+        setSession(sess);
+      } else {
+        setSession(null);
+      }
     };
     syncSession();
 
     window.addEventListener('omt-auth-changed', syncSession);
-    return () => window.removeEventListener('omt-auth-changed', syncSession);
+    window.addEventListener('storage', syncSession);
+    return () => {
+      window.removeEventListener('omt-auth-changed', syncSession);
+      window.removeEventListener('storage', syncSession);
+    };
   }, []);
 
-  // Do not show floating bar if user is not a publisher or is already on /publisher
+  // Normal users never see this. Only signed-in publishers on public pages see it.
   if (!session || session.role !== 'publisher' || pathname.startsWith('/publisher')) {
     return null;
   }
@@ -51,11 +58,6 @@ export function PublisherBar() {
     ? currentCategorySlug.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
     : null;
 
-  const handleSignOut = () => {
-    setStoredSession(null);
-    setSession(null);
-  };
-
   return (
     <aside
       aria-label="Editorial Desk Bar"
@@ -77,7 +79,7 @@ export function PublisherBar() {
             <span className="hidden md:inline-block text-[11px] text-neutral-400">
               • {session.name}
             </span>
-            {currentCategorySlug && (
+            {currentCategorySlug && currentCategoryName && (
               <span className="hidden sm:inline-block text-[10px] px-2 py-0.5 rounded-md bg-[#E27A2B]/20 text-[#E27A2B] font-bold border border-[#E27A2B]/40">
                 {currentCategoryName}
               </span>
@@ -98,37 +100,26 @@ export function PublisherBar() {
             </Link>
           )}
 
-          {/* Write in this Category (Contextual) */}
-          {!isArticlePage && currentCategorySlug && (
+          {/* New article button if on category page */}
+          {currentCategorySlug && (
             <Link
               href={`/publisher?category=${currentCategorySlug}&tab=editor`}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-brand-700 hover:bg-brand-600 text-white font-bold text-xs shadow-sm transition-colors"
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-200 font-bold text-xs transition-colors"
             >
-              <PlusCircle className="w-3.5 h-3.5" />
-              <span>Write in {currentCategoryName}</span>
+              <PlusCircle className="w-3.5 h-3.5 text-[#E27A2B]" />
+              <span>+ New Story</span>
             </Link>
           )}
 
           {/* Open Main Desk */}
           <Link
             href="/publisher"
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white hover:bg-neutral-100 text-neutral-900 font-bold text-xs shadow-sm transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-neutral-100 text-neutral-900 font-bold text-xs shadow-sm transition-colors"
           >
-            <PenTool className="w-3.5 h-3.5 text-brand-700" />
-            <span>Editorial Desk</span>
+            <PenTool className="w-3.5 h-3.5 text-[#E27A2B]" />
+            <span>Open Desk</span>
             <ArrowRight className="w-3 h-3" />
           </Link>
-
-          {/* Sign Out */}
-          <button
-            type="button"
-            onClick={handleSignOut}
-            className="p-1.5 text-neutral-400 hover:text-white rounded-lg hover:bg-neutral-800 transition-colors"
-            title="Sign out of Publisher Mode"
-            aria-label="Sign out of Publisher Mode"
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
         </div>
       </div>
     </aside>

@@ -252,8 +252,9 @@ export function Header() {
                   {publisherSession && (
                     <Link
                       href="/publisher"
-                      className="p-1.5 text-[#E27A2B] hover:text-white rounded-none hover:bg-white/10 flex items-center gap-1"
+                      className="p-1.5 text-[#E27A2B] rounded-none hover:bg-white/10 flex items-center gap-1"
                       title={`Editorial Desk • ${publisherSession.name}`}
+                      aria-label="Editorial Desk"
                     >
                       <PenTool className="w-4 h-4" />
                       <span className="text-xs font-bold uppercase hidden sm:inline">Desk</span>
@@ -310,9 +311,9 @@ export function Header() {
           </div>
 
           <div className="p-2.5 flex flex-col gap-2.5 flex-1 overflow-y-auto pb-10">
-            {/* Publisher View Active Card in Drawer */}
+            {/* Publisher View Active Card: Active across all routes until signout */}
             {publisherSession && (
-              <div className="p-2 rounded-none bg-[#E27A2B]/10 border border-[#E27A2B]/30">
+              <div className="p-2.5 rounded-none bg-[#E27A2B]/10 border border-[#E27A2B]/30 mb-1">
                 <div className="flex items-center justify-between text-xs font-bold text-[#E27A2B] mb-1">
                   <span className="flex items-center gap-1.5">
                     <ShieldCheck className="w-3.5 h-3.5" /> Publisher View
@@ -322,7 +323,7 @@ export function Header() {
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                   </span>
                 </div>
-                <p className="text-xs text-slate-600 dark:text-slate-300 mb-1.5 truncate">
+                <p className="text-xs text-slate-700 dark:text-slate-300 mb-2 truncate font-medium">
                   {publisherSession.name}
                 </p>
                 <Link

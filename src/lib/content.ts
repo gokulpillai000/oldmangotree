@@ -396,6 +396,21 @@ export function getAuthorById(id: string): Author | null {
   if (!id) return authors.find((a) => a.id === 'editorial-desk') || null;
   const direct = authors.find((a) => a.id.toLowerCase() === id.toLowerCase());
   if (direct) return direct;
+
+  if (id !== 'editorial-desk') {
+    const formattedName = id
+      .split('-')
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ');
+    return {
+      id,
+      name: formattedName,
+      role: 'Contributing Writer',
+      avatar: '',
+      bio: 'Contributing writer and essayist for oldmangotree.',
+    };
+  }
+
   return authors.find((a) => a.id === 'editorial-desk') || null;
 }
 
