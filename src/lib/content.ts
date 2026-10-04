@@ -297,7 +297,17 @@ export async function getArticleBySlug(slug: string, includeScheduled: boolean =
 
 export async function getArticlesByCategory(categorySlug: string, includeScheduled: boolean = false): Promise<Article[]> {
   const articles = await getAllArticles(includeScheduled);
-  return articles.filter((a) => a.category.toLowerCase() === categorySlug.toLowerCase());
+  const target = categorySlug.toLowerCase().trim();
+  return articles.filter((a) => {
+    if (a.category && a.category.toLowerCase().trim() === target) return true;
+    if (a.tags && Array.isArray(a.tags)) {
+      return a.tags.some((t) => {
+        const cleanTag = t.toLowerCase().trim().replace(/\s*&\s*|\s+/g, '-');
+        return cleanTag === target || t.toLowerCase().trim() === target;
+      });
+    }
+    return false;
+  });
 }
 
 export async function getArticlesByTag(tag: string, includeScheduled: boolean = false): Promise<Article[]> {
