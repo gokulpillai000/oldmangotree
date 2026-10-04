@@ -1,7 +1,17 @@
-const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
+const isGithubActions = process.env.GITHUB_ACTIONS === 'true';
+let basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
+
+// Auto-detect GitHub Pages subpath (e.g. /oldmangotree) if deployed on github.io without custom domain
+if (isGithubActions && !process.env.CUSTOM_DOMAIN && process.env.NEXT_PUBLIC_BASE_PATH === undefined) {
+  const repo = process.env.GITHUB_REPOSITORY?.split('/')[1];
+  if (repo && !repo.endsWith('.github.io')) {
+    basePath = `/${repo}`;
+  }
+}
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'export',
   reactStrictMode: true,
   ...(basePath ? { basePath, trailingSlash: true } : {}),
   env: {
@@ -44,18 +54,6 @@ const nextConfig = {
         hostname: '**',
       },
     ],
-  },
-  async rewrites() {
-    return [
-      {
-        source: '/magazine-archives',
-        destination: '/magazine',
-      },
-      {
-        source: '/app-podcasts',
-        destination: '/podcasts',
-      },
-    ];
   },
 };
 
