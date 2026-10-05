@@ -152,25 +152,19 @@ export function parseBloggerEntry(entry: BloggerEntry): Article {
     if (match) authorName = match[1].trim();
   }
   if (!authorName) {
-    authorName = entry.author?.[0]?.name?.$t || 'Editorial Desk';
+    authorName = entry.author?.[0]?.name?.$t || 'Akhil U Krishnan';
   }
   authorName = formatSingleAuthorName(authorName);
 
-  // Resolve author ID mapped to known authors (e.g. kamalram-sajeev, damodhar-prasad, manila-c-mohan, editorial-desk)
-  let authorId = cleanSlug(authorName);
+  // Map author strictly to either Amala Thomas or Akhil U Krishnan
+  let authorId = 'akhil-u-krishnan';
   const lowerAuthor = authorName.toLowerCase();
-  if (lowerAuthor.includes('akhil') || lowerAuthor.includes('അഖിൽ')) {
-    authorId = 'akhil-u-krishnan';
-  } else if (lowerAuthor.includes('amala') || lowerAuthor.includes('അമല')) {
+  if (lowerAuthor.includes('amala') || lowerAuthor.includes('അമല')) {
     authorId = 'amala-thomas';
-  } else if (lowerAuthor.includes('kamalram') || lowerAuthor.includes('കമൽറാം')) {
-    authorId = 'kamalram-sajeev';
-  } else if (lowerAuthor.includes('damodhar') || lowerAuthor.includes('ദാമോദർ')) {
-    authorId = 'damodhar-prasad';
-  } else if (lowerAuthor.includes('manila') || lowerAuthor.includes('മനില')) {
-    authorId = 'manila-c-mohan';
-  } else if (lowerAuthor.includes('editorial') || !authorId) {
-    authorId = 'editorial-desk';
+    authorName = 'Amala Thomas';
+  } else {
+    authorId = 'akhil-u-krishnan';
+    authorName = 'Akhil U Krishnan';
   }
 
   // High-Resolution Cover Image extraction
@@ -371,8 +365,8 @@ export async function fetchBloggerSeries(): Promise<Series[]> {
       subtitle: info?.excerpt,
       description: info?.content || leadPart?.excerpt || '',
       coverImage: info?.coverImage || leadPart?.coverImage || '',
-      authorId: leadPart?.authors?.[0] || 'editorial-desk',
-      authorName: leadPart?.authorNames || 'Editorial Desk',
+      authorId: leadPart?.authors?.[0] || 'akhil-u-krishnan',
+      authorName: leadPart?.authorNames || 'Akhil U Krishnan',
       category: leadPart?.category || 'literature',
       totalEpisodes: episodes.length,
       episodes,
@@ -434,7 +428,7 @@ export async function fetchBloggerPodcasts(): Promise<Podcast[]> {
     publishedAt: art.publishedAt,
     audioUrl: art.audioNarrationUrl || '',
     durationSeconds: (art.readTimeMinutes || 5) * 60,
-    speaker: art.authorNames || 'Editorial Desk',
+    speaker: art.authorNames || 'Akhil U Krishnan',
     coverImage: art.coverImage,
   }));
 }

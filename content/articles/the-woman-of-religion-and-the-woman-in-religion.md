@@ -4,7 +4,7 @@ slug: "the-woman-of-religion-and-the-woman-in-religion"
 excerpt: "An in-depth analysis on women, politics, and social structures in contemporary Kerala society."
 category: "politics"
 authors:
-  - "kamalram-sajeev"
+  - "amala-thomas"
 publishedAt: "2026-09-08T18:30:00Z"
 coverImage: "https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=1200&q=80"
 audioNarrationUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"

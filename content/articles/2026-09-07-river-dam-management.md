@@ -4,7 +4,7 @@ slug: "2026-09-07-river-dam-management"
 excerpt: "Ecological perspective on river ecology, dam safety regulations, and climate resilience."
 category: "literature"
 authors:
-  - "manila-c-mohan"
+  - "amala-thomas"
 publishedAt: "2026-09-07T14:20:00Z"
 coverImage: "https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1200&q=80"
 audioNarrationUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3"

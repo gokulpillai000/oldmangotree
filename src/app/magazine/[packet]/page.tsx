@@ -102,7 +102,7 @@ export default async function IssuePacketPage({ params }: IssuePageProps) {
                   </p>
                   <div className="flex items-center gap-3 text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 pt-1.5 font-sans">
                     <span className="font-serif font-bold text-sm sm:text-base text-neutral-900 dark:text-neutral-100 truncate">
-                      {article.authorNames || (article.authors?.[0] ? article.authors[0] : 'Editorial Desk')}
+                      {article.authorNames || (article.authors?.[0] ? article.authors[0] : 'Akhil U Krishnan')}
                     </span>
                     <span>•</span>
                     <span className="shrink-0 font-medium flex items-center gap-1.5">

@@ -4,7 +4,7 @@ slug: "2026-09-03-messi-international-career"
 excerpt: "Exploring the global impact of Lionel Messi and how sports transforms popular culture."
 category: "sports"
 authors:
-  - "manila-c-mohan"
+  - "amala-thomas"
 publishedAt: "2026-09-03T09:00:00Z"
 coverImage: "https://images.unsplash.com/photo-1579952363873-27f3bade9f55?auto=format&fit=crop&w=1200&q=80"
 audioNarrationUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3"

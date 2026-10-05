@@ -9,7 +9,7 @@ interface AuthorBioCardProps {
 }
 
 export function AuthorBioCard({ author, authorNameFallback }: AuthorBioCardProps) {
-  const name = author?.name || authorNameFallback || 'Editorial Desk';
+  const name = author?.name || authorNameFallback || 'Akhil U Krishnan';
   const role = author?.role || 'Contributor & Columnist';
   const bio =
     author?.bio ||

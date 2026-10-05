@@ -34,8 +34,18 @@ export function LetterToEditorModal({
     setIsSubmitting(true);
 
     try {
-      // 1. Dispatch via /api/feedback email endpoint
-      await fetch('/api/feedback', {
+      // 1. Submit directly to Supabase letters_to_editor table
+      await submitLetterToEditor({
+        articleSlug: articleSlug || 'general',
+        articleTitle: articleTitle || 'General Feedback',
+        senderName: name.trim(),
+        senderEmail: email.trim(),
+        location: location.trim(),
+        letterBody: message.trim(),
+      });
+
+      // 2. Dispatch via /api/feedback email endpoint
+      fetch('/api/feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -46,7 +56,7 @@ export function LetterToEditorModal({
           location: location.trim(),
           message: message.trim(),
         }),
-      });
+      }).catch(() => {});
 
       // 2. Also keep in localStorage as an instant local record
       const lettersKey = 'omt_reader_letters';

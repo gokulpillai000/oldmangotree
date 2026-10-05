@@ -228,7 +228,7 @@ export function SearchModal({ isOpen, onClose, initialQuery = '' }: SearchModalP
               )}
               <div className="flex items-center justify-between text-xs sm:text-sm pt-2 mt-2 border-t border-slate-100 dark:border-slate-800/80">
                 <span className="font-serif font-bold text-xs sm:text-sm text-slate-800 dark:text-slate-200 truncate">
-                  {item.authorNames || 'Editorial Desk'}
+                  {item.authorNames || 'Akhil U Krishnan'}
                 </span>
                 <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1 text-xs shrink-0 font-medium">
                   <Calendar className="w-3.5 h-3.5 text-slate-400" /> {formatDate(item.publishedAt)}

@@ -4,7 +4,7 @@ slug: "contemporary-malayalam-fiction-review"
 excerpt: "A profound exploration into the stylistic evolution and philosophical depths of contemporary fiction and narrative crafts."
 category: "literature"
 authors:
-  - "kamalram-sajeev"
+  - "amala-thomas"
 publishedAt: "2026-09-12T10:00:00Z"
 coverImage: "https://images.unsplash.com/photo-1457369804613-52c61a468e7d?auto=format&fit=crop&w=1200&q=80"
 audioNarrationUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3"

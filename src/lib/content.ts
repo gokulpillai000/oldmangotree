@@ -11,6 +11,11 @@ import {
   fetchBloggerVideos,
   fetchBloggerPodcasts,
 } from './blogger';
+import {
+  fetchSupabaseArticles,
+  fetchSupabaseArticleBySlug,
+  SupabaseArticleRecord,
+} from './supabase';
 
 const contentDirectory = path.join(process.cwd(), 'content');
 
@@ -26,6 +31,8 @@ export interface ArticleFrontmatter {
   audioNarrationUrl?: string;
   audioDurationSeconds?: number;
   isPremium?: boolean;
+  isLeadStory?: boolean;
+  isCover?: boolean;
   webzineIssue?: string;
   readTimeMinutes?: number;
   tags?: string[];
@@ -200,7 +207,7 @@ export function getLocalArticles(includeScheduled: boolean = false): Article[] {
       const authorNamesList = authorIds.map(
         (id: string) => authorsMap[id] || id.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
       );
-      const authorNames = authorNamesList.length > 0 ? authorNamesList.join(', ') : 'Editorial Desk';
+      const authorNames = authorNamesList.length > 0 ? authorNamesList.join(', ') : 'Akhil U Krishnan';
 
       return {
         ...(data as ArticleFrontmatter),
@@ -225,12 +232,12 @@ export function getLocalArticles(includeScheduled: boolean = false): Article[] {
  * it selects a single clean name instead of showing both.
  */
 export function formatSingleAuthorName(rawName: string): string {
-  if (!rawName) return 'Editorial Desk';
+  if (!rawName) return 'Akhil U Krishnan';
   const trimmed = rawName.trim();
   if (!trimmed.includes('/')) return trimmed;
 
   const parts = trimmed.split('/').map((s) => s.trim()).filter(Boolean);
-  if (parts.length === 0) return 'Editorial Desk';
+  if (parts.length === 0) return 'Akhil U Krishnan';
 
   // If one of the parts is English, prefer it; otherwise take the first part
   const englishPart = parts.find((p) => /^[A-Za-z0-9\s.,'-]+$/.test(p));
@@ -262,24 +269,90 @@ function getAuthorsMap(): Record<string, string> {
 }
 
 // -------------------------------------------------------------
-// LIVE ARTICLES (Blogger + Fallback)
+// LIVE ARTICLES (Supabase Custom CMS + Blogger + Local Fallback)
 // -------------------------------------------------------------
 
+function mapSupabaseToArticle(rec: SupabaseArticleRecord): Article {
+  const plainText = (rec.content_html || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  const wordCount = plainText ? plainText.split(' ').length : 0;
+  const readTimeMinutes = Math.max(1, Math.ceil(wordCount / 200));
+
+  return {
+    slug: rec.slug,
+    title: rec.title,
+    excerpt: rec.excerpt || '',
+    category: rec.category || 'politics',
+    authors: rec.authors || ['akhil-u-krishnan'],
+    authorNames: rec.author_names || 'Akhil U Krishnan',
+    publishedAt: rec.published_at || new Date().toISOString(),
+    coverImage: rec.cover_image || '',
+    audioNarrationUrl: rec.audio_narration_url,
+    audioDurationSeconds: rec.audio_duration_seconds,
+    webzineIssue: rec.webzine_issue,
+    isLeadStory: rec.is_lead_story,
+    isCover: rec.is_cover,
+    isPremium: rec.is_premium,
+    tags: rec.tags || (rec.category ? [rec.category] : []),
+    readTimeMinutes,
+    content: rec.content_html,
+    contentHtml: rec.content_html,
+  };
+}
+
 export async function getAllArticles(includeScheduled: boolean = false): Promise<Article[]> {
+  // 1. Fetch live articles from Supabase Custom CMS
+  let supabaseArticles: Article[] = [];
+  try {
+    const rawSupabase = await fetchSupabaseArticles();
+    if (rawSupabase && rawSupabase.length > 0) {
+      supabaseArticles = rawSupabase.map(mapSupabaseToArticle);
+    }
+  } catch (err) {
+    console.warn('Error fetching Supabase articles:', err);
+  }
+
+  // 2. Fetch live articles from Blogger Feed (if configured)
+  let bloggerArticles: Article[] = [];
   if (process.env.NEXT_PUBLIC_BLOGGER_URL) {
     try {
       const liveArticles = await fetchBloggerPosts();
-      if (liveArticles.length > 0) {
-        return liveArticles;
+      if (liveArticles && liveArticles.length > 0) {
+        bloggerArticles = liveArticles;
       }
     } catch (err) {
-      console.warn('Error fetching live Blogger posts, falling back to local articles:', err);
+      console.warn('Error fetching live Blogger posts:', err);
     }
   }
-  return getLocalArticles(includeScheduled);
+
+  // 3. Fallback to local markdown articles if both remote sources are empty
+  if (supabaseArticles.length === 0 && bloggerArticles.length === 0) {
+    return getLocalArticles(includeScheduled);
+  }
+
+  // 4. Merge articles (Supabase articles take priority if slug matches)
+  const combined: Article[] = [...supabaseArticles];
+  for (const b of bloggerArticles) {
+    if (!combined.some((a) => a.slug === b.slug)) {
+      combined.push(b);
+    }
+  }
+
+  // Sort by published date descending (latest first)
+  return combined.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
 }
 
 export async function getArticleBySlug(slug: string, includeScheduled: boolean = false): Promise<Article | null> {
+  // 1. Check Supabase first
+  try {
+    const supArticle = await fetchSupabaseArticleBySlug(slug);
+    if (supArticle) {
+      return mapSupabaseToArticle(supArticle);
+    }
+  } catch (err) {
+    console.warn(`Error checking Supabase article by slug "${slug}":`, err);
+  }
+
+  // 2. Check Blogger
   if (process.env.NEXT_PUBLIC_BLOGGER_URL) {
     try {
       const liveArticle = await fetchBloggerPostBySlug(slug);
@@ -289,6 +362,7 @@ export async function getArticleBySlug(slug: string, includeScheduled: boolean =
     }
   }
 
+  // 3. Check local content files
   const articles = getLocalArticles(includeScheduled);
   const article = articles.find((a) => a.slug === slug);
   if (!article) return null;
@@ -425,7 +499,7 @@ export function getAllAuthors(): Author[] {
 
 export function getAuthorById(id: string): Author | null {
   const authors = getAllAuthors();
-  if (!id) return authors.find((a) => a.id === 'editorial-desk') || null;
+  if (!id) return authors[0] || null;
   const direct = authors.find((a) => a.id.toLowerCase() === id.toLowerCase());
   if (direct) {
     return {
@@ -434,21 +508,7 @@ export function getAuthorById(id: string): Author | null {
     };
   }
 
-  if (id !== 'editorial-desk') {
-    const formattedName = id
-      .split('-')
-      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-      .join(' ');
-    return {
-      id,
-      name: formattedName,
-      role: 'Contributing Writer',
-      avatar: '',
-      bio: 'Contributing writer and essayist for oldmangotree.',
-    };
-  }
-
-  return authors.find((a) => a.id === 'editorial-desk') || null;
+  return authors[0] || null;
 }
 
 // -------------------------------------------------------------
@@ -484,13 +544,21 @@ export function getLocalPodcasts(): Podcast[] {
   const podcastsDir = path.join(contentDirectory, 'podcasts');
   if (!fs.existsSync(podcastsDir)) return [];
 
+  const authorsMap = getAuthorsMap();
   const fileNames = fs.readdirSync(podcastsDir);
   const podcasts = fileNames
     .filter((file) => file.endsWith('.json'))
     .map((fileName) => {
       const fullPath = path.join(podcastsDir, fileName);
       const fileContents = fs.readFileSync(fullPath, 'utf8');
-      return JSON.parse(fileContents) as Podcast;
+      const pod = JSON.parse(fileContents) as Podcast;
+      const speakerName = pod.speaker
+        ? (authorsMap[pod.speaker] || formatSingleAuthorName(pod.speaker))
+        : 'Akhil U Krishnan';
+      return {
+        ...pod,
+        speaker: speakerName,
+      };
     })
     .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
 
@@ -499,15 +567,62 @@ export function getLocalPodcasts(): Podcast[] {
 }
 
 export async function getAllPodcasts(): Promise<Podcast[]> {
+  const list: Podcast[] = [];
+
+  // 1. Fetch live podcasts from Supabase (articles with audio_narration_url or category/tag podcast)
+  try {
+    const supaArticles = await fetchSupabaseArticles();
+    const supaPodcasts = supaArticles
+      .filter(
+        (art) =>
+          Boolean(art.audio_narration_url) ||
+          art.category?.toLowerCase() === 'podcast' ||
+          art.tags?.some((t) => t.toLowerCase() === 'podcast' || t.toLowerCase() === 'audio story')
+      )
+      .map((art) => ({
+        id: art.slug,
+        title: art.title,
+        slug: art.slug,
+        excerpt: art.excerpt || '',
+        publishedAt: art.published_at || new Date().toISOString(),
+        audioUrl: art.audio_narration_url || '',
+        durationSeconds: art.audio_duration_seconds || 300,
+        speaker: art.author_names || (art.authors && art.authors[0]) || 'Akhil U Krishnan',
+        coverImage: art.cover_image || '/images/default-podcast.jpg',
+      }));
+    list.push(...supaPodcasts);
+  } catch (err) {
+    console.warn('Error fetching Supabase podcasts:', err);
+  }
+
+  // 2. Fetch Blogger / local podcasts
   if (process.env.NEXT_PUBLIC_BLOGGER_URL) {
     try {
       const livePodcasts = await fetchBloggerPodcasts();
-      if (livePodcasts.length > 0) return livePodcasts;
+      if (livePodcasts.length > 0) {
+        list.push(...livePodcasts);
+      }
     } catch (err) {
       console.warn('Error fetching live Blogger podcasts, falling back to local podcasts:', err);
+      list.push(...getLocalPodcasts());
+    }
+  } else {
+    list.push(...getLocalPodcasts());
+  }
+
+  // Deduplicate by slug and sort newest first
+  const seen = new Set<string>();
+  const merged: Podcast[] = [];
+  for (const item of list) {
+    if (!seen.has(item.slug)) {
+      seen.add(item.slug);
+      merged.push(item);
     }
   }
-  return getLocalPodcasts();
+
+  return merged.sort(
+    (a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
+  );
 }
 
 // -------------------------------------------------------------

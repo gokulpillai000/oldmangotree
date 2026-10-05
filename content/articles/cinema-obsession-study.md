@@ -4,7 +4,7 @@ slug: "cinema-obsession-study"
 excerpt: "സിനിമകളിലെ അധികാര രൂപങ്ങളും പ്രണയത്തിന്റെ അതിരുകടന്ന അവസ്ഥകളും അപഗ്രഥിക്കുന്ന ആഴത്തിലുള്ള ചലച്ചിത്ര പഠനം."
 category: "cinema"
 authors:
-  - "manila-c-mohan"
+  - "amala-thomas"
 publishedAt: "2026-09-06T11:00:00Z"
 coverImage: "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=1200&q=80"
 audioNarrationUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3"
