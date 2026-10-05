@@ -8,8 +8,7 @@ import { CommentSection } from '@/components/CommentSection';
 import { ArticleBody } from '@/components/ArticleBody';
 import { ReadingProgressBar } from '@/components/ReadingProgressBar';
 import { SocialShareBar } from '@/components/SocialShareBar';
-import { AuthorBioCard } from '@/components/AuthorBioCard';
-import { Calendar, Clock, ArrowLeft, Tag, BookOpen } from 'lucide-react';
+import { Calendar, ArrowLeft, Tag, BookOpen } from 'lucide-react';
 
 interface CategoryArticlePageProps {
   params: {
@@ -98,54 +97,30 @@ export default async function CategoryArticlePage({ params }: CategoryArticlePag
           <p className="text-base sm:text-xl lg:text-2xl text-neutral-800 dark:text-neutral-200 font-serif leading-relaxed italic break-words">
             {article.excerpt}
           </p>
-
-          {/* Author & Metadata Bar */}
-          <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4 py-3 sm:py-4 border-y border-neutral-200 dark:border-neutral-800">
-            <div className="flex items-center gap-3 min-w-0">
-              {authorObj?.avatar ? (
-                <div className="relative w-10 h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden shrink-0 border border-neutral-200 shadow-sm">
-                  <Image src={authorObj.avatar} alt={authorObj.name} fill className="object-cover" />
-                </div>
-              ) : (
-                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-brand-100 dark:bg-brand-900 text-brand-700 dark:text-brand-300 flex items-center justify-center font-bold text-sm sm:text-base shrink-0">
-                  {article.authorNames?.slice(0, 2) || 'ED'}
-                </div>
-              )}
-              <div className="min-w-0">
-                <p className="font-serif text-sm sm:text-base font-bold text-neutral-900 dark:text-neutral-100 leading-tight truncate">
-                  {article.authorNames}
-                </p>
-                {authorObj?.role && (
-                  <p className="text-xs sm:text-sm font-medium text-neutral-600 dark:text-neutral-400 mt-0.5 truncate">
-                    {authorObj.role}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 sm:gap-4 text-xs sm:text-sm font-medium text-neutral-600 dark:text-neutral-400">
-              <span className="flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-neutral-400" />
-                {formatDate(article.publishedAt)}
-              </span>
-              <span>•</span>
-              <span className="flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-neutral-400" />
-                {article.readTimeMinutes || 5} min read
-              </span>
-            </div>
-          </div>
         </header>
 
         {/* Featured Image */}
-        <div className="relative aspect-[16/10] sm:aspect-[16/9] w-full rounded-xl sm:rounded-2xl overflow-hidden shadow-md">
-          <Image
-            src={article.coverImage}
-            alt={article.title}
-            fill
-            className="object-cover"
-            priority
-          />
+        {article.coverImage && (
+          <div className="relative aspect-[16/10] sm:aspect-[16/9] w-full rounded-xl sm:rounded-2xl overflow-hidden shadow-md">
+            <Image
+              src={article.coverImage}
+              alt={article.title}
+              fill
+              className="object-cover"
+              priority
+            />
+          </div>
+        )}
+
+        {/* Author Name & Published Date (Displayed below cover image) */}
+        <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-4 py-2.5 sm:py-3 border-y border-neutral-200 dark:border-neutral-800 text-xs sm:text-sm">
+          <span className="font-serif font-bold text-sm sm:text-base text-neutral-900 dark:text-neutral-100">
+            {article.authorNames || authorObj?.name || (article.authors?.[0] ? article.authors[0] : 'Editorial Desk')}
+          </span>
+          <span className="flex items-center gap-1.5 text-neutral-600 dark:text-neutral-400 font-medium">
+            <Calendar className="w-3.5 h-3.5 text-neutral-400" />
+            {formatDate(article.publishedAt)}
+          </span>
         </div>
 
         {/* Top Social Sharing Bar */}
@@ -178,9 +153,6 @@ export default async function CategoryArticlePage({ params }: CategoryArticlePag
           coverImage={article.coverImage}
           publishedAt={article.publishedAt}
         />
-
-        {/* Author Bio Card */}
-        <AuthorBioCard author={authorObj} authorNameFallback={article.authors?.[0]} />
 
         {/* Tags */}
         {article.tags && article.tags.length > 0 && (

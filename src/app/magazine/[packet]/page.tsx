@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getIssueById, getAllIssues, getAllArticles } from '@/lib/content';
 import { formatDate } from '@/lib/format';
-import { BookOpen, ArrowRight } from 'lucide-react';
+import { BookOpen, ArrowRight, Calendar } from 'lucide-react';
 
 interface IssuePageProps {
   params: {
@@ -101,9 +101,14 @@ export default async function IssuePacketPage({ params }: IssuePageProps) {
                     {article.excerpt}
                   </p>
                   <div className="flex items-center gap-3 text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 pt-1.5 font-sans">
-                    <span className="font-serif font-bold text-sm sm:text-base text-neutral-900 dark:text-neutral-100 truncate">{article.authorNames}</span>
+                    <span className="font-serif font-bold text-sm sm:text-base text-neutral-900 dark:text-neutral-100 truncate">
+                      {article.authorNames || (article.authors?.[0] ? article.authors[0] : 'Editorial Desk')}
+                    </span>
                     <span>•</span>
-                    <span className="shrink-0 font-medium">{formatDate(article.publishedAt)}</span>
+                    <span className="shrink-0 font-medium flex items-center gap-1.5">
+                      <Calendar className="w-3.5 h-3.5 text-neutral-400" />
+                      {formatDate(article.publishedAt)}
+                    </span>
                   </div>
                 </div>
               </div>

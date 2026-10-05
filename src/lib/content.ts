@@ -219,6 +219,24 @@ export function getLocalArticles(includeScheduled: boolean = false): Article[] {
   return includeScheduled ? memoryCache.articlesWithScheduled : memoryCache.articles;
 }
 
+/**
+ * Normalizes an author's display name to ensure only ONE language/name is shown.
+ * If a name contains both Malayalam and English separated by '/' (e.g. "കമൽറാം സജീവ് / Kamalram Sajeev"),
+ * it selects a single clean name instead of showing both.
+ */
+export function formatSingleAuthorName(rawName: string): string {
+  if (!rawName) return 'Editorial Desk';
+  const trimmed = rawName.trim();
+  if (!trimmed.includes('/')) return trimmed;
+
+  const parts = trimmed.split('/').map((s) => s.trim()).filter(Boolean);
+  if (parts.length === 0) return 'Editorial Desk';
+
+  // If one of the parts is English, prefer it; otherwise take the first part
+  const englishPart = parts.find((p) => /^[A-Za-z0-9\s.,'-]+$/.test(p));
+  return englishPart || parts[0];
+}
+
 export function getAllArticlesSync(includeScheduled: boolean = false): Article[] {
   return getLocalArticles(includeScheduled);
 }
@@ -234,7 +252,7 @@ function getAuthorsMap(): Record<string, string> {
       try {
         const aObj = JSON.parse(fs.readFileSync(path.join(authorsDir, f), 'utf8'));
         if (aObj.id && aObj.name) {
-          authorsMap[aObj.id] = aObj.name;
+          authorsMap[aObj.id] = formatSingleAuthorName(aObj.name);
         }
       } catch {}
     }
@@ -394,7 +412,11 @@ export function getAllAuthors(): Author[] {
     .map((fileName) => {
       const fullPath = path.join(authorsDir, fileName);
       const fileContents = fs.readFileSync(fullPath, 'utf8');
-      return JSON.parse(fileContents) as Author;
+      const author = JSON.parse(fileContents) as Author;
+      return {
+        ...author,
+        name: formatSingleAuthorName(author.name),
+      };
     });
 
   memoryCache.authors = authors;
@@ -405,7 +427,12 @@ export function getAuthorById(id: string): Author | null {
   const authors = getAllAuthors();
   if (!id) return authors.find((a) => a.id === 'editorial-desk') || null;
   const direct = authors.find((a) => a.id.toLowerCase() === id.toLowerCase());
-  if (direct) return direct;
+  if (direct) {
+    return {
+      ...direct,
+      name: formatSingleAuthorName(direct.name),
+    };
+  }
 
   if (id !== 'editorial-desk') {
     const formattedName = id

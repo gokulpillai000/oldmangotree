@@ -4,7 +4,7 @@ import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { getAllSeries, getSeriesBySlug } from '@/lib/content';
 import { formatDate } from '@/lib/format';
-import { Layers, ArrowLeft, BookOpen, Calendar, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, BookOpen, Calendar } from 'lucide-react';
 
 interface SeriesPageProps {
   params: {
@@ -27,6 +27,14 @@ export default async function SeriesDetailPage({ params }: SeriesPageProps) {
   if (!series) {
     notFound();
   }
+
+  const latestEpisode =
+    series.episodes && series.episodes.length > 0
+      ? [...series.episodes].sort(
+          (a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
+        )[0]
+      : null;
+  const latestDate = latestEpisode?.publishedAt;
 
   return (
     <div className="space-y-8 sm:space-y-12 pb-6 sm:pb-8 max-w-5xl mx-auto">
@@ -53,33 +61,17 @@ export default async function SeriesDetailPage({ params }: SeriesPageProps) {
           />
         </div>
 
-        <div className="md:col-span-7 space-y-4 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="text-xs sm:text-sm font-bold uppercase tracking-wider text-[#E27A2B] underline decoration-[#E27A2B] underline-offset-4 decoration-1">
-              {series.totalEpisodes} Episodes
-            </span>
-          </div>
-
-          <h1 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold text-neutral-900 dark:text-neutral-50 leading-tight break-words">
+        <div className="md:col-span-7 space-y-3 min-w-0">
+          <h1 className="font-serif text-3xl sm:text-5xl lg:text-6xl font-bold text-neutral-900 dark:text-neutral-50 leading-tight break-words">
             {series.title}
           </h1>
 
-          {series.subtitle && (
-            <p className="text-base sm:text-lg font-semibold text-[#E27A2B] break-words">
-              {series.subtitle}
-            </p>
+          {latestDate && (
+            <div className="flex items-center gap-1.5 text-xs sm:text-sm font-medium text-neutral-600 dark:text-neutral-400 py-2 border-y border-neutral-200 dark:border-neutral-800">
+              <Calendar className="w-3.5 h-3.5 text-neutral-400" />
+              <span>{formatDate(latestDate)}</span>
+            </div>
           )}
-
-          <div className="flex items-center gap-2 text-sm sm:text-base text-neutral-800 dark:text-neutral-200 border-t border-b border-neutral-200 dark:border-neutral-800 py-3">
-            <span className="font-bold text-neutral-900 dark:text-neutral-100">
-              Author:
-            </span>
-            <span className="font-medium">{series.authorName}</span>
-          </div>
-
-          <p className="text-neutral-800 dark:text-neutral-200 text-base sm:text-lg leading-relaxed">
-            {series.description}
-          </p>
         </div>
       </div>
 

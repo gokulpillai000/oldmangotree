@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
+import { formatDate } from '@/lib/format';
 import { Play, Film, Clock, User, Calendar, Share2, ExternalLink } from 'lucide-react';
 
 interface VideoItem {
@@ -180,6 +181,11 @@ export default function VideosPage() {
                 <span className="font-semibold text-neutral-100 truncate">
                   {activeVideo.speaker}
                 </span>
+                <span className="text-neutral-500">•</span>
+                <span className="flex items-center gap-1 text-neutral-400 text-xs">
+                  <Calendar className="w-3.5 h-3.5 text-neutral-500" />
+                  {formatDate(activeVideo.publishedAt)}
+                </span>
               </div>
               <a
                 href={`https://www.youtube.com/watch?v=${activeVideo.youtubeId}`}
@@ -290,11 +296,17 @@ export default function VideosPage() {
                 <span className="line-clamp-1 font-medium text-neutral-800 dark:text-neutral-200">
                   {video.speaker}
                 </span>
-                {isSelected && (
-                  <span className="text-[#E27A2B] font-bold shrink-0">
-                    Playing
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="flex items-center gap-1 text-xs text-neutral-500 dark:text-neutral-400">
+                    <Calendar className="w-3 h-3 text-neutral-400" />
+                    {formatDate(video.publishedAt)}
                   </span>
-                )}
+                  {isSelected && (
+                    <span className="text-[#E27A2B] font-bold">
+                      Playing
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           );

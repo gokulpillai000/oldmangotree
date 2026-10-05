@@ -1,5 +1,4 @@
-// src/lib/blogger.ts
-import { Article, IssuePacket, Series, SeriesEpisode, Video, Podcast } from './content';
+import { Article, IssuePacket, Series, SeriesEpisode, Video, Podcast, formatSingleAuthorName } from './content';
 
 const BLOG_URL = process.env.NEXT_PUBLIC_BLOGGER_URL || 'https://oldmangotree.blogspot.com';
 
@@ -155,6 +154,7 @@ export function parseBloggerEntry(entry: BloggerEntry): Article {
   if (!authorName) {
     authorName = entry.author?.[0]?.name?.$t || 'Editorial Desk';
   }
+  authorName = formatSingleAuthorName(authorName);
 
   // Resolve author ID mapped to known authors (e.g. kamalram-sajeev, damodhar-prasad, manila-c-mohan, editorial-desk)
   let authorId = cleanSlug(authorName);

@@ -8,9 +8,8 @@ import { CommentSection } from '@/components/CommentSection';
 import { ArticleBody } from '@/components/ArticleBody';
 import { ReadingProgressBar } from '@/components/ReadingProgressBar';
 import { SocialShareBar } from '@/components/SocialShareBar';
-import { AuthorBioCard } from '@/components/AuthorBioCard';
 import { ArticlePublisherControls } from '@/components/ArticlePublisherControls';
-import { Calendar, Clock, ArrowLeft, User, Tag, BookOpen } from 'lucide-react';
+import { Calendar, ArrowLeft, Tag, BookOpen } from 'lucide-react';
 
 interface ArticlePageProps {
   params: {
@@ -100,38 +99,6 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
           <p className="text-base sm:text-xl lg:text-2xl text-neutral-800 dark:text-neutral-200 font-serif leading-relaxed italic break-words">
             {article.excerpt}
           </p>
-
-          {/* Author & Metadata Bar */}
-          <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4 py-3 sm:py-4 border-y border-neutral-200 dark:border-neutral-800">
-            <div className="flex items-center gap-3 min-w-0">
-              {authorObj?.avatar ? (
-                <div className="relative w-10 h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden shrink-0 border border-neutral-200 shadow-sm">
-                  <Image src={authorObj.avatar} alt={authorObj.name} fill className="object-cover" />
-                </div>
-              ) : (
-                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-brand-700 text-white flex items-center justify-center font-bold shrink-0">
-                  <User className="w-5 h-5" />
-                </div>
-              )}
-              <div className="min-w-0">
-                <p className="font-serif font-bold text-sm sm:text-base text-neutral-900 dark:text-neutral-100 truncate">
-                  {authorObj ? authorObj.name : article.authors?.[0] || 'Editorial Desk'}
-                </p>
-                <p className="text-xs sm:text-sm font-medium text-neutral-600 dark:text-neutral-400 truncate">{authorObj?.role || 'Contributor'}</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 text-xs sm:text-sm font-medium text-neutral-600 dark:text-neutral-400">
-              <span className="flex items-center gap-1">
-                <Calendar className="w-3.5 h-3.5" />
-                {formatDate(article.publishedAt)}
-              </span>
-              <span className="flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5" />
-                {article.readTimeMinutes || 6} min read
-              </span>
-            </div>
-          </div>
         </header>
 
         {/* Featured Image */}
@@ -146,6 +113,17 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
             />
           </div>
         )}
+
+        {/* Author Name & Published Date (Displayed below cover image) */}
+        <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-4 py-2.5 sm:py-3 border-y border-neutral-200 dark:border-neutral-800 text-xs sm:text-sm">
+          <span className="font-serif font-bold text-sm sm:text-base text-neutral-900 dark:text-neutral-100">
+            {article.authorNames || authorObj?.name || (article.authors?.[0] ? article.authors[0] : 'Editorial Desk')}
+          </span>
+          <span className="flex items-center gap-1.5 text-neutral-600 dark:text-neutral-400 font-medium">
+            <Calendar className="w-3.5 h-3.5 text-neutral-400" />
+            {formatDate(article.publishedAt)}
+          </span>
+        </div>
 
         {/* Top Social Sharing Bar */}
         <SocialShareBar
@@ -177,9 +155,6 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
           coverImage={article.coverImage}
           publishedAt={article.publishedAt}
         />
-
-        {/* Author Bio Card */}
-        <AuthorBioCard author={authorObj} authorNameFallback={article.authors?.[0]} />
 
         {/* Tags */}
         {article.tags && article.tags.length > 0 && (
