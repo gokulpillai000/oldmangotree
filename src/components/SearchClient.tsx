@@ -92,7 +92,10 @@ export function SearchClient({ initialArticles }: SearchClientProps) {
 
             <div className="pt-2 flex items-center justify-between text-xs sm:text-sm border-t border-neutral-200 dark:border-neutral-800">
               <span className="font-serif font-bold text-sm sm:text-base text-neutral-900 dark:text-neutral-100 line-clamp-1 break-words">{res.authorNames || 'Editorial Desk'}</span>
-              <span className="text-neutral-600 dark:text-neutral-400 font-medium">{formatDate(res.publishedAt)}</span>
+              <span className="text-neutral-600 dark:text-neutral-400 font-medium flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-neutral-400" />
+                {formatDate(res.publishedAt)}
+              </span>
             </div>
           </div>
         ))}

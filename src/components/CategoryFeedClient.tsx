@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Article } from '@/lib/content';
 import { formatDate } from '@/lib/format';
-import { Lock, BookOpen } from 'lucide-react';
+import { Lock, BookOpen, Calendar } from 'lucide-react';
 
 interface CategoryFeedClientProps {
   category: string;
@@ -123,15 +123,10 @@ export function CategoryFeedClient({
                 </div>
 
                 <div className="pt-3 space-y-1.5">
-                  <div className="flex items-center justify-between gap-2 relative z-20">
+                  <div className="flex items-center gap-2 relative z-20">
                     <span className="text-xs sm:text-sm uppercase font-bold tracking-wider text-[#E27A2B] underline decoration-[#E27A2B] underline-offset-2 decoration-1">
                       {article.category}
                     </span>
-                    {article.tags && article.tags.length > 0 && (
-                      <span className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 font-medium">
-                        #{article.tags[0]}
-                      </span>
-                    )}
                   </div>
 
                   <Link href={`/articles/${article.slug}`}>
@@ -149,10 +144,13 @@ export function CategoryFeedClient({
 
               <div className="pt-3 border-t border-neutral-100 dark:border-neutral-800/80 mt-2 space-y-1 text-xs sm:text-sm">
                 <p className="font-serif font-bold text-sm sm:text-base text-neutral-900 dark:text-neutral-100 line-clamp-1">
-                  {article.authorNames}
+                  {article.authorNames || (article.authors?.[0] ? article.authors[0] : 'Editorial Desk')}
                 </p>
                 <div className="flex items-center justify-between text-neutral-600 dark:text-neutral-400 text-xs sm:text-sm font-medium">
-                  <span>{formatDate(article.publishedAt)}</span>
+                  <span className="flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-neutral-400" />
+                    {formatDate(article.publishedAt)}
+                  </span>
                   <span>{article.readTimeMinutes || 5} min read</span>
                 </div>
               </div>

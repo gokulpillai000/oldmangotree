@@ -217,9 +217,6 @@ export function SearchModal({ isOpen, onClose, initialQuery = '' }: SearchModalP
                 <span className="font-bold uppercase tracking-wider text-[#E27A2B] underline decoration-[#E27A2B] underline-offset-2 decoration-1">
                   {item.category}
                 </span>
-                <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1 text-xs sm:text-sm font-medium">
-                  <Calendar className="w-3.5 h-3.5" /> {formatDate(item.publishedAt)}
-                </span>
               </div>
               <h3 className="font-serif text-base sm:text-lg font-bold text-slate-900 dark:text-white group-hover:text-[#E27A2B] transition-colors leading-snug">
                 {item.title}
@@ -229,6 +226,14 @@ export function SearchModal({ isOpen, onClose, initialQuery = '' }: SearchModalP
                   {item.excerpt}
                 </p>
               )}
+              <div className="flex items-center justify-between text-xs sm:text-sm pt-2 mt-2 border-t border-slate-100 dark:border-slate-800/80">
+                <span className="font-serif font-bold text-xs sm:text-sm text-slate-800 dark:text-slate-200 truncate">
+                  {item.authorNames || 'Editorial Desk'}
+                </span>
+                <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1 text-xs shrink-0 font-medium">
+                  <Calendar className="w-3.5 h-3.5 text-slate-400" /> {formatDate(item.publishedAt)}
+                </span>
+              </div>
             </Link>
           ))}
         </div>

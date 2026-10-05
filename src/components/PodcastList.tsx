@@ -4,7 +4,8 @@ import React from 'react';
 import Image from 'next/image';
 import { Podcast } from '@/lib/content';
 import { useAudio } from '@/components/AudioContext';
-import { Play, Pause, Clock, Mic } from 'lucide-react';
+import { formatDate } from '@/lib/format';
+import { Play, Pause, Clock, Mic, Calendar } from 'lucide-react';
 
 interface PodcastListProps {
   podcasts: Podcast[];
@@ -58,9 +59,16 @@ export function PodcastList({ podcasts }: PodcastListProps) {
             </div>
 
             <div className="pt-3 border-t border-neutral-100 dark:border-neutral-800/80 mt-3 flex items-center justify-between gap-3 text-xs text-neutral-500">
-              <span className="flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5" /> {Math.floor(pod.durationSeconds / 60)} mins
-              </span>
+              <div className="flex items-center gap-2 text-xs text-neutral-600 dark:text-neutral-400 font-medium">
+                <span className="flex items-center gap-1">
+                  <Calendar className="w-3.5 h-3.5 text-neutral-400" />
+                  {formatDate(pod.publishedAt)}
+                </span>
+                <span>•</span>
+                <span className="flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5" /> {Math.floor(pod.durationSeconds / 60)} mins
+                </span>
+              </div>
 
               <button
                 type="button"

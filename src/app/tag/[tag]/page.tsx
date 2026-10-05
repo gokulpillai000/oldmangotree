@@ -4,7 +4,7 @@ import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { getArticlesByTag, getAllTags } from '@/lib/content';
 import { formatDate } from '@/lib/format';
-import { Hash, Lock, Clock, ArrowLeft } from 'lucide-react';
+import { Hash, Lock, Clock, ArrowLeft, Calendar } from 'lucide-react';
 
 interface TagPageProps {
   params: {
@@ -88,10 +88,13 @@ export default async function TagPage({ params }: TagPageProps) {
 
               <div className="pt-3 border-t border-neutral-200 dark:border-neutral-800 mt-2 space-y-1.5 text-xs sm:text-sm">
                 <p className="font-serif font-bold text-sm sm:text-base text-neutral-900 dark:text-neutral-100 line-clamp-1 break-words">
-                  {article.authorNames}
+                  {article.authorNames || (article.authors?.[0] ? article.authors[0] : 'Editorial Desk')}
                 </p>
                 <div className="flex items-center justify-between text-neutral-600 dark:text-neutral-400 text-xs sm:text-sm font-medium">
-                  <span>{formatDate(article.publishedAt)}</span>
+                  <span className="flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-neutral-400" />
+                    {formatDate(article.publishedAt)}
+                  </span>
                   <span className="flex items-center gap-1">
                     <Clock className="w-3.5 h-3.5" />
                     {article.readTimeMinutes || 5} min read
