@@ -18,6 +18,7 @@ interface CategoryArticlePageProps {
 }
 
 export const revalidate = 60;
+export const dynamicParams = true;
 
 export async function generateStaticParams() {
   const articles = await getAllArticles();
@@ -30,6 +31,12 @@ export async function generateStaticParams() {
 
 export default async function CategoryArticlePage({ params }: CategoryArticlePageProps) {
   const { slug, category } = params;
+  const resolvedCategory =
+    category === 'miscellaneous'
+      ? 'fallen-mangoes'
+      : category === 'arts-culture' || category === 'art-culture'
+      ? 'the-shade'
+      : category;
   const article = await getArticleBySlug(slug);
 
   if (!article) {
@@ -50,10 +57,10 @@ export default async function CategoryArticlePage({ params }: CategoryArticlePag
         {/* Back navigation */}
         <div className="flex items-center justify-between">
           <Link
-            href={`/${category}`}
+            href={`/${resolvedCategory}`}
             className="inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-500 hover:text-brand-600 dark:hover:text-brand-400 transition-colors"
           >
-            <ArrowLeft className="w-4 h-4" /> Back to {category.toUpperCase()}
+            <ArrowLeft className="w-4 h-4" /> Back to {resolvedCategory.replace(/-/g, ' ').toUpperCase()}
           </Link>
 
           {article.webzineIssue && (
@@ -196,7 +203,7 @@ export default async function CategoryArticlePage({ params }: CategoryArticlePag
                   <div>
                     <div className="relative aspect-[16/10] sm:aspect-[16/9] w-full overflow-hidden bg-neutral-100 dark:bg-neutral-800">
                       <Image
-                        src={rel.coverImage}
+                        src={rel.coverImage && rel.coverImage.trim() !== '' ? rel.coverImage : '/images/logo-oldmangotree.jpg'}
                         alt={rel.title}
                         fill
                         sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"

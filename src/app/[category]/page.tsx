@@ -12,16 +12,27 @@ interface CategoryPageProps {
 
 export const dynamicParams = true;
 
+function resolveCategorySlug(slug: string): string {
+  const s = slug.toLowerCase().trim();
+  if (s === 'miscellaneous' || s === 'fallen mangoes') return 'fallen-mangoes';
+  if (s === 'arts-culture' || s === 'art-culture' || s === 'the shade') return 'the-shade';
+  return s;
+}
+
 export function generateStaticParams() {
   const categories = getAllCategories();
-  return categories.map((cat) => ({
+  const paramsList = categories.map((cat) => ({
     category: cat.slug,
   }));
+  paramsList.push({ category: 'miscellaneous' });
+  paramsList.push({ category: 'arts-culture' });
+  return paramsList;
 }
 
 export function generateMetadata({ params }: CategoryPageProps): Metadata {
   const categories = getAllCategories();
-  const catObj = categories.find((c) => c.slug === params.category);
+  const resolvedSlug = resolveCategorySlug(params.category);
+  const catObj = categories.find((c) => c.slug === resolvedSlug);
   if (!catObj) return { title: 'Category Not Found' };
 
   return {
@@ -33,15 +44,15 @@ export function generateMetadata({ params }: CategoryPageProps): Metadata {
 export const revalidate = 60;
 
 export default async function CategoryPage({ params }: CategoryPageProps) {
-  const { category } = params;
+  const resolvedCategory = resolveCategorySlug(params.category);
   const categories = getAllCategories();
-  const catObj = categories.find((c) => c.slug === category);
+  const catObj = categories.find((c) => c.slug === resolvedCategory);
 
   if (!catObj) {
     notFound();
   }
 
-  const articles = await getArticlesByCategory(category);
+  const articles = await getArticlesByCategory(resolvedCategory);
 
   return (
     <div className="space-y-8 pb-6 sm:pb-8 max-w-7xl mx-auto">
@@ -60,7 +71,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
       </header>
 
       <CategoryFeedClient
-        category={category}
+        category={resolvedCategory}
         subcategories={catObj.subcategories}
         articles={articles}
       />

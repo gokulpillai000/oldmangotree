@@ -20,9 +20,9 @@ const CATEGORY_TABS = [
   { slug: 'cinema', label: 'Cinema' },
   { slug: 'sports', label: 'Sports' },
   { slug: 'politics', label: 'Politics' },
-  { slug: 'arts-culture', label: 'Arts & Culture' },
+  { slug: 'the-shade', label: 'The shade' },
   { slug: 'literature', label: 'Literature' },
-  { slug: 'miscellaneous', label: 'Miscellaneous' },
+  { slug: 'fallen-mangoes', label: 'Fallen mangoes' },
 ];
 
 export function WidgetGrid({ articles }: WidgetGridProps) {
@@ -45,11 +45,30 @@ export function WidgetGrid({ articles }: WidgetGridProps) {
   const displayArticles =
     selectedCategory === 'all'
       ? remainingArticles
-      : articles.filter(
-          (a) =>
-            a.category.toLowerCase() === selectedCategory.toLowerCase() ||
+      : articles.filter((a) => {
+          const cat = a.category?.toLowerCase() || '';
+          if (selectedCategory === 'the-shade') {
+            return (
+              cat === 'the-shade' ||
+              cat === 'the shade' ||
+              cat === 'arts-culture' ||
+              cat === 'arts & culture' ||
+              a.tags?.some((t) => ['the-shade', 'the shade', 'arts-culture', 'arts & culture'].includes(t.toLowerCase()))
+            );
+          }
+          if (selectedCategory === 'fallen-mangoes') {
+            return (
+              cat === 'fallen-mangoes' ||
+              cat === 'fallen mangoes' ||
+              cat === 'miscellaneous' ||
+              a.tags?.some((t) => ['fallen-mangoes', 'fallen mangoes', 'miscellaneous'].includes(t.toLowerCase()))
+            );
+          }
+          return (
+            cat === selectedCategory.toLowerCase() ||
             a.tags?.some((t) => t.toLowerCase() === selectedCategory.toLowerCase())
-        );
+          );
+        });
 
   return (
     <div className="space-y-12 sm:space-y-16">

@@ -13,6 +13,7 @@ interface TagPageProps {
 }
 
 export const revalidate = 60;
+export const dynamicParams = true;
 
 export async function generateStaticParams() {
   const tags = await getAllTags();
@@ -66,7 +67,7 @@ export default async function TagPage({ params }: TagPageProps) {
               <div>
                 <div className="relative aspect-[16/10] sm:aspect-[16/9] w-full overflow-hidden bg-neutral-100 dark:bg-neutral-800">
                   <Image
-                    src={article.coverImage}
+                    src={article.coverImage && article.coverImage.trim() !== '' ? article.coverImage : '/images/logo-oldmangotree.jpg'}
                     alt={article.title}
                     fill
                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
