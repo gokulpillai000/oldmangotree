@@ -32,7 +32,7 @@ export default function TheTeamPage() {
               key={member.id || member.name}
               className="p-6 sm:p-7 border-l-2 border-[#E27A2B] bg-neutral-50/70 dark:bg-neutral-900/40 space-y-2 transition-colors"
             >
-              {member.avatar ? (
+              {member.avatar && member.avatar.trim() !== '' ? (
                 <div className="relative aspect-square w-24 h-24 mb-4 overflow-hidden bg-neutral-100 dark:bg-neutral-800">
                   <Image
                     src={member.avatar}

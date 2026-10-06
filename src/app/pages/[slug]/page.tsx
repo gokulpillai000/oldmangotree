@@ -10,6 +10,8 @@ interface StaticPageProps {
   };
 }
 
+export const dynamicParams = true;
+
 export function generateStaticParams() {
   const pages = getAllPages();
   return pages.map((slug) => ({

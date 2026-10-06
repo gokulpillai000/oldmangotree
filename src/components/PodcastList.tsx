@@ -14,6 +14,14 @@ interface PodcastListProps {
 export function PodcastList({ podcasts }: PodcastListProps) {
   const { currentTrack, isPlaying, playTrack, togglePlayPause } = useAudio();
 
+  if (!podcasts || podcasts.length === 0) {
+    return (
+      <div className="py-16 text-center text-neutral-500 font-serif text-lg">
+        No podcasts published yet.
+      </div>
+    );
+  }
+
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
       {podcasts.map((pod) => {
@@ -37,7 +45,7 @@ export function PodcastList({ podcasts }: PodcastListProps) {
             <div>
               <div className="relative aspect-[16/10] sm:aspect-[16/9] w-full overflow-hidden bg-neutral-100 dark:bg-neutral-800">
                 <Image
-                  src={pod.coverImage}
+                  src={pod.coverImage || '/images/logo-oldmangotree.jpg'}
                   alt={pod.title}
                   fill
                   sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"

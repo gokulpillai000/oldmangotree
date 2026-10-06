@@ -16,6 +16,7 @@ export const revalidate = 60;
 
 export async function generateStaticParams() {
   const tags = await getAllTags();
+  if (tags.length === 0) return [{ tag: '_empty' }];
   return tags.map((tag) => ({
     tag: encodeURIComponent(tag),
   }));

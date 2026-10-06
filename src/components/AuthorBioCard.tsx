@@ -18,7 +18,7 @@ export function AuthorBioCard({ author, authorNameFallback }: AuthorBioCardProps
   return (
     <section className="py-6 border-y border-neutral-200 dark:border-neutral-800 transition-colors my-8">
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-        {author?.avatar ? (
+        {author?.avatar && author.avatar.trim() !== '' ? (
           <div className="relative w-16 h-16 sm:w-20 sm:h-20 overflow-hidden shrink-0 bg-neutral-100 dark:bg-neutral-800">
             <Image src={author.avatar} alt={name} fill className="object-cover" />
           </div>

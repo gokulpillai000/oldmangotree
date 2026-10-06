@@ -35,25 +35,28 @@ export function PublisherBar() {
     };
   }, []);
 
+  const currentPath = pathname || '';
+
   // Normal users never see this. Only signed-in publishers on public pages see it.
-  if (!session || session.role !== 'publisher' || pathname.startsWith('/publisher')) {
+  if (!session || session.role !== 'publisher' || currentPath.startsWith('/publisher')) {
     return null;
   }
 
   // Detect if currently on an article page
-  const isArticlePage = pathname.startsWith('/articles/');
-  const articleSlug = isArticlePage ? pathname.replace(/^\/articles\//, '').replace(/\/$/, '') : null;
+  const isArticlePage = currentPath.startsWith('/articles/');
+  const articleSlug = isArticlePage ? currentPath.replace(/^\/articles\//, '').replace(/\/$/, '') : null;
 
   // Detect if currently on a category page (e.g. /literature, /politics, /cinema)
   const isCategoryPage =
-    pathname !== '/' &&
-    !pathname.startsWith('/articles/') &&
-    !pathname.startsWith('/pages') &&
-    !pathname.startsWith('/tag') &&
-    !pathname.startsWith('/search') &&
-    !pathname.startsWith('/the-team');
+    currentPath !== '' &&
+    currentPath !== '/' &&
+    !currentPath.startsWith('/articles/') &&
+    !currentPath.startsWith('/pages') &&
+    !currentPath.startsWith('/tag') &&
+    !currentPath.startsWith('/search') &&
+    !currentPath.startsWith('/the-team');
 
-  const currentCategorySlug = isCategoryPage ? pathname.replace(/^\//, '').split('/')[0] : null;
+  const currentCategorySlug = isCategoryPage ? currentPath.replace(/^\//, '').split('/')[0] : null;
   const currentCategoryName = currentCategorySlug
     ? currentCategorySlug.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
     : null;

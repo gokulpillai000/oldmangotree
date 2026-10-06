@@ -19,6 +19,16 @@ import {
 
 const contentDirectory = path.join(process.cwd(), 'content');
 
+/**
+ * DUMMY CONTENT VISIBILITY TOGGLE:
+ * Set to `true` to hide dummy contents (for testing live Supabase data).
+ * Set to `false` to unhide dummy contents.
+ * Can also be toggled via NEXT_PUBLIC_HIDE_DUMMY_CONTENT in .env.local.
+ */
+export const HIDE_DUMMY_CONTENT: boolean =
+  process.env.NEXT_PUBLIC_HIDE_DUMMY_CONTENT === 'true';
+
+
 export interface ArticleFrontmatter {
   title: string;
   slug: string;
@@ -174,6 +184,9 @@ export function clearLocalContentCache(): void {
 }
 
 export function getLocalArticles(includeScheduled: boolean = false): Article[] {
+  if (HIDE_DUMMY_CONTENT) {
+    return [];
+  }
   if (includeScheduled && memoryCache.articlesWithScheduled) {
     return memoryCache.articlesWithScheduled;
   }
@@ -277,6 +290,10 @@ function mapSupabaseToArticle(rec: SupabaseArticleRecord): Article {
   const wordCount = plainText ? plainText.split(' ').length : 0;
   const readTimeMinutes = Math.max(1, Math.ceil(wordCount / 200));
 
+  const isScheduled =
+    rec.status === 'scheduled' ||
+    Boolean(rec.published_at && new Date(rec.published_at).getTime() > Date.now());
+
   return {
     slug: rec.slug,
     title: rec.title,
@@ -294,6 +311,7 @@ function mapSupabaseToArticle(rec: SupabaseArticleRecord): Article {
     isPremium: rec.is_premium,
     tags: rec.tags || (rec.category ? [rec.category] : []),
     readTimeMinutes,
+    isScheduled,
     content: rec.content_html,
     contentHtml: rec.content_html,
   };
@@ -305,7 +323,9 @@ export async function getAllArticles(includeScheduled: boolean = false): Promise
   try {
     const rawSupabase = await fetchSupabaseArticles();
     if (rawSupabase && rawSupabase.length > 0) {
-      supabaseArticles = rawSupabase.map(mapSupabaseToArticle);
+      supabaseArticles = rawSupabase
+        .map(mapSupabaseToArticle)
+        .filter((a) => (includeScheduled ? true : !a.isScheduled));
     }
   } catch (err) {
     console.warn('Error fetching Supabase articles:', err);
@@ -326,6 +346,7 @@ export async function getAllArticles(includeScheduled: boolean = false): Promise
 
   // 3. Fallback to local markdown articles if both remote sources are empty
   if (supabaseArticles.length === 0 && bloggerArticles.length === 0) {
+    if (HIDE_DUMMY_CONTENT) return [];
     return getLocalArticles(includeScheduled);
   }
 
@@ -333,7 +354,9 @@ export async function getAllArticles(includeScheduled: boolean = false): Promise
   const combined: Article[] = [...supabaseArticles];
   for (const b of bloggerArticles) {
     if (!combined.some((a) => a.slug === b.slug)) {
-      combined.push(b);
+      if (includeScheduled || !b.isScheduled) {
+        combined.push(b);
+      }
     }
   }
 
@@ -346,7 +369,11 @@ export async function getArticleBySlug(slug: string, includeScheduled: boolean =
   try {
     const supArticle = await fetchSupabaseArticleBySlug(slug);
     if (supArticle) {
-      return mapSupabaseToArticle(supArticle);
+      const mapped = mapSupabaseToArticle(supArticle);
+      if (!includeScheduled && mapped.isScheduled) {
+        return null;
+      }
+      return mapped;
     }
   } catch (err) {
     console.warn(`Error checking Supabase article by slug "${slug}":`, err);
@@ -363,6 +390,8 @@ export async function getArticleBySlug(slug: string, includeScheduled: boolean =
   }
 
   // 3. Check local content files
+  if (HIDE_DUMMY_CONTENT) return null;
+
   const articles = getLocalArticles(includeScheduled);
   const article = articles.find((a) => a.slug === slug);
   if (!article) return null;
@@ -434,6 +463,7 @@ export function getRelatedArticles(article: Article, limit: number = 3, pool?: A
 // -------------------------------------------------------------
 
 export function getLocalIssues(): IssuePacket[] {
+  if (HIDE_DUMMY_CONTENT) return [];
   if (memoryCache.issues) return memoryCache.issues;
 
   const issuesDir = path.join(contentDirectory, 'issues');
@@ -454,6 +484,7 @@ export function getLocalIssues(): IssuePacket[] {
 }
 
 export async function getAllIssues(): Promise<IssuePacket[]> {
+  if (HIDE_DUMMY_CONTENT) return [];
   if (process.env.NEXT_PUBLIC_BLOGGER_URL) {
     try {
       const livePackets = await fetchBloggerPackets();
@@ -539,6 +570,7 @@ export function getAllCategories(): Category[] {
 // -------------------------------------------------------------
 
 export function getLocalPodcasts(): Podcast[] {
+  if (HIDE_DUMMY_CONTENT) return [];
   if (memoryCache.podcasts) return memoryCache.podcasts;
 
   const podcastsDir = path.join(contentDirectory, 'podcasts');
@@ -595,19 +627,21 @@ export async function getAllPodcasts(): Promise<Podcast[]> {
     console.warn('Error fetching Supabase podcasts:', err);
   }
 
-  // 2. Fetch Blogger / local podcasts
-  if (process.env.NEXT_PUBLIC_BLOGGER_URL) {
-    try {
-      const livePodcasts = await fetchBloggerPodcasts();
-      if (livePodcasts.length > 0) {
-        list.push(...livePodcasts);
+  // 2. Fetch Blogger / local podcasts (only if dummy content is not hidden)
+  if (!HIDE_DUMMY_CONTENT) {
+    if (process.env.NEXT_PUBLIC_BLOGGER_URL) {
+      try {
+        const livePodcasts = await fetchBloggerPodcasts();
+        if (livePodcasts.length > 0) {
+          list.push(...livePodcasts);
+        }
+      } catch (err) {
+        console.warn('Error fetching live Blogger podcasts, falling back to local podcasts:', err);
+        list.push(...getLocalPodcasts());
       }
-    } catch (err) {
-      console.warn('Error fetching live Blogger podcasts, falling back to local podcasts:', err);
+    } else {
       list.push(...getLocalPodcasts());
     }
-  } else {
-    list.push(...getLocalPodcasts());
   }
 
   // Deduplicate by slug and sort newest first
@@ -630,6 +664,7 @@ export async function getAllPodcasts(): Promise<Podcast[]> {
 // -------------------------------------------------------------
 
 export function getLocalSeries(): Series[] {
+  if (HIDE_DUMMY_CONTENT) return [];
   if (memoryCache.series) return memoryCache.series;
 
   const seriesDir = path.join(contentDirectory, 'series');
@@ -649,6 +684,7 @@ export function getLocalSeries(): Series[] {
 }
 
 export async function getAllSeries(): Promise<Series[]> {
+  if (HIDE_DUMMY_CONTENT) return [];
   if (process.env.NEXT_PUBLIC_BLOGGER_URL) {
     try {
       const liveSeries = await fetchBloggerSeries();
@@ -670,6 +706,7 @@ export async function getSeriesBySlug(slug: string): Promise<Series | null> {
 // -------------------------------------------------------------
 
 export function getLocalVideos(): Video[] {
+  if (HIDE_DUMMY_CONTENT) return [];
   if (memoryCache.videos) return memoryCache.videos;
 
   const filePath = path.join(contentDirectory, 'videos.json');
@@ -685,6 +722,7 @@ export function getLocalVideos(): Video[] {
 }
 
 export async function getAllVideos(): Promise<Video[]> {
+  if (HIDE_DUMMY_CONTENT) return [];
   if (process.env.NEXT_PUBLIC_BLOGGER_URL) {
     try {
       const liveVideos = await fetchBloggerVideos();

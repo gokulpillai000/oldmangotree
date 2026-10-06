@@ -9,9 +9,11 @@ if (isGithubActions && !process.env.CUSTOM_DOMAIN && process.env.NEXT_PUBLIC_BAS
   }
 }
 
+const isProd = process.env.NODE_ENV === 'production';
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'export',
+  ...(isProd ? { output: 'export' } : {}),
   reactStrictMode: true,
   ...(basePath ? { basePath, trailingSlash: true } : {}),
   env: {

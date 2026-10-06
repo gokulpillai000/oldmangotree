@@ -35,10 +35,11 @@ export function BottomNav() {
         <div className="flex items-center justify-around max-w-lg mx-auto">
           {navItems.map((item) => {
             const Icon = item.icon;
+            const currentPath = pathname || '';
             const isActive =
               item.href === '/'
-                ? pathname === '/'
-                : pathname.startsWith(item.href);
+                ? currentPath === '/'
+                : currentPath.startsWith(item.href);
 
             return (
               <Link

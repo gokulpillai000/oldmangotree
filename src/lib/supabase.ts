@@ -345,9 +345,10 @@ export interface SupabaseArticleRecord {
   series_title?: string;
   series_episode?: number;
   tags?: string[];
-  status: 'draft' | 'published';
+  status: 'draft' | 'published' | 'scheduled';
   published_at?: string;
   updated_at?: string;
+  created_at?: string;
 }
 
 export async function fetchSupabaseArticles(): Promise<SupabaseArticleRecord[]> {
@@ -355,13 +356,32 @@ export async function fetchSupabaseArticles(): Promise<SupabaseArticleRecord[]> 
   if (!client) return [];
 
   try {
+    const nowIso = new Date().toISOString();
+    // Query published or scheduled stories whose published_at is in the past or now
     const { data, error } = await client
       .from('articles')
       .select('*')
-      .eq('status', 'published')
+      .in('status', ['published', 'scheduled'])
+      .lte('published_at', nowIso)
       .order('published_at', { ascending: false });
 
-    if (error) throw error;
+    if (error) {
+      console.warn('Error fetching Supabase articles with query, using memory filter:', error);
+      const { data: allData, error: err2 } = await client
+        .from('articles')
+        .select('*')
+        .order('published_at', { ascending: false });
+
+      if (err2 || !allData) throw error;
+
+      const nowMs = Date.now();
+      return allData.filter((a: any) => {
+        if (a.status === 'draft') return false;
+        const pubMs = new Date(a.published_at || 0).getTime();
+        return pubMs <= nowMs;
+      });
+    }
+
     return data || [];
   } catch (err) {
     console.warn('Error fetching Supabase articles:', err);

@@ -114,7 +114,7 @@ export function CategoryFeedClient({
               <div>
                 <div className="relative aspect-[16/10] sm:aspect-[16/9] w-full overflow-hidden bg-neutral-900">
                   <Image
-                    src={article.coverImage}
+                    src={article.coverImage || '/images/logo-oldmangotree.jpg'}
                     alt={article.title}
                     fill
                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"

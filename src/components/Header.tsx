@@ -23,6 +23,7 @@ export function Header() {
   const [bookmarkCount, setBookmarkCount] = useState(0);
   const [publisherSession, setPublisherSession] = useState<UserSession | null>(null);
   const pathname = usePathname();
+  const currentPath = pathname || '';
   const headerRef = useRef<HTMLElement>(null);
   const drawerRef = useRef<HTMLElement>(null);
   const toggleButtonRef = useRef<HTMLButtonElement>(null);
@@ -227,10 +228,10 @@ export function Header() {
                   {SITE_CATEGORIES.map((cat) => {
                     const isActive =
                       cat.href === '/'
-                        ? pathname === '/'
+                        ? currentPath === '/'
                         : cat.href === '/magazine' || cat.href === '/series'
-                        ? pathname.startsWith(cat.href)
-                        : pathname === cat.href;
+                        ? currentPath.startsWith(cat.href)
+                        : currentPath === cat.href;
                     return (
                       <Link
                         key={cat.name}
@@ -342,10 +343,10 @@ export function Header() {
               {SITE_CATEGORIES.map((cat) => {
                 const isActive =
                   cat.href === '/'
-                    ? pathname === '/'
+                    ? currentPath === '/'
                     : cat.href === '/magazine' || cat.href === '/series'
-                    ? pathname.startsWith(cat.href)
-                    : pathname === cat.href;
+                    ? currentPath.startsWith(cat.href)
+                    : currentPath === cat.href;
                 return (
                   <Link
                     key={cat.name}
