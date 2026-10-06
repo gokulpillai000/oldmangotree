@@ -19,103 +19,10 @@ interface VideoItem {
   isFeatured?: boolean;
 }
 
-const videosData: VideoItem[] = [
-  {
-    id: 'vismayam-paleri-doc',
-    title: 'The Marvel of Paleri: Life and Memory in Literary Landscapes',
-    excerpt: 'A retrospective documentary exploring cultural and political history through local literature.',
-    youtubeId: 'dQw4w9WgXcQ',
-    playlist: 'Documentaries',
-    category: 'Literature',
-    publishedAt: '2026-09-08T10:00:00.000Z',
-    duration: '24:18',
-    speaker: 'Editorial Desk',
-    coverImage: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&q=80&w=800',
-    isFeatured: true,
-  },
-  {
-    id: 'gandhi-murder-investigation-talk',
-    title: 'The Anatomy of an Assassination: Historical Retrospective & Inquiry',
-    excerpt: 'An investigative historical dialogue examining archival records and public trials.',
-    youtubeId: 'ysz5S6PUM-U',
-    playlist: 'Historical Inquiries',
-    category: 'History',
-    publishedAt: '2026-09-06T15:00:00.000Z',
-    duration: '38:42',
-    speaker: 'K. T. Kunhikannan & Editorial Panel',
-    coverImage: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=800',
-    isFeatured: true,
-  },
-  {
-    id: 'hindutva-india-panel',
-    title: 'Constitutional Values in Contemporary Times: An Editorial Forum',
-    excerpt: 'A critical panel dialogue exploring democratic institutions, civic freedoms, and modern challenges.',
-    youtubeId: 'jNQXAC9IVRw',
-    playlist: 'Democratic Debates',
-    category: 'Politics',
-    publishedAt: '2026-09-04T12:00:00.000Z',
-    duration: '45:10',
-    speaker: 'Damodar Prasad & K. Kannan',
-    coverImage: 'https://images.unsplash.com/photo-1541872703-74c5e44368f9?auto=format&fit=crop&q=80&w=800',
-    isFeatured: false,
-  },
-  {
-    id: 'venu-cinema-stories',
-    title: 'Behind the Lens: The Aesthetics and Craft of Cinematography',
-    excerpt: 'Veteran cinematographer Venu reflects on visual storytelling and cinematic composition.',
-    youtubeId: 'kJQP7kiw5Fk',
-    playlist: 'Cinema Conversations',
-    category: 'Cinema',
-    publishedAt: '2026-09-02T16:30:00.000Z',
-    duration: '32:05',
-    speaker: 'Venu (Cinematographer / Director)',
-    coverImage: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&q=80&w=800',
-    isFeatured: false,
-  },
-  {
-    id: 'western-ghats-ecology-doc',
-    title: 'The Western Ghats & Climate Vulnerability: Ground Reality',
-    excerpt: 'An ecological documentary analyzing rain patterns, ecological preservation, and disaster management.',
-    youtubeId: '9bZkp7q19f0',
-    playlist: 'Documentaries',
-    category: 'Environment',
-    publishedAt: '2026-08-30T14:00:00.000Z',
-    duration: '28:50',
-    speaker: 'S. P. Ravi',
-    coverImage: 'https://images.unsplash.com/photo-1511497584788-87676104235f?auto=format&fit=crop&q=80&w=800',
-    isFeatured: false,
-  },
-  {
-    id: 'grandma-stories-oral-history',
-    title: 'Folk Memory & Oral Histories: Voices Across Generations',
-    excerpt: 'Documenting village folklore, oral histories, and matrilineal accounts across eras.',
-    youtubeId: 'L_LUpnjgPso',
-    playlist: 'Oral Histories',
-    category: 'Culture',
-    publishedAt: '2026-08-25T11:00:00.000Z',
-    duration: '19:15',
-    speaker: 'Editorial Team',
-    coverImage: 'https://images.unsplash.com/photo-1516541196182-6bdb0516ed27?auto=format&fit=crop&q=80&w=800',
-    isFeatured: false,
-  },
-  {
-    id: 'editors-assembly-saniv-bhatt',
-    title: 'Justice, Liberties & The Legal Paradigm: An Editorial Discussion',
-    excerpt: 'A dialogue dissecting criminal jurisprudence and judicial reform in the modern republic.',
-    youtubeId: 'ZXsQAXx_ao0',
-    playlist: 'Democratic Debates',
-    category: 'Politics',
-    publishedAt: '2026-08-20T18:00:00.000Z',
-    duration: '41:22',
-    speaker: 'Editorial Collective',
-    coverImage: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&q=80&w=800',
-    isFeatured: false,
-  },
-];
+const videosData: VideoItem[] = [];
 
 export default function VideosPage() {
-  const isDummyHidden = process.env.NEXT_PUBLIC_HIDE_DUMMY_CONTENT === 'true';
-  const availableVideos = isDummyHidden ? [] : videosData;
+  const availableVideos = videosData;
 
   const [activeVideo, setActiveVideo] = useState<VideoItem | null>(availableVideos[0] || null);
   const [selectedPlaylist, setSelectedPlaylist] = useState<string>('All');

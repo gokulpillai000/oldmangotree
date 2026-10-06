@@ -18,7 +18,7 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: 'oldmangotree — A shade for wandering thoughts',
-  description: 'Flat-file digital webzine, long-form journalism, cinema, sports, politics, arts & culture, literature, and audio streaming.',
+  description: 'Flat-file digital webzine, long-form journalism, cinema, sports, politics, The shade, Fallen mangoes, literature, and audio streaming.',
 };
 
 export default function RootLayout({
@@ -95,7 +95,7 @@ export default function RootLayout({
                   <div className="md:col-span-4 space-y-3">
                     <Logo variant="horizontal" />
                     <p className="text-base sm:text-[17px] text-neutral-800 dark:text-neutral-200 leading-relaxed max-w-sm pt-2">
-                      An independent, fearless digital media initiative. In-depth analysis, literature, cinema, politics, sports, arts &amp; culture, podcasts, and investigative stories.
+                      An independent, fearless digital media initiative. In-depth analysis, literature, cinema, politics, sports, The shade, Fallen mangoes, podcasts, and investigative stories.
                     </p>
                   </div>
 

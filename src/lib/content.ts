@@ -21,12 +21,9 @@ const contentDirectory = path.join(process.cwd(), 'content');
 
 /**
  * DUMMY CONTENT VISIBILITY TOGGLE:
- * Set to `true` to hide dummy contents (for testing live Supabase data).
- * Set to `false` to unhide dummy contents.
- * Can also be toggled via NEXT_PUBLIC_HIDE_DUMMY_CONTENT in .env.local.
+ * Permanently set to `true` to ensure dummy/sample content is never displayed.
  */
-export const HIDE_DUMMY_CONTENT: boolean =
-  process.env.NEXT_PUBLIC_HIDE_DUMMY_CONTENT === 'true';
+export const HIDE_DUMMY_CONTENT: boolean = true;
 
 
 export interface ArticleFrontmatter {
@@ -419,12 +416,20 @@ export async function getArticleBySlug(slug: string, includeScheduled: boolean =
 export async function getArticlesByCategory(categorySlug: string, includeScheduled: boolean = false): Promise<Article[]> {
   const articles = await getAllArticles(includeScheduled);
   const target = categorySlug.toLowerCase().trim();
+  const aliasTargets =
+    target === 'fallen-mangoes' || target === 'miscellaneous' || target === 'fallen mangoes'
+      ? ['fallen-mangoes', 'fallen mangoes', 'miscellaneous']
+      : target === 'the-shade' || target === 'the shade' || target === 'arts-culture' || target === 'arts & culture' || target === 'art & culture'
+      ? ['the-shade', 'the shade', 'arts-culture', 'arts & culture', 'art & culture']
+      : [target];
+
   return articles.filter((a) => {
-    if (a.category && a.category.toLowerCase().trim() === target) return true;
+    const artCat = a.category?.toLowerCase().trim();
+    if (artCat && aliasTargets.includes(artCat)) return true;
     if (a.tags && Array.isArray(a.tags)) {
       return a.tags.some((t) => {
         const cleanTag = t.toLowerCase().trim().replace(/\s*&\s*|\s+/g, '-');
-        return cleanTag === target || t.toLowerCase().trim() === target;
+        return aliasTargets.includes(cleanTag) || aliasTargets.includes(t.toLowerCase().trim());
       });
     }
     return false;

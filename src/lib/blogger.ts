@@ -224,9 +224,19 @@ export function parseBloggerEntry(entry: BloggerEntry): Article {
   }
 
   // Category determination
-  const standardCategories = ['politics', 'cinema', 'sports', 'literature', 'media', 'society', 'environment', 'economy', 'science', 'arts & culture', 'arts-culture', 'culture'];
+  const standardCategories = ['politics', 'cinema', 'sports', 'literature', 'media', 'society', 'environment', 'economy', 'science', 'the shade', 'the-shade', 'fallen mangoes', 'fallen-mangoes', 'arts & culture', 'arts-culture', 'culture', 'miscellaneous'];
   const matchedCategory = labels.find((l) => standardCategories.includes(l.toLowerCase()));
-  const category = matchedCategory ? matchedCategory.toLowerCase().replace(/\s*&\s*|\s+/g, '-') : 'politics';
+  let category = 'politics';
+  if (matchedCategory) {
+    const norm = matchedCategory.toLowerCase();
+    if (norm === 'arts & culture' || norm === 'arts-culture' || norm === 'culture' || norm === 'the shade' || norm === 'the-shade') {
+      category = 'the-shade';
+    } else if (norm === 'miscellaneous' || norm === 'fallen mangoes' || norm === 'fallen-mangoes') {
+      category = 'fallen-mangoes';
+    } else {
+      category = norm.replace(/\s*&\s*|\s+/g, '-');
+    }
+  }
 
   // Packet & Issue tags (e.g. "Packet 1", "Packet 2", "packet-2")
   let webzineIssue: string | undefined;
