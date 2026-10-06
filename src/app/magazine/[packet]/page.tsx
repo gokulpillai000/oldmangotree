@@ -13,9 +13,11 @@ interface IssuePageProps {
 }
 
 export const revalidate = 60;
+export const dynamicParams = true;
 
 export async function generateStaticParams() {
   const issues = await getAllIssues();
+  if (issues.length === 0) return [{ packet: '_empty' }];
   return issues.map((i) => ({
     packet: i.id,
   }));
@@ -63,7 +65,7 @@ export default async function IssuePacketPage({ params }: IssuePageProps) {
 
           <div className="md:col-span-4 flex justify-center">
             <div className="relative w-48 h-64 sm:w-56 sm:h-72 overflow-hidden shadow-2xl border-2 border-white/20">
-              <Image src={issue.coverImage} alt={issue.title} fill className="object-cover" />
+              <Image src={issue.coverImage || '/images/logo-oldmangotree.jpg'} alt={issue.title} fill className="object-cover" />
             </div>
           </div>
         </div>

@@ -114,15 +114,42 @@ const videosData: VideoItem[] = [
 ];
 
 export default function VideosPage() {
-  const [activeVideo, setActiveVideo] = useState<VideoItem>(videosData[0]);
+  const isDummyHidden = process.env.NEXT_PUBLIC_HIDE_DUMMY_CONTENT === 'true';
+  const availableVideos = isDummyHidden ? [] : videosData;
+
+  const [activeVideo, setActiveVideo] = useState<VideoItem | null>(availableVideos[0] || null);
   const [selectedPlaylist, setSelectedPlaylist] = useState<string>('All');
 
-  const playlists = ['All', ...new Set(videosData.map((v) => v.playlist).filter(Boolean))] as string[];
+  const playlists = ['All', ...new Set(availableVideos.map((v) => v.playlist).filter(Boolean))] as string[];
 
   const filteredVideos =
     selectedPlaylist === 'All'
-      ? videosData
-      : videosData.filter((v) => v.playlist === selectedPlaylist);
+      ? availableVideos
+      : availableVideos.filter((v) => v.playlist === selectedPlaylist);
+
+  if (availableVideos.length === 0 || !activeVideo) {
+    return (
+      <div className="space-y-8 sm:space-y-10">
+        <header className="border-b border-neutral-200 dark:border-neutral-800 pb-6 space-y-2">
+          <div className="flex items-center gap-2 text-xs sm:text-sm font-bold uppercase tracking-widest text-[#E27A2B]">
+            <span>Videos &amp; Documentaries</span>
+          </div>
+          <h1 className="font-serif text-2xl sm:text-4xl lg:text-5xl font-bold text-neutral-900 dark:text-neutral-50 tracking-tight break-words">
+            <span className="inline-block underline decoration-[#E27A2B] underline-offset-4 decoration-2">
+              Video Essays, Documentaries &amp; Discussions
+            </span>
+          </h1>
+          <p className="text-neutral-600 dark:text-neutral-400 text-sm sm:text-base max-w-3xl leading-relaxed">
+            A curated visual platform featuring in-depth documentaries, editorial discussions, cinematic analyses, and oral histories.
+          </p>
+        </header>
+
+        <div className="py-16 text-center text-neutral-500 font-serif text-lg">
+          No video episodes published yet.
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 sm:space-y-10">
@@ -248,7 +275,7 @@ export default function VideosPage() {
             >
               <div>
                 <div className="relative aspect-video w-full overflow-hidden bg-neutral-900">
-                  {video.coverImage ? (
+                  {video.coverImage && video.coverImage.trim() !== '' ? (
                     <Image
                       src={video.coverImage}
                       alt={video.title}

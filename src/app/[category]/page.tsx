@@ -10,6 +10,8 @@ interface CategoryPageProps {
   };
 }
 
+export const dynamicParams = true;
+
 export function generateStaticParams() {
   const categories = getAllCategories();
   return categories.map((cat) => ({

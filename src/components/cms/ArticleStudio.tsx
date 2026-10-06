@@ -34,6 +34,8 @@ import {
   FileAudio,
   VolumeX,
   Users,
+  Calendar,
+  AlertCircle,
 } from 'lucide-react';
 import { RichTextEditor } from './RichTextEditor';
 import { ArticlePreviewModal } from './ArticlePreviewModal';
@@ -81,10 +83,10 @@ export function ArticleStudio({
   const [slugCustomized, setSlugCustomized] = useState(false);
   const [excerpt, setExcerpt] = useState('');
   const [contentHtml, setContentHtml] = useState('');
-  const [category, setCategory] = useState('Politics');
-  const [selectedTags, setSelectedTags] = useState<string[]>(['Politics']);
+  const [category, setCategory] = useState('');
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [customTagInput, setCustomTagInput] = useState('');
-  const [author, setAuthor] = useState(authors?.[0] || 'Akhil U Krishnan');
+  const [author, setAuthor] = useState('');
   const [localAuthors, setLocalAuthors] = useState<string[]>(
     Array.isArray(authors) && authors.length > 0 ? authors : ['Akhil U Krishnan', 'Amala Thomas']
   );
@@ -96,17 +98,20 @@ export function ArticleStudio({
       setLocalAuthors((prev) => Array.from(new Set([...(prev || []), ...authors])));
     }
   }, [authors]);
-  const [packet, setPacket] = useState('None');
+  const [packet, setPacket] = useState('');
   const [coverImage, setCoverImage] = useState('');
   const [seriesTitle, setSeriesTitle] = useState('');
   const [seriesEpisode, setSeriesEpisode] = useState('1');
+
+  // Incremented on Write New+ to force complete editor remount
+  const [editorKey, setEditorKey] = useState(0);
 
   // Format Switcher: Standard Article vs Dedicated Podcast / Audio Story
   const [isPodcastMode, setIsPodcastMode] = useState(false);
 
   // Audio & Podcast Dedicated Suite States
   const [audioUrl, setAudioUrl] = useState('');
-  const [audioSpeaker, setAudioSpeaker] = useState(authors[0] || 'Akhil U Krishnan');
+  const [audioSpeaker, setAudioSpeaker] = useState('');
   const [audioDurationSeconds, setAudioDurationSeconds] = useState<number>(0);
   const [audioFileName, setAudioFileName] = useState('');
   const [audioFileSize, setAudioFileSize] = useState('');
@@ -143,7 +148,14 @@ export function ArticleStudio({
   const [savedArticles, setSavedArticles] = useState<SupabaseArticleRecord[]>([]);
   const [loadingLibrary, setLoadingLibrary] = useState(false);
   const [librarySearch, setLibrarySearch] = useState('');
-  const [libraryFilter, setLibraryFilter] = useState<'all' | 'draft' | 'published'>('all');
+  const [libraryFilter, setLibraryFilter] = useState<'draft' | 'scheduled' | 'published'>('draft');
+
+  // Schedule Publish States
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [scheduledDateTime, setScheduledDateTime] = useState('');
+  const [isScheduling, setIsScheduling] = useState(false);
+  const [loadedArticleStatus, setLoadedArticleStatus] = useState<'draft' | 'published' | 'scheduled' | null>(null);
+  const [loadedScheduledAt, setLoadedScheduledAt] = useState<string | null>(null);
 
   // Editing Uploaded Article & Audio Date State
   const [editingArticleSlug, setEditingArticleSlug] = useState<string | null>(null);
@@ -433,6 +445,10 @@ export function ArticleStudio({
     loadSavedArticles();
   };
 
+  useEffect(() => {
+    loadSavedArticles();
+  }, []);
+
   const handleLoadArticleIntoStudio = (rec: SupabaseArticleRecord) => {
     if (confirm(`Load "${rec.title}" into the editor? Any unsaved changes in current editor will be replaced.`)) {
       setTitle(rec.title || '');
@@ -448,8 +464,16 @@ export function ArticleStudio({
       setAudioUrl(rec.audio_narration_url || '');
       setAudioDurationSeconds(rec.audio_duration_seconds || 0);
       setAudioSpeaker(rec.author_names || author);
+      setLoadedArticleStatus(rec.status);
+      setLoadedScheduledAt(rec.published_at || null);
       if (rec.published_at) {
         setAudioPublishDate(rec.published_at.split('T')[0]);
+        try {
+          const d = new Date(rec.published_at);
+          if (!isNaN(d.getTime())) {
+            setScheduledDateTime(dateToDateTimeLocalString(d));
+          }
+        } catch {}
       }
       if (rec.audio_narration_url || rec.category === 'podcast') {
         setIsPodcastMode(true);
@@ -464,8 +488,14 @@ export function ArticleStudio({
       setSeriesEpisode(rec.series_episode ? rec.series_episode.toString() : '1');
       setEditingArticleSlug(rec.slug);
       setIsLibraryOpen(false);
+      const statusLabel =
+        rec.status === 'draft'
+          ? 'Draft'
+          : rec.status === 'scheduled' || (rec.published_at && new Date(rec.published_at).getTime() > Date.now())
+          ? 'Scheduled'
+          : 'Published';
       setStatusMessage({
-        text: `Loaded "${rec.title}" into Studio for editing (${rec.status === 'draft' ? 'Draft' : 'Published'})`,
+        text: `Loaded "${rec.title}" into Studio for editing (${statusLabel})`,
         type: 'success',
       });
       setTimeout(() => setStatusMessage(null), 4000);
@@ -506,14 +536,225 @@ export function ArticleStudio({
     e.target.value = '';
   };
 
-  const handleDeleteArticle = async (delSlug: string) => {
-    if (confirm(`Are you sure you want to permanently delete article "${delSlug}" from database?`)) {
-      const ok = await deleteSupabaseArticle(delSlug);
-      if (ok) {
-        setSavedArticles((prev) => prev.filter((a) => a.slug !== delSlug));
-      } else {
-        alert('Failed to delete article.');
+  // Format date cleanly for library list
+  const formatLibraryDate = (dateStr?: string) => {
+    if (!dateStr) return 'Date unavailable';
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      return (
+        d.toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+        }) +
+        ' at ' +
+        d.toLocaleTimeString('en-US', {
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true,
+        })
+      );
+    } catch {
+      return dateStr;
+    }
+  };
+
+  // Convert Date object to YYYY-MM-DDTHH:mm for datetime-local input
+  const dateToDateTimeLocalString = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
+  // Format date for scheduled release display
+  const formatScheduledDisplay = (dateStr?: string): string => {
+    if (!dateStr) return 'Date not set';
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      return (
+        d.toLocaleDateString('en-US', {
+          weekday: 'short',
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+        }) +
+        ' at ' +
+        d.toLocaleTimeString('en-US', {
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true,
+        })
+      );
+    } catch {
+      return dateStr;
+    }
+  };
+
+  // Calculate live countdown to scheduled date
+  const getRelativeCountdown = (targetIso?: string): string => {
+    if (!targetIso) return '';
+    try {
+      const targetMs = new Date(targetIso).getTime();
+      const nowMs = Date.now();
+      const diffMs = targetMs - nowMs;
+      if (diffMs <= 0) return 'Ready to publish / Live';
+      const diffMinutes = Math.floor(diffMs / (1000 * 60));
+      const hours = Math.floor(diffMinutes / 60);
+      const mins = diffMinutes % 60;
+      const days = Math.floor(hours / 24);
+      const remHours = hours % 24;
+
+      if (days > 0) {
+        return `Goes live in ${days}d ${remHours}h`;
       }
+      if (hours > 0) {
+        return `Goes live in ${hours}h ${mins}m`;
+      }
+      return `Goes live in ${mins} mins`;
+    } catch {
+      return '';
+    }
+  };
+
+  // Article classification helpers
+  const isArticleScheduled = (a: SupabaseArticleRecord): boolean => {
+    if (a.status === 'scheduled') return true;
+    if (a.status !== 'draft' && a.published_at && new Date(a.published_at).getTime() > Date.now()) {
+      return true;
+    }
+    return false;
+  };
+
+  const isArticlePublished = (a: SupabaseArticleRecord): boolean => {
+    if (a.status === 'draft') return false;
+    if (isArticleScheduled(a)) return false;
+    return a.status === 'published' || (Boolean(a.published_at) && new Date(a.published_at!).getTime() <= Date.now());
+  };
+
+  const isCurrentlyScheduled = Boolean(
+    loadedArticleStatus === 'scheduled' ||
+    (loadedScheduledAt && new Date(loadedScheduledAt).getTime() > Date.now())
+  );
+
+  const handleOpenScheduleModal = () => {
+    if (!title.trim()) {
+      alert('Please enter an article title before scheduling.');
+      return;
+    }
+    const now = new Date();
+    const d = new Date(now.getTime() + 60 * 60 * 1000);
+    const m = d.getMinutes();
+    d.setMinutes(Math.ceil(m / 5) * 5, 0, 0);
+
+    if (loadedScheduledAt) {
+      try {
+        const existing = new Date(loadedScheduledAt);
+        if (existing.getTime() > Date.now()) {
+          setScheduledDateTime(dateToDateTimeLocalString(existing));
+          setIsScheduleModalOpen(true);
+          return;
+        }
+      } catch {}
+    }
+
+    setScheduledDateTime(dateToDateTimeLocalString(d));
+    setIsScheduleModalOpen(true);
+  };
+
+
+
+  const handleConfirmSchedule = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!scheduledDateTime) {
+      alert('Please select a scheduled date and time.');
+      return;
+    }
+    const targetDate = new Date(scheduledDateTime);
+    if (isNaN(targetDate.getTime())) {
+      alert('Invalid date format selected.');
+      return;
+    }
+    if (targetDate.getTime() <= Date.now()) {
+      alert('Scheduled date & time must be in the future. To publish immediately, use the "Publish to Site" button.');
+      return;
+    }
+
+    setIsScheduleModalOpen(false);
+    await handleSaveToDatabase('scheduled', targetDate.toISOString());
+  };
+
+  const handlePublishNow = async (targetSlug: string) => {
+    const article = savedArticles.find((a) => a.slug === targetSlug);
+    if (!article) return;
+    if (
+      !confirm(
+        `Publish "${article.title}" live right now?\n\nIt will immediately become visible to all readers across the website.`
+      )
+    ) {
+      return;
+    }
+
+    const updatedRecord: SupabaseArticleRecord = {
+      ...article,
+      status: 'published',
+      published_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    const res = await saveSupabaseArticle(updatedRecord);
+    if (res.success) {
+      setSavedArticles((prev) =>
+        prev.map((a) => (a.slug === targetSlug ? updatedRecord : a))
+      );
+      if (editingArticleSlug === targetSlug) {
+        setLoadedArticleStatus('published');
+        setLoadedScheduledAt(null);
+      }
+      setStatusMessage({
+        text: `"${article.title}" has been published live immediately!`,
+        type: 'success',
+      });
+      setTimeout(() => setStatusMessage(null), 4000);
+    } else {
+      alert(`Failed to publish article: ${res.error || 'Database error'}`);
+    }
+  };
+
+  const handleDeleteArticle = async (delSlug: string, articleTitle?: string) => {
+    const itemLabel = articleTitle ? `"${articleTitle}"` : `article "${delSlug}"`;
+
+    // 1st Confirmation
+    const firstConfirm = confirm(
+      `Are you sure you want to delete ${itemLabel}?\n\nClick OK to proceed or Cancel to keep this story.`
+    );
+    if (!firstConfirm) return;
+
+    // 2nd Confirmation (Double Confirmation requirement)
+    const secondConfirm = confirm(
+      `⚠️ FINAL CONFIRMATION (Step 2 of 2):\n\nAre you completely sure you want to permanently delete ${itemLabel} from the database?\n\nThis action CANNOT be undone.`
+    );
+    if (!secondConfirm) return;
+
+    const ok = await deleteSupabaseArticle(delSlug);
+    if (ok) {
+      setSavedArticles((prev) => prev.filter((a) => a.slug !== delSlug));
+      if (editingArticleSlug === delSlug) {
+        setEditingArticleSlug(null);
+        setLoadedArticleStatus(null);
+        setLoadedScheduledAt(null);
+      }
+      setStatusMessage({
+        text: `Permanently deleted ${itemLabel} from database.`,
+        type: 'success',
+      });
+      setTimeout(() => setStatusMessage(null), 4000);
+    } else {
+      alert(`Failed to delete ${itemLabel}. Please check your connection.`);
     }
   };
 
@@ -554,8 +795,11 @@ export function ArticleStudio({
     }
   };
 
-  // Save to Supabase Helper (Draft vs Published)
-  const handleSaveToDatabase = async (status: 'draft' | 'published') => {
+  // Save to Supabase Helper (Draft vs Scheduled vs Published)
+  const handleSaveToDatabase = async (
+    status: 'draft' | 'published' | 'scheduled',
+    customPublishAt?: string
+  ) => {
     if (!title.trim()) {
       alert('Please enter an article title first.');
       return;
@@ -564,12 +808,22 @@ export function ArticleStudio({
       alert('Please write article content or attach an audio track first.');
       return;
     }
+    if ((status === 'published' || status === 'scheduled') && !category.trim() && !isPodcastMode) {
+      alert('Please select a category for the article.');
+      return;
+    }
+    if ((status === 'published' || status === 'scheduled') && !author.trim() && !audioSpeaker.trim()) {
+      alert('Please select an author or columnist for the article.');
+      return;
+    }
 
     const finalSlug = slug.trim() || `article-${Date.now()}`;
     if (status === 'published') {
       setIsPublishing(true);
-    } else {
+    } else if (status === 'draft') {
       setIsSavingDraft(true);
+    } else {
+      setIsScheduling(true);
     }
     setStatusMessage(null);
 
@@ -580,19 +834,40 @@ export function ArticleStudio({
       if (!finalTags.includes('Audio Story')) finalTags.push('Audio Story');
     }
 
+    const effectiveCategory = isPodcastMode
+      ? 'podcast'
+      : (category.trim() || 'Uncategorized').toLowerCase().replace(/\s*&\s*|\s+/g, '-');
+
+    const effectiveAuthor = audioSpeaker.trim() || author.trim() || 'Akhil U Krishnan';
+
+    // Determine target publication timestamp
+    let publishedAtIso: string;
+    if (customPublishAt) {
+      publishedAtIso = customPublishAt;
+    } else if (status === 'scheduled') {
+      publishedAtIso = scheduledDateTime
+        ? new Date(scheduledDateTime).toISOString()
+        : new Date(Date.now() + 3600000).toISOString();
+    } else if (status === 'published') {
+      publishedAtIso = new Date().toISOString();
+    } else {
+      // draft
+      publishedAtIso = audioPublishDate ? new Date(audioPublishDate).toISOString() : new Date().toISOString();
+    }
+
     const record: SupabaseArticleRecord = {
       slug: finalSlug,
       title: title.trim(),
       excerpt: excerpt.trim(),
       content_html: contentHtml,
-      category: isPodcastMode ? 'podcast' : category.toLowerCase().replace(/\s*&\s*|\s+/g, '-'),
+      category: effectiveCategory,
       tags: finalTags,
-      authors: [audioSpeaker || author],
-      author_names: audioSpeaker || author,
+      authors: [effectiveAuthor],
+      author_names: effectiveAuthor,
       cover_image: coverImage.trim() || undefined,
       audio_narration_url: audioUrl.trim() || undefined,
       audio_duration_seconds: audioDurationSeconds || undefined,
-      webzine_issue: packet !== 'None' ? packet : undefined,
+      webzine_issue: packet && packet !== 'None' ? packet : undefined,
       is_lead_story: isLeadStory,
       is_cover: isCover,
       is_premium: isPremium,
@@ -600,29 +875,51 @@ export function ArticleStudio({
       series_title: seriesTitle.trim() || undefined,
       series_episode: seriesTitle.trim() ? parseInt(seriesEpisode, 10) || 1 : undefined,
       status,
-      published_at: audioPublishDate ? new Date(audioPublishDate).toISOString() : new Date().toISOString(),
+      published_at: publishedAtIso,
     };
 
     try {
       const res = await saveSupabaseArticle(record);
       if (res.success) {
+        setEditingArticleSlug(finalSlug);
+        setLoadedArticleStatus(status);
+        setLoadedScheduledAt(status === 'scheduled' ? publishedAtIso : null);
+
+        // Update local saved articles list
+        setSavedArticles((prev) => {
+          const existingIdx = prev.findIndex((a) => a.slug === finalSlug);
+          if (existingIdx >= 0) {
+            const updated = [...prev];
+            updated[existingIdx] = record;
+            return updated;
+          }
+          return [record, ...prev];
+        });
+
         if (status === 'published') {
           setPublishedUrl(`/articles/${finalSlug}`);
           setStatusMessage({
             text: isPodcastMode
               ? editingArticleSlug
                 ? 'Podcast episode updated successfully!'
-                : 'Podcast episode published live! Readers can now stream it on /podcasts and in the persistent player.'
+                : 'Podcast episode published live! Readers can stream it on /podcasts.'
               : editingArticleSlug
                 ? 'Article updated live on the website!'
                 : 'Article published live to website!',
             type: 'success',
           });
+        } else if (status === 'scheduled') {
+          const friendly = formatScheduledDisplay(publishedAtIso);
+          const countdown = getRelativeCountdown(publishedAtIso);
+          setStatusMessage({
+            text: `Story scheduled to go live on ${friendly} (${countdown})! Readers will see it automatically when that time arrives.`,
+            type: 'success',
+          });
         } else {
           setStatusMessage({
             text: editingArticleSlug
-              ? 'Draft updated in database!'
-              : 'Draft saved to database! You can resume it anytime.',
+              ? 'Draft updated in database! Click the Saved Drafts folder icon above to view all drafts.'
+              : 'Draft saved to database! Click the Saved Drafts folder icon above to view and resume anytime.',
             type: 'success',
           });
         }
@@ -635,6 +932,7 @@ export function ArticleStudio({
     } finally {
       setIsPublishing(false);
       setIsSavingDraft(false);
+      setIsScheduling(false);
     }
   };
 
@@ -642,20 +940,37 @@ export function ArticleStudio({
     if (confirm('Start a new blank article? Make sure to save your draft first.')) {
       setTitle('');
       setSlug('');
+      setSlugCustomized(false);
       setExcerpt('');
       setContentHtml('');
+      setCategory('');
+      setSelectedTags([]);
+      setCustomTagInput('');
+      setAuthor('');
+      setPacket('');
       setCoverImage('');
       setAudioUrl('');
+      setAudioSpeaker('');
       setAudioDurationSeconds(0);
       setAudioFileName('');
-      setSelectedTags(['Politics']);
+      setAudioFileSize('');
       setIsPodcastMode(false);
+      setSeriesTitle('');
+      setSeriesEpisode('1');
+      setIsLeadStory(false);
+      setIsCover(false);
+      setIsPremium(false);
+      setIsLongform(false);
       setEditingArticleSlug(null);
+      setLoadedArticleStatus(null);
+      setLoadedScheduledAt(null);
+      setScheduledDateTime('');
       setAudioPublishDate(new Date().toISOString().split('T')[0]);
       setPublishedUrl(null);
       setStatusMessage(null);
-      localStorage.removeItem('omt_cms_draft_v1');
       setLastSavedTime(null);
+      setEditorKey((prev) => prev + 1);
+      localStorage.removeItem('omt_cms_draft_v1');
     }
   };
 
@@ -665,9 +980,12 @@ export function ArticleStudio({
       const matchesSearch =
         a.title.toLowerCase().includes(librarySearch.toLowerCase()) ||
         a.slug.toLowerCase().includes(librarySearch.toLowerCase());
-      if (libraryFilter === 'draft') return matchesSearch && a.status === 'draft';
-      if (libraryFilter === 'published') return matchesSearch && a.status === 'published';
-      return matchesSearch;
+      if (!matchesSearch) return false;
+
+      if (libraryFilter === 'draft') return a.status === 'draft';
+      if (libraryFilter === 'scheduled') return isArticleScheduled(a);
+      if (libraryFilter === 'published') return isArticlePublished(a);
+      return true;
     });
   }, [savedArticles, librarySearch, libraryFilter]);
 
@@ -705,72 +1023,96 @@ export function ArticleStudio({
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Write New Story Button */}
+          {/* 1. Write New+ (Icon Only) */}
           <button
             type="button"
             onClick={handleClear}
-            className={`flex items-center gap-1.5 px-3 py-1.5 border text-xs font-semibold rounded transition-colors cursor-pointer ${
+            className={`p-2.5 border rounded-md transition-all cursor-pointer ${
               !editingArticleSlug
-                ? 'bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 border-neutral-300 dark:border-neutral-700 font-bold'
-                : 'bg-white dark:bg-neutral-900 text-neutral-700 dark:text-neutral-300 border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100'
+                ? 'bg-[#0C2340] text-[#E27A2B] border-[#0C2340] dark:border-[#E27A2B] shadow-xs'
+                : 'bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 border-neutral-300 dark:border-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-700'
             }`}
-            title="Start writing a new blank article"
+            title="Write New Article (Clears editor)"
+            aria-label="Write New Article"
           >
-            <Plus className="w-3.5 h-3.5 text-[#E27A2B]" />
-            <span>Write New</span>
+            <Plus className="w-5 h-5 text-[#E27A2B]" />
           </button>
 
-          {/* Edit Uploaded Story / Library Button */}
+          {/* 2. Saved Drafts & Uploaded Articles Library (Icon Only) */}
           <button
             type="button"
             onClick={handleOpenLibrary}
-            className={`flex items-center gap-1.5 px-3 py-1.5 border text-xs font-bold rounded transition-colors cursor-pointer ${
+            className={`relative p-2.5 border rounded-md transition-all cursor-pointer ${
               editingArticleSlug
                 ? 'bg-amber-100 dark:bg-amber-950/70 border-amber-400 dark:border-amber-700 text-amber-900 dark:text-amber-200 shadow-xs'
-                : 'bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 border-neutral-300 dark:border-neutral-700 text-neutral-800 dark:text-neutral-200'
+                : 'bg-white dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-700 border-neutral-300 dark:border-neutral-600 text-neutral-800 dark:text-neutral-200'
             }`}
-            title="Edit an uploaded or published article from the database"
+            title={`Saved Drafts & Articles Library (${savedArticles.length} items)`}
+            aria-label="Saved Drafts and Uploaded Articles"
           >
-            <FolderOpen className="w-3.5 h-3.5 text-[#E27A2B]" />
-            <span>Edit Uploaded ({savedArticles.length})</span>
+            <FolderOpen className="w-5 h-5 text-[#E27A2B]" />
+            {savedArticles.length > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 bg-[#E27A2B] text-white text-[10px] font-bold px-1.5 py-0.2 rounded-full shadow-xs">
+                {savedArticles.length}
+              </span>
+            )}
           </button>
 
-          {/* Upload Article File */}
+          {/* 3. Upload File (Icon Only) */}
           <button
             type="button"
             onClick={() => articleFileInputRef.current?.click()}
-            className="flex items-center gap-1.5 px-3 py-1.5 border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 text-xs font-semibold rounded transition-colors cursor-pointer"
+            className="p-2.5 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 rounded-md transition-colors cursor-pointer"
             title="Upload article file from computer (.md, .html, .txt)"
+            aria-label="Upload Article File"
           >
-            <UploadCloud className="w-3.5 h-3.5 text-[#E27A2B]" />
-            <span className="hidden sm:inline">Upload File</span>
+            <UploadCloud className="w-5 h-5 text-[#E27A2B]" />
           </button>
 
-          {/* Live Preview Button */}
+          {/* 4. Live Reader Preview (Icon Only) */}
           <button
             type="button"
             onClick={() => setIsPreviewOpen(true)}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-neutral-200 dark:bg-neutral-800 hover:bg-neutral-300 dark:hover:bg-neutral-700 text-neutral-900 dark:text-neutral-100 text-xs font-semibold rounded transition-colors cursor-pointer"
+            className="p-2.5 bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 border border-neutral-300 dark:border-neutral-600 text-neutral-900 dark:text-neutral-100 rounded-md transition-colors cursor-pointer"
+            title="Preview Article (Exact Reader View)"
+            aria-label="Preview Article"
           >
-            <Eye className="w-3.5 h-3.5 text-[#E27A2B]" />
-            <span>Preview</span>
+            <Eye className="w-5 h-5 text-[#E27A2B]" />
           </button>
 
-          {/* Save Draft Button */}
+          {/* 5. Save Draft to Database (Icon Only) */}
           <button
             type="button"
             onClick={() => handleSaveToDatabase('draft')}
-            disabled={isSavingDraft || isPublishing}
-            className="flex items-center gap-1.5 px-4 py-2 border border-neutral-300 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 text-xs font-bold rounded transition-all cursor-pointer disabled:opacity-50"
+            disabled={isSavingDraft || isPublishing || isScheduling}
+            className="p-2.5 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 rounded-md transition-all cursor-pointer disabled:opacity-50"
+            title="Save Draft to Database"
+            aria-label="Save Draft to Database"
           >
             {isSavingDraft ? (
-              <>
-                <Loader2 className="w-3.5 h-3.5 animate-spin text-[#E27A2B]" /> Saving Draft...
-              </>
+              <Loader2 className="w-5 h-5 animate-spin text-[#E27A2B]" />
             ) : (
-              <>
-                <Save className="w-3.5 h-3.5 text-neutral-600 dark:text-neutral-400" /> Save Draft
-              </>
+              <Save className="w-5 h-5 text-[#E27A2B]" />
+            )}
+          </button>
+
+          {/* 6. Schedule Publish (Icon Only) */}
+          <button
+            type="button"
+            onClick={handleOpenScheduleModal}
+            disabled={isSavingDraft || isPublishing || isScheduling}
+            className={`p-2.5 border rounded-md transition-all cursor-pointer ${
+              isCurrentlyScheduled
+                ? 'bg-blue-100 dark:bg-blue-950/70 border-blue-400 dark:border-blue-700 text-blue-900 dark:text-blue-200 shadow-xs'
+                : 'border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200'
+            }`}
+            title="Schedule Publish (Set automated future release date & time)"
+            aria-label="Schedule Publish"
+          >
+            {isScheduling ? (
+              <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+            ) : (
+              <Calendar className="w-5 h-5 text-[#E27A2B]" />
             )}
           </button>
 
@@ -778,7 +1120,7 @@ export function ArticleStudio({
           <button
             type="button"
             onClick={() => handleSaveToDatabase('published')}
-            disabled={isPublishing || isSavingDraft}
+            disabled={isPublishing || isSavingDraft || isScheduling}
             className="flex items-center gap-2 px-5 py-2 bg-[#E27A2B] hover:bg-[#d46a1d] active:scale-95 text-white text-xs sm:text-sm font-bold rounded-xs shadow-md uppercase tracking-wider transition-all disabled:opacity-50 cursor-pointer"
           >
             {isPublishing ? (
@@ -794,8 +1136,44 @@ export function ArticleStudio({
         </div>
       </div>
 
+      {/* Scheduled Story Notification Banner */}
+      {isCurrentlyScheduled && (
+        <div className="p-4 bg-blue-50 border-2 border-blue-300 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm animate-in fade-in shadow-2xs">
+          <div className="flex items-center gap-2.5">
+            <Clock className="w-5 h-5 text-blue-600 shrink-0" />
+            <div>
+              <span className="font-black text-blue-950 uppercase tracking-wide">
+                Scheduled Story:
+              </span>{' '}
+              <span className="font-bold text-blue-900">
+                Goes live on {formatScheduledDisplay(scheduledDateTime || loadedScheduledAt || '')}{' '}
+                <span className="text-blue-700 font-extrabold">
+                  ({getRelativeCountdown(scheduledDateTime || loadedScheduledAt || '')})
+                </span>
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={handleOpenScheduleModal}
+              className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs uppercase rounded-lg shadow-xs cursor-pointer transition-colors"
+            >
+              Reschedule
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSaveToDatabase('published')}
+              className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs uppercase rounded-lg shadow-xs cursor-pointer transition-colors"
+            >
+              Publish Now
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Editing Uploaded Story Notification Banner */}
-      {editingArticleSlug && (
+      {editingArticleSlug && !isCurrentlyScheduled && (
         <div className="p-3.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 rounded flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs animate-in fade-in">
           <div className="flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-[#E27A2B] shrink-0" />
@@ -1280,10 +1658,8 @@ export function ArticleStudio({
 
             {/* Rich Text Editor */}
             <div>
-              <div className="text-xs font-mono text-neutral-500 mb-1 px-1">
-                <span>Article Body:</span>
-              </div>
               <RichTextEditor
+                key={editorKey}
                 content={contentHtml}
                 onChange={(html) => setContentHtml(html)}
                 placeholder="Compose your story here..."
@@ -1362,21 +1738,21 @@ export function ArticleStudio({
             </div>
           </div>
 
-          {/* 2. Categories & Multi-Tag Taxonomy Card (Large, Clear, Easy to Read) */}
-          <div className="p-5 sm:p-6 bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded shadow-xs space-y-4.5 text-xs">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-neutral-900 dark:text-neutral-100 border-b border-neutral-200 dark:border-neutral-800 pb-2.5 flex items-center justify-between">
+          {/* 2. Categories & Multi-Tag Taxonomy Card (High Visibility & Legibility) */}
+          <div className="p-5 sm:p-6 bg-white dark:bg-neutral-900 border-2 border-neutral-300 dark:border-neutral-700 rounded-lg shadow-xs space-y-5">
+            <h3 className="text-sm sm:text-base font-bold uppercase tracking-wider text-neutral-900 dark:text-neutral-100 border-b border-neutral-200 dark:border-neutral-800 pb-2.5 flex items-center justify-between">
               <span className="flex items-center gap-2">
                 <Tag className="w-4 h-4 text-[#E27A2B]" />
                 <span>Categories &amp; Tags</span>
               </span>
-              <span className="text-xs text-neutral-500 font-mono font-bold bg-neutral-100 dark:bg-neutral-800 px-2 py-0.5 rounded">
+              <span className="text-xs sm:text-sm text-neutral-700 dark:text-neutral-300 font-mono font-bold bg-neutral-100 dark:bg-neutral-800 px-2 py-0.5 rounded border border-neutral-200 dark:border-neutral-700">
                 {selectedTags.length} active
               </span>
             </h3>
 
             {/* Primary Category Selector */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider text-neutral-700 dark:text-neutral-300 block">
+              <label className="text-xs sm:text-sm font-bold uppercase tracking-wider text-neutral-900 dark:text-neutral-100 block">
                 Primary Category
               </label>
               <select
@@ -1384,12 +1760,13 @@ export function ArticleStudio({
                 onChange={(e) => {
                   const val = e.target.value;
                   setCategory(val);
-                  if (!selectedTags.includes(val)) {
+                  if (val && !selectedTags.includes(val)) {
                     setSelectedTags([val, ...selectedTags]);
                   }
                 }}
-                className="w-full px-3.5 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100 rounded text-sm font-semibold focus:ring-1 focus:ring-[#E27A2B]"
+                className="w-full px-3.5 py-2.5 bg-white dark:bg-neutral-800 border-2 border-neutral-300 dark:border-neutral-600 text-neutral-900 dark:text-neutral-100 rounded-md text-sm sm:text-base font-bold focus:ring-1 focus:ring-[#E27A2B] focus:border-[#E27A2B]"
               >
+                <option value="">-- Select Category --</option>
                 {STANDARD_CATEGORIES.map((cat) => (
                   <option key={cat} value={cat}>
                     {cat}
@@ -1400,17 +1777,17 @@ export function ArticleStudio({
 
             {/* Active Selected Tags Display */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider text-neutral-700 dark:text-neutral-300 block">
+              <label className="text-xs sm:text-sm font-bold uppercase tracking-wider text-neutral-900 dark:text-neutral-100 block">
                 Selected Story Tags
               </label>
-              <div className="flex flex-wrap gap-2 min-h-[38px] p-2.5 bg-neutral-50 dark:bg-neutral-800/60 border border-neutral-200 dark:border-neutral-700 rounded">
+              <div className="flex flex-wrap gap-2 min-h-[42px] p-2.5 bg-neutral-50 dark:bg-neutral-800/80 border-2 border-neutral-200 dark:border-neutral-700 rounded-md">
                 {selectedTags.length === 0 ? (
-                  <span className="text-neutral-400 italic text-xs">No tags selected yet. Click pills below or add custom.</span>
+                  <span className="text-neutral-500 italic text-xs sm:text-sm py-1">No tags selected yet. Click pills below or add custom.</span>
                 ) : (
                   selectedTags.map((t) => (
                     <span
                       key={t}
-                      className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#0C2340] text-white dark:bg-[#E27A2B] text-xs font-bold rounded shadow-xs"
+                      className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#0C2340] text-white dark:bg-[#E27A2B] text-xs sm:text-sm font-bold rounded shadow-xs"
                     >
                       <span>{t}</span>
                       <button
@@ -1429,7 +1806,7 @@ export function ArticleStudio({
 
             {/* Quick Toggle Standard Presets */}
             <div className="space-y-2">
-              <label className="text-xs font-bold uppercase tracking-wider text-neutral-700 dark:text-neutral-300 block">
+              <label className="text-xs sm:text-sm font-bold uppercase tracking-wider text-neutral-900 dark:text-neutral-100 block">
                 Quick Category Presets (Click to toggle):
               </label>
               <div className="flex flex-wrap gap-1.5">
@@ -1440,10 +1817,10 @@ export function ArticleStudio({
                       key={cat}
                       type="button"
                       onClick={() => toggleTag(cat)}
-                      className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all cursor-pointer border ${
+                      className={`px-3 py-1.5 text-xs sm:text-sm font-bold rounded-md transition-all cursor-pointer border-2 ${
                         isSelected
-                          ? 'bg-[#E27A2B] text-white border-[#E27A2B] font-bold shadow-xs'
-                          : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 border-neutral-300 dark:border-neutral-700 hover:border-[#E27A2B]'
+                          ? 'bg-[#E27A2B] text-white border-[#E27A2B] shadow-xs'
+                          : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 border-neutral-300 dark:border-neutral-600 hover:border-[#E27A2B]'
                       }`}
                     >
                       {cat}
@@ -1455,7 +1832,7 @@ export function ArticleStudio({
 
             {/* Add Custom Tag Form */}
             <form onSubmit={handleAddCustomTag} className="space-y-1.5 pt-1">
-              <label className="text-xs font-bold uppercase tracking-wider text-neutral-700 dark:text-neutral-300 block">
+              <label className="text-xs sm:text-sm font-bold uppercase tracking-wider text-neutral-900 dark:text-neutral-100 block">
                 Add Custom Tag
               </label>
               <div className="flex gap-2">
@@ -1464,11 +1841,11 @@ export function ArticleStudio({
                   value={customTagInput}
                   onChange={(e) => setCustomTagInput(e.target.value)}
                   placeholder="e.g. Kerala Elections, Memoir..."
-                  className="flex-1 px-3 py-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100 rounded text-xs focus:ring-1 focus:ring-[#E27A2B]"
+                  className="flex-1 px-3 py-2 bg-neutral-50 dark:bg-neutral-800 border-2 border-neutral-300 dark:border-neutral-600 text-neutral-900 dark:text-neutral-100 rounded-md text-xs sm:text-sm font-medium focus:ring-1 focus:ring-[#E27A2B]"
                 />
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-neutral-200 dark:bg-neutral-800 hover:bg-neutral-300 dark:hover:bg-neutral-700 text-neutral-900 dark:text-neutral-100 font-bold rounded text-xs cursor-pointer transition-colors"
+                  className="px-4 py-2 bg-[#0C2340] text-white hover:bg-[#123157] font-bold rounded-md text-xs sm:text-sm cursor-pointer transition-colors"
                 >
                   + Add
                 </button>
@@ -1477,8 +1854,8 @@ export function ArticleStudio({
           </div>
 
           {/* 3. Byline, Webzine Issue Packet & URL Slug Card */}
-          <div className="p-5 sm:p-6 bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded shadow-xs space-y-4.5 text-xs">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-neutral-900 dark:text-neutral-100 border-b border-neutral-200 dark:border-neutral-800 pb-2.5 flex items-center gap-2">
+          <div className="p-5 sm:p-6 bg-white dark:bg-neutral-900 border-2 border-neutral-300 dark:border-neutral-700 rounded-lg shadow-xs space-y-5">
+            <h3 className="text-sm sm:text-base font-bold uppercase tracking-wider text-neutral-900 dark:text-neutral-100 border-b border-neutral-200 dark:border-neutral-800 pb-2.5 flex items-center gap-2">
               <User className="w-4 h-4 text-[#E27A2B]" />
               <span>Byline, Issue Packet &amp; Slug</span>
             </h3>
@@ -1486,13 +1863,13 @@ export function ArticleStudio({
             {/* Primary Author / Columnist */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <label className="block text-xs font-bold uppercase tracking-wider text-neutral-700 dark:text-neutral-300">
+                <label className="block text-xs sm:text-sm font-bold uppercase tracking-wider text-neutral-900 dark:text-neutral-100">
                   Primary Author / Columnist
                 </label>
                 <button
                   type="button"
                   onClick={() => setIsAddingAuthorModalOpen(true)}
-                  className="text-xs text-[#E27A2B] hover:underline font-bold cursor-pointer flex items-center gap-1"
+                  className="text-xs sm:text-sm text-[#E27A2B] hover:underline font-bold cursor-pointer flex items-center gap-1"
                 >
                   + Add New Author
                 </button>
@@ -1507,8 +1884,9 @@ export function ArticleStudio({
                     setAudioSpeaker(e.target.value);
                   }
                 }}
-                className="w-full px-3.5 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100 rounded text-sm font-semibold focus:ring-1 focus:ring-[#E27A2B]"
+                className="w-full px-3.5 py-2.5 bg-white dark:bg-neutral-800 border-2 border-neutral-300 dark:border-neutral-600 text-neutral-900 dark:text-neutral-100 rounded-md text-sm sm:text-base font-bold focus:ring-1 focus:ring-[#E27A2B]"
               >
+                <option value="">-- Select Author / Columnist --</option>
                 <optgroup label="Registered Authors">
                   {localAuthors.map((auth) => (
                     <option key={auth} value={auth}>
@@ -1525,14 +1903,14 @@ export function ArticleStudio({
             {/* Webzine Issue Packet Selector */}
             <div className="space-y-1.5 pt-1">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-bold uppercase tracking-wider text-neutral-700 dark:text-neutral-300 flex items-center gap-1.5">
+                <label className="text-xs sm:text-sm font-bold uppercase tracking-wider text-neutral-900 dark:text-neutral-100 flex items-center gap-1.5">
                   <BookOpen className="w-3.5 h-3.5 text-[#E27A2B]" />
                   <span>Webzine Issue Packet</span>
                 </label>
                 <button
                   type="button"
                   onClick={() => setIsAddingPacket(!isAddingPacket)}
-                  className="text-xs text-[#E27A2B] hover:underline font-bold cursor-pointer"
+                  className="text-xs sm:text-sm text-[#E27A2B] hover:underline font-bold cursor-pointer"
                 >
                   {isAddingPacket ? 'Cancel' : '+ New Packet'}
                 </button>
@@ -1545,7 +1923,7 @@ export function ArticleStudio({
                     placeholder="e.g. Packet 4 or Monsoon 2026..."
                     value={newPacketName}
                     onChange={(e) => setNewPacketName(e.target.value)}
-                    className="flex-1 px-3 py-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100 rounded text-xs"
+                    className="flex-1 px-3 py-2 bg-neutral-50 dark:bg-neutral-800 border-2 border-neutral-300 dark:border-neutral-600 text-neutral-900 dark:text-neutral-100 rounded-md text-xs sm:text-sm font-medium"
                   />
                   <button
                     type="button"
@@ -1561,7 +1939,7 @@ export function ArticleStudio({
                         setIsAddingPacket(false);
                       }
                     }}
-                    className="px-4 py-2 bg-[#0C2340] text-white dark:bg-[#E27A2B] rounded font-bold text-xs cursor-pointer"
+                    className="px-4 py-2 bg-[#0C2340] text-white dark:bg-[#E27A2B] rounded-md font-bold text-xs sm:text-sm cursor-pointer"
                   >
                     Add
                   </button>
@@ -1570,9 +1948,9 @@ export function ArticleStudio({
                 <select
                   value={packet}
                   onChange={(e) => setPacket(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100 rounded text-sm font-semibold focus:ring-1 focus:ring-[#E27A2B]"
+                  className="w-full px-3.5 py-2.5 bg-white dark:bg-neutral-800 border-2 border-neutral-300 dark:border-neutral-600 text-neutral-900 dark:text-neutral-100 rounded-md text-sm sm:text-base font-semibold focus:ring-1 focus:ring-[#E27A2B]"
                 >
-                  <option value="None">None (General Feed)</option>
+                  <option value="">-- None (General Feed) --</option>
                   {packets.map((pkt) => (
                     <option key={pkt} value={pkt}>
                       {pkt}
@@ -1580,14 +1958,14 @@ export function ArticleStudio({
                   ))}
                 </select>
               )}
-              <p className="text-xs text-neutral-500">
-                Articles assigned to a packet are bundled in the Webzine reader edition at <span className="font-mono text-[#E27A2B]">/webzine</span>.
+              <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 font-medium">
+                Articles assigned to a packet are bundled in the Webzine reader edition at <span className="font-mono text-[#E27A2B] font-bold">/magazine</span>.
               </p>
             </div>
 
             {/* URL Slug */}
             <div className="space-y-1.5 pt-1">
-              <label className="text-xs font-bold uppercase tracking-wider text-neutral-700 dark:text-neutral-300 block">
+              <label className="text-xs sm:text-sm font-bold uppercase tracking-wider text-neutral-900 dark:text-neutral-100 block">
                 URL Slug (Web address)
               </label>
               <input
@@ -1598,14 +1976,14 @@ export function ArticleStudio({
                   setSlugCustomized(true);
                 }}
                 placeholder="article-url-slug"
-                className="w-full px-3.5 py-2 font-mono text-xs bg-neutral-50 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100 rounded focus:ring-1 focus:ring-[#E27A2B]"
+                className="w-full px-3.5 py-2 font-mono text-xs sm:text-sm bg-neutral-50 dark:bg-neutral-800 border-2 border-neutral-300 dark:border-neutral-600 text-neutral-900 dark:text-neutral-100 rounded-md focus:ring-1 focus:ring-[#E27A2B]"
               />
             </div>
           </div>
 
           {/* 4. Special Series & Editorial Flags Card */}
-          <div className="p-5 sm:p-6 bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded shadow-xs space-y-4.5 text-xs">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-neutral-900 dark:text-neutral-100 border-b border-neutral-200 dark:border-neutral-800 pb-2.5 flex items-center justify-between">
+          <div className="p-5 sm:p-6 bg-white dark:bg-neutral-900 border-2 border-neutral-300 dark:border-neutral-700 rounded-lg shadow-xs space-y-5">
+            <h3 className="text-sm sm:text-base font-bold uppercase tracking-wider text-neutral-900 dark:text-neutral-100 border-b border-neutral-200 dark:border-neutral-800 pb-2.5 flex items-center justify-between">
               <span className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-[#E27A2B]" />
                 <span>Special Series &amp; Placement</span>
@@ -1613,15 +1991,15 @@ export function ArticleStudio({
             </h3>
 
             {/* Dedicated Multi-Part Series Builder */}
-            <div className="p-3.5 bg-neutral-50 dark:bg-neutral-800/50 rounded border border-neutral-200 dark:border-neutral-700 space-y-2.5">
+            <div className="p-4 bg-neutral-50 dark:bg-neutral-800/60 rounded-md border-2 border-neutral-200 dark:border-neutral-700 space-y-3">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-bold uppercase tracking-wider text-neutral-800 dark:text-neutral-200 block">
+                <label className="text-xs sm:text-sm font-bold uppercase tracking-wider text-neutral-900 dark:text-neutral-100 block">
                   📚 Multi-Part Special Series
                 </label>
-                <span className="text-[11px] font-mono text-[#E27A2B] font-bold">Series Hub</span>
+                <span className="text-xs font-mono text-[#E27A2B] font-bold">Series Hub</span>
               </div>
-              <p className="text-xs text-neutral-600 dark:text-neutral-400">
-                Articles with a Series Title are automatically cataloged under <span className="font-mono text-[#E27A2B]">/series</span> in sequential episode order.
+              <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 font-medium">
+                Articles with a Series Title are cataloged under <span className="font-mono text-[#E27A2B] font-bold">/series</span> in sequential episode order.
               </p>
 
               <div className="space-y-2">
@@ -1630,12 +2008,12 @@ export function ArticleStudio({
                   placeholder="Series Title (e.g. Paleri Memoirs)..."
                   value={seriesTitle}
                   onChange={(e) => setSeriesTitle(e.target.value)}
-                  className="w-full px-3 py-2 bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100 rounded text-xs focus:ring-1 focus:ring-[#E27A2B]"
+                  className="w-full px-3 py-2 bg-white dark:bg-neutral-900 border-2 border-neutral-300 dark:border-neutral-600 text-neutral-900 dark:text-neutral-100 rounded-md text-xs sm:text-sm font-medium focus:ring-1 focus:ring-[#E27A2B]"
                 />
 
                 {seriesTitle && (
                   <div className="flex items-center gap-2.5 pt-1">
-                    <span className="text-xs font-bold text-neutral-700 dark:text-neutral-300">
+                    <span className="text-xs sm:text-sm font-bold text-neutral-800 dark:text-neutral-200">
                       Episode / Part:
                     </span>
                     <input
@@ -1643,7 +2021,7 @@ export function ArticleStudio({
                       min="1"
                       value={seriesEpisode}
                       onChange={(e) => setSeriesEpisode(e.target.value)}
-                      className="w-24 px-3 py-1.5 bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100 rounded text-xs font-mono font-bold"
+                      className="w-24 px-3 py-1.5 bg-white dark:bg-neutral-900 border-2 border-neutral-300 dark:border-neutral-600 text-neutral-900 dark:text-neutral-100 rounded-md text-xs sm:text-sm font-mono font-bold"
                     />
                   </div>
                 )}
@@ -1652,49 +2030,49 @@ export function ArticleStudio({
 
             {/* Editorial Placement Flags */}
             <div className="space-y-2 pt-1">
-              <label className="text-xs font-bold uppercase tracking-wider text-neutral-700 dark:text-neutral-300 block">
+              <label className="text-xs sm:text-sm font-bold uppercase tracking-wider text-neutral-900 dark:text-neutral-100 block">
                 Editorial Display Flags
               </label>
 
               <div className="grid grid-cols-2 gap-2.5">
-                <label className="flex items-center gap-2.5 cursor-pointer p-2 bg-neutral-50 dark:bg-neutral-800/60 hover:bg-neutral-100 dark:hover:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded transition-colors">
+                <label className="flex items-center gap-2.5 cursor-pointer p-2.5 bg-neutral-50 dark:bg-neutral-800/60 hover:bg-neutral-100 dark:hover:bg-neutral-800 border-2 border-neutral-200 dark:border-neutral-700 rounded-md transition-colors">
                   <input
                     type="checkbox"
                     checked={isLeadStory}
                     onChange={(e) => setIsLeadStory(e.target.checked)}
                     className="accent-[#E27A2B] w-4 h-4 cursor-pointer"
                   />
-                  <span className="text-xs font-bold text-neutral-800 dark:text-neutral-200">Lead Story</span>
+                  <span className="text-xs sm:text-sm font-bold text-neutral-900 dark:text-neutral-100">Lead Story</span>
                 </label>
 
-                <label className="flex items-center gap-2.5 cursor-pointer p-2 bg-neutral-50 dark:bg-neutral-800/60 hover:bg-neutral-100 dark:hover:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded transition-colors">
+                <label className="flex items-center gap-2.5 cursor-pointer p-2.5 bg-neutral-50 dark:bg-neutral-800/60 hover:bg-neutral-100 dark:hover:bg-neutral-800 border-2 border-neutral-200 dark:border-neutral-700 rounded-md transition-colors">
                   <input
                     type="checkbox"
                     checked={isCover}
                     onChange={(e) => setIsCover(e.target.checked)}
                     className="accent-[#E27A2B] w-4 h-4 cursor-pointer"
                   />
-                  <span className="text-xs font-bold text-neutral-800 dark:text-neutral-200">Issue Cover</span>
+                  <span className="text-xs sm:text-sm font-bold text-neutral-900 dark:text-neutral-100">Issue Cover</span>
                 </label>
 
-                <label className="flex items-center gap-2.5 cursor-pointer p-2 bg-neutral-50 dark:bg-neutral-800/60 hover:bg-neutral-100 dark:hover:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded transition-colors">
+                <label className="flex items-center gap-2.5 cursor-pointer p-2.5 bg-neutral-50 dark:bg-neutral-800/60 hover:bg-neutral-100 dark:hover:bg-neutral-800 border-2 border-neutral-200 dark:border-neutral-700 rounded-md transition-colors">
                   <input
                     type="checkbox"
                     checked={isPremium}
                     onChange={(e) => setIsPremium(e.target.checked)}
                     className="accent-[#E27A2B] w-4 h-4 cursor-pointer"
                   />
-                  <span className="text-xs font-bold text-neutral-800 dark:text-neutral-200">Premium Story</span>
+                  <span className="text-xs sm:text-sm font-bold text-neutral-900 dark:text-neutral-100">Premium Story</span>
                 </label>
 
-                <label className="flex items-center gap-2.5 cursor-pointer p-2 bg-neutral-50 dark:bg-neutral-800/60 hover:bg-neutral-100 dark:hover:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded transition-colors">
+                <label className="flex items-center gap-2.5 cursor-pointer p-2.5 bg-neutral-50 dark:bg-neutral-800/60 hover:bg-neutral-100 dark:hover:bg-neutral-800 border-2 border-neutral-200 dark:border-neutral-700 rounded-md transition-colors">
                   <input
                     type="checkbox"
                     checked={isLongform}
                     onChange={(e) => setIsLongform(e.target.checked)}
                     className="accent-[#E27A2B] w-4 h-4 cursor-pointer"
                   />
-                  <span className="text-xs font-bold text-neutral-800 dark:text-neutral-200">Longform Essay</span>
+                  <span className="text-xs sm:text-sm font-bold text-neutral-900 dark:text-neutral-100">Longform Essay</span>
                 </label>
               </div>
             </div>
@@ -1718,150 +2096,267 @@ export function ArticleStudio({
         packet={packet}
       />
 
-      {/* Saved Articles & Drafts Library Modal */}
+      {/* Saved Articles & Drafts Library Modal (Solid Light Theme, Large & Bold Legibility) */}
       {isLibraryOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
-          <div className="w-full max-w-3xl max-h-[85vh] bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 shadow-2xl rounded p-6 flex flex-col space-y-4 animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 pb-3">
-              <div className="flex items-center gap-2">
-                <FolderOpen className="w-5 h-5 text-[#E27A2B]" />
-                <h3 className="font-serif text-lg font-bold text-neutral-900 dark:text-neutral-50">
-                  Article &amp; Drafts Library
-                </h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs animate-in fade-in">
+          <div className="w-full max-w-4xl max-h-[88vh] bg-white border-2 border-neutral-300 shadow-2xl rounded-2xl p-6 sm:p-8 flex flex-col space-y-6 text-neutral-900">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b-2 border-neutral-200 pb-5">
+              <div className="flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-2xl bg-[#0C2340] text-[#E27A2B] flex items-center justify-center border-2 border-[#E27A2B]/40 shadow-xs shrink-0">
+                  <FolderOpen className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="font-serif text-2xl sm:text-3xl font-black text-neutral-950 tracking-tight">
+                    Drafts &amp; Published Stories Library
+                  </h3>
+                  <p className="text-sm sm:text-base font-bold text-neutral-700 font-sans mt-0.5">
+                    Switch between your drafts and published stories. Click &ldquo;Load to Editor&rdquo; to resume writing.
+                  </p>
+                </div>
               </div>
               <button
                 type="button"
                 onClick={() => setIsLibraryOpen(false)}
-                className="text-neutral-400 hover:text-neutral-700 cursor-pointer"
+                className="p-2.5 text-neutral-400 hover:text-neutral-950 hover:bg-neutral-100 cursor-pointer rounded-xl transition-colors"
+                aria-label="Close Library"
               >
-                <X className="w-5 h-5" />
+                <X className="w-6 h-6" />
               </button>
             </div>
 
-            {/* Filter & Search Controls */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => setLibraryFilter('all')}
-                  className={`px-3 py-1 font-bold rounded ${
-                    libraryFilter === 'all'
-                      ? 'bg-[#0C2340] text-white dark:bg-[#E27A2B]'
-                      : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600'
-                  }`}
-                >
-                  All ({savedArticles.length})
-                </button>
+            {/* Filter Tabs & Search Bar (Drafts, Scheduled, Published - Solid Light Theme) */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-2 p-1.5 bg-neutral-100 rounded-xl border-2 border-neutral-200 flex-wrap sm:flex-nowrap">
                 <button
                   type="button"
                   onClick={() => setLibraryFilter('draft')}
-                  className={`px-3 py-1 font-bold rounded ${
+                  className={`px-4 sm:px-5 py-2.5 font-extrabold text-sm sm:text-base rounded-lg transition-all cursor-pointer flex items-center gap-2 ${
                     libraryFilter === 'draft'
-                      ? 'bg-amber-600 text-white'
-                      : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600'
+                      ? 'bg-[#0C2340] text-[#E27A2B] border-2 border-[#E27A2B]/50 shadow-sm'
+                      : 'text-neutral-700 hover:text-neutral-950 hover:bg-neutral-200/60'
                   }`}
                 >
-                  Drafts ({savedArticles.filter((a) => a.status === 'draft').length})
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0"></span>
+                  <span>Drafts</span>
+                  <span className="px-2 py-0.5 text-xs sm:text-sm font-mono rounded-full bg-amber-500/20 text-amber-800 font-bold">
+                    {savedArticles.filter((a) => a.status === 'draft').length}
+                  </span>
                 </button>
+
+                <button
+                  type="button"
+                  onClick={() => setLibraryFilter('scheduled')}
+                  className={`px-4 sm:px-5 py-2.5 font-extrabold text-sm sm:text-base rounded-lg transition-all cursor-pointer flex items-center gap-2 ${
+                    libraryFilter === 'scheduled'
+                      ? 'bg-[#0C2340] text-[#E27A2B] border-2 border-[#E27A2B]/50 shadow-sm'
+                      : 'text-neutral-700 hover:text-neutral-950 hover:bg-neutral-200/60'
+                  }`}
+                >
+                  <span className="w-2.5 h-2.5 rounded-full bg-blue-500 shrink-0"></span>
+                  <span>Scheduled</span>
+                  <span className="px-2 py-0.5 text-xs sm:text-sm font-mono rounded-full bg-blue-500/20 text-blue-800 font-bold">
+                    {savedArticles.filter(isArticleScheduled).length}
+                  </span>
+                </button>
+
                 <button
                   type="button"
                   onClick={() => setLibraryFilter('published')}
-                  className={`px-3 py-1 font-bold rounded ${
+                  className={`px-4 sm:px-5 py-2.5 font-extrabold text-sm sm:text-base rounded-lg transition-all cursor-pointer flex items-center gap-2 ${
                     libraryFilter === 'published'
-                      ? 'bg-emerald-600 text-white'
-                      : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600'
+                      ? 'bg-[#0C2340] text-[#E27A2B] border-2 border-[#E27A2B]/50 shadow-sm'
+                      : 'text-neutral-700 hover:text-neutral-950 hover:bg-neutral-200/60'
                   }`}
                 >
-                  Published ({savedArticles.filter((a) => a.status === 'published').length})
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
+                  <span>Published</span>
+                  <span className="px-2 py-0.5 text-xs sm:text-sm font-mono rounded-full bg-emerald-500/20 text-emerald-800 font-bold">
+                    {savedArticles.filter(isArticlePublished).length}
+                  </span>
                 </button>
               </div>
 
               <div className="relative">
-                <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400" />
+                <Search className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400" />
                 <input
                   type="text"
-                  placeholder="Search articles..."
+                  placeholder={
+                    libraryFilter === 'draft'
+                      ? 'Search drafts...'
+                      : libraryFilter === 'scheduled'
+                      ? 'Search scheduled...'
+                      : 'Search published...'
+                  }
                   value={librarySearch}
                   onChange={(e) => setLibrarySearch(e.target.value)}
-                  className="pl-8 pr-3 py-1.5 text-xs bg-neutral-50 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded w-full sm:w-56"
+                  className="pl-11 pr-4 py-2.5 text-sm sm:text-base bg-white border-2 border-neutral-300 rounded-xl w-full sm:w-72 focus:border-[#E27A2B] focus:outline-none text-neutral-950 placeholder-neutral-500 font-semibold shadow-2xs transition-all"
                 />
               </div>
             </div>
 
-            {/* Articles List */}
-            <div className="flex-1 overflow-y-auto divide-y divide-neutral-200 dark:divide-neutral-800 min-h-[300px]">
+            {/* Stories List (Solid Light Theme, Large Text, Clear Dates & Thickness) */}
+            <div className="flex-1 overflow-y-auto space-y-3.5 min-h-[320px] pr-1">
               {loadingLibrary ? (
-                <div className="py-12 text-center text-xs text-neutral-500 flex items-center justify-center gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin text-[#E27A2B]" /> Loading articles...
+                <div className="py-20 text-center text-base text-neutral-600 font-bold flex items-center justify-center gap-3">
+                  <Loader2 className="w-6 h-6 animate-spin text-[#E27A2B]" />
+                  <span>Loading library stories...</span>
                 </div>
               ) : filteredLibrary.length === 0 ? (
-                <div className="py-12 text-center text-xs text-neutral-500">
-                  No articles or drafts found.
+                <div className="py-20 text-center text-neutral-600 space-y-3">
+                  <div className="w-14 h-14 mx-auto rounded-2xl bg-neutral-100 flex items-center justify-center text-neutral-400">
+                    <FolderOpen className="w-7 h-7" />
+                  </div>
+                  <p className="font-black text-lg text-neutral-900">
+                    {libraryFilter === 'draft'
+                      ? 'No saved drafts found.'
+                      : libraryFilter === 'scheduled'
+                      ? 'No scheduled stories found.'
+                      : 'No published stories found.'}
+                  </p>
+                  <p className="text-sm font-medium text-neutral-600 max-w-md mx-auto leading-relaxed">
+                    {libraryFilter === 'draft'
+                      ? 'Click the Save Draft icon in the top toolbar to store your work in progress. It will appear here with the exact saved date.'
+                      : libraryFilter === 'scheduled'
+                      ? 'Click the Calendar icon in the top toolbar to schedule a future release date & time. It will appear here with a live countdown.'
+                      : 'Articles and podcast episodes you publish will appear here with live publication dates.'}
+                  </p>
                 </div>
               ) : (
-                filteredLibrary.map((rec) => (
-                  <div
-                    key={rec.slug}
-                    className="py-3 flex items-center justify-between gap-3 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 px-2 rounded transition-colors"
-                  >
-                    <div className="min-w-0 space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={`px-2 py-0.5 text-[10px] font-bold uppercase rounded ${
-                            rec.status === 'draft'
-                              ? 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800'
-                              : 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800'
-                          }`}
-                        >
-                          {rec.status}
-                        </span>
-                        <h4 className="font-serif font-bold text-sm text-neutral-900 dark:text-neutral-50 truncate">
-                          {rec.title}
-                        </h4>
-                        {rec.audio_narration_url && (
-                          <span className="text-[10px] font-bold text-[#E27A2B] bg-amber-50 dark:bg-neutral-800 px-1.5 py-0.5 rounded flex items-center gap-0.5">
-                            <Volume2 className="w-3 h-3" /> Audio
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-[11px] text-neutral-500 flex items-center gap-2 font-mono">
-                        <span>slug: /{rec.slug}</span>
-                        <span>•</span>
-                        <span>{rec.author_names || 'Akhil U Krishnan'}</span>
-                        <span>•</span>
-                        <span>{new Date(rec.updated_at || rec.published_at || '').toLocaleDateString()}</span>
-                      </div>
-                    </div>
+                filteredLibrary.map((rec) => {
+                  const isScheduled = isArticleScheduled(rec);
+                  const isPublished = isArticlePublished(rec);
+                  const dateToDisplay =
+                    rec.status === 'draft'
+                      ? rec.updated_at || rec.published_at || rec.created_at
+                      : rec.published_at || rec.updated_at || rec.created_at;
 
-                    <div className="flex items-center gap-2 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => handleLoadArticleIntoStudio(rec)}
-                        className="px-3 py-1.5 bg-[#0C2340] hover:bg-[#123157] text-[#E27A2B] text-xs font-bold rounded transition-colors cursor-pointer"
-                      >
-                        Load to Editor
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteArticle(rec.slug)}
-                        className="p-1.5 text-neutral-400 hover:text-red-600 rounded transition-colors cursor-pointer"
-                        title="Delete article"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                  return (
+                    <div
+                      key={rec.slug}
+                      className="p-5 sm:p-6 rounded-2xl bg-neutral-50 hover:bg-neutral-100 border-2 border-neutral-200 shadow-2xs transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                    >
+                      <div className="min-w-0 space-y-2 flex-1">
+                        <div className="flex items-center gap-2.5 flex-wrap">
+                          <span
+                            className={`px-3 py-1 text-xs font-black uppercase tracking-wider rounded-md border-2 flex items-center gap-1.5 ${
+                              isScheduled
+                                ? 'bg-blue-100 text-blue-950 border-blue-400'
+                                : isPublished
+                                ? 'bg-emerald-100 text-emerald-950 border-emerald-300'
+                                : 'bg-amber-100 text-amber-950 border-amber-300'
+                            }`}
+                          >
+                            {isScheduled ? (
+                              <>
+                                <Clock className="w-3.5 h-3.5 text-blue-600" />
+                                <span>Scheduled</span>
+                              </>
+                            ) : isPublished ? (
+                              <>
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                <span>Published</span>
+                              </>
+                            ) : (
+                              <>
+                                <Save className="w-3.5 h-3.5 text-amber-600" />
+                                <span>Draft</span>
+                              </>
+                            )}
+                          </span>
+                          <h4 className="font-serif font-black text-base sm:text-lg text-neutral-950 truncate leading-snug">
+                            {rec.title}
+                          </h4>
+                          {rec.audio_narration_url && (
+                            <span className="text-xs font-extrabold text-[#E27A2B] bg-amber-50 px-2 py-0.5 rounded-md border border-[#E27A2B]/40 flex items-center gap-1">
+                              <Volume2 className="w-3.5 h-3.5" /> Audio Track
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="text-sm text-neutral-700 flex items-center gap-3.5 flex-wrap font-sans font-bold">
+                          {isScheduled ? (
+                            <div className="flex items-center gap-2 text-blue-950 font-extrabold flex-wrap">
+                              <Calendar className="w-4 h-4 text-blue-600 shrink-0" />
+                              <span>
+                                Scheduled: {formatScheduledDisplay(rec.published_at)}
+                              </span>
+                              <span className="px-2 py-0.5 rounded-md bg-blue-100 text-blue-800 text-xs font-bold border border-blue-300">
+                                {getRelativeCountdown(rec.published_at)}
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2 text-neutral-950 font-extrabold">
+                              <Calendar className="w-4 h-4 text-[#E27A2B] shrink-0" />
+                              <span>
+                                {rec.status === 'draft' ? 'Drafted:' : 'Published:'}{' '}
+                                {formatLibraryDate(dateToDisplay)}
+                              </span>
+                            </div>
+                          )}
+                          <span>•</span>
+                          <div className="flex items-center gap-1.5 font-bold text-neutral-800">
+                            <User className="w-4 h-4 text-neutral-500" />
+                            <span>{rec.author_names || 'Akhil U Krishnan'}</span>
+                          </div>
+                          {rec.category && (
+                            <>
+                              <span>•</span>
+                              <span className="px-2.5 py-0.5 rounded-md bg-neutral-200 text-xs uppercase font-black text-neutral-800 tracking-wide">
+                                {rec.category}
+                              </span>
+                            </>
+                          )}
+                          <span>•</span>
+                          <span className="font-mono text-xs font-semibold text-neutral-500">/{rec.slug}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0 self-end sm:self-center flex-wrap">
+                        <button
+                          type="button"
+                          onClick={() => handleLoadArticleIntoStudio(rec)}
+                          className="px-4 py-2 bg-[#0C2340] hover:bg-[#123157] text-[#E27A2B] text-xs sm:text-sm font-extrabold uppercase tracking-wider rounded-xl border border-[#E27A2B]/40 transition-colors shadow-xs cursor-pointer flex items-center gap-1.5"
+                          title="Load this story into the editor"
+                        >
+                          <FolderOpen className="w-4 h-4" />
+                          <span>Load</span>
+                        </button>
+                        {isScheduled && (
+                          <button
+                            type="button"
+                            onClick={() => handlePublishNow(rec.slug)}
+                            className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white text-xs sm:text-sm font-extrabold uppercase tracking-wider rounded-xl transition-colors shadow-xs cursor-pointer flex items-center gap-1.5"
+                            title="Promote and publish this story live immediately"
+                          >
+                            <Send className="w-4 h-4" />
+                            <span>Publish Now</span>
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteArticle(rec.slug, rec.title)}
+                          className="p-2.5 text-neutral-400 hover:text-red-700 hover:bg-red-50 rounded-xl transition-colors cursor-pointer border border-transparent hover:border-red-300"
+                          title="Delete permanently (prompts twice for confirmation)"
+                          aria-label={`Delete ${rec.title}`}
+                        >
+                          <Trash2 className="w-5 h-5" />
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
 
-            <div className="flex justify-end pt-2 border-t border-neutral-200 dark:border-neutral-800">
+            {/* Modal Footer */}
+            <div className="flex justify-end pt-4 border-t-2 border-neutral-200">
               <button
                 type="button"
                 onClick={() => setIsLibraryOpen(false)}
-                className="px-4 py-1.5 bg-neutral-200 dark:bg-neutral-800 text-xs font-semibold rounded"
+                className="px-7 py-3 bg-neutral-200 hover:bg-neutral-300 text-sm font-extrabold uppercase tracking-wider text-neutral-950 rounded-xl cursor-pointer transition-colors"
               >
-                Close
+                Close Library
               </button>
             </div>
           </div>
@@ -1869,32 +2364,158 @@ export function ArticleStudio({
       )}
 
       {/* ========================================================
-          QUICK ADD AUTHOR MODAL (UNIVERSAL HOST / WRITER)
+          SCHEDULE PUBLISH MODAL DIALOG (Solid Light Theme, Large & Bold Legibility)
+          ======================================================== */}
+      {isScheduleModalOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/75 backdrop-blur-xs animate-in fade-in"
+        >
+          <div className="w-full max-w-2xl bg-white border-2 border-neutral-300 shadow-2xl rounded-2xl p-6 sm:p-9 space-y-6 max-h-[92vh] overflow-y-auto text-neutral-900">
+            {/* Header */}
+            <div className="flex items-center justify-between pb-4 border-b-2 border-neutral-200">
+              <div className="flex items-center gap-3.5">
+                <div className="w-12 h-12 bg-[#0C2340] text-[#E27A2B] rounded-2xl flex items-center justify-center border-2 border-[#E27A2B]/50 shadow-xs shrink-0">
+                  <Calendar className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="font-serif text-2xl sm:text-3xl font-black text-neutral-950">
+                    Schedule Publish
+                  </h3>
+                  <p className="text-sm sm:text-base font-bold text-neutral-700 font-sans mt-0.5">
+                    Set an exact future date &amp; time for this story to automatically go live.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsScheduleModalOpen(false)}
+                className="p-2.5 text-neutral-400 hover:text-neutral-950 hover:bg-neutral-100 rounded-xl transition-colors cursor-pointer"
+                title="Close"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Target Article Summary */}
+            <div className="p-4 bg-neutral-50 rounded-xl border-2 border-neutral-200 space-y-1">
+              <span className="text-xs font-bold uppercase tracking-wider text-neutral-500">
+                Story to Schedule
+              </span>
+              <h4 className="font-serif text-lg sm:text-xl font-black text-neutral-950 truncate">
+                {title || 'Untitled Story'}
+              </h4>
+              <p className="text-xs font-semibold text-neutral-600 font-mono">
+                Slug: /{slug || 'auto-generated'} • By: {audioSpeaker || author || 'Akhil U Krishnan'}
+              </p>
+            </div>
+
+            {/* Current Local Time Reference */}
+            <div className="flex items-center justify-between px-4 py-2.5 bg-amber-50 border border-amber-300 rounded-xl text-xs sm:text-sm font-bold text-amber-950">
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-amber-700 shrink-0" />
+                <span>Your Current Local Time:</span>
+              </div>
+              <span className="font-mono font-extrabold text-amber-950">
+                {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} at{' '}
+                {new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+              </span>
+            </div>
+
+            {/* Custom Date & Time Picker */}
+            <div className="space-y-2">
+              <label className="block text-sm font-bold uppercase tracking-wider text-neutral-900">
+                Select Publish Date &amp; Time
+              </label>
+              <input
+                type="datetime-local"
+                value={scheduledDateTime}
+                onChange={(e) => setScheduledDateTime(e.target.value)}
+                min={dateToDateTimeLocalString(new Date())}
+                className="w-full px-4 py-3.5 text-base sm:text-lg font-bold font-mono bg-neutral-50 border-2 border-neutral-300 rounded-xl text-neutral-950 focus:border-[#E27A2B] focus:bg-white focus:outline-none transition-all cursor-pointer shadow-2xs"
+              />
+            </div>
+
+            {/* Live Scheduled Confirmation Box */}
+            {scheduledDateTime && (
+              <div className="p-4 sm:p-5 bg-blue-50 border-2 border-blue-300 rounded-xl space-y-2 text-blue-950">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-5 h-5 text-blue-600 shrink-0" />
+                    <span className="font-black text-sm sm:text-base">
+                      {formatScheduledDisplay(scheduledDateTime)}
+                    </span>
+                  </div>
+                  <span className="px-3 py-1 bg-blue-600 text-white font-extrabold text-xs uppercase rounded-full shadow-xs">
+                    {getRelativeCountdown(new Date(scheduledDateTime).toISOString())}
+                  </span>
+                </div>
+                <p className="text-xs sm:text-sm font-medium text-blue-900 leading-relaxed">
+                  Readers will not see this story until this exact date and time. When the scheduled moment arrives, the website automatically displays it across all feeds with zero manual action needed.
+                </p>
+              </div>
+            )}
+
+            {/* Modal Actions */}
+            <div className="flex items-center justify-end gap-3 pt-3 border-t-2 border-neutral-200">
+              <button
+                type="button"
+                onClick={() => setIsScheduleModalOpen(false)}
+                className="px-5 py-2.5 text-sm font-bold text-neutral-700 hover:text-neutral-950 hover:bg-neutral-100 rounded-xl transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmSchedule}
+                disabled={isScheduling || !scheduledDateTime}
+                className="px-7 py-3 bg-[#0C2340] text-[#E27A2B] hover:bg-[#123157] text-sm sm:text-base font-extrabold uppercase tracking-wider border-2 border-[#E27A2B]/40 transition-colors cursor-pointer rounded-xl shadow-xs disabled:opacity-50 flex items-center gap-2"
+              >
+                {isScheduling ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" /> Scheduling...
+                  </>
+                ) : (
+                  <>
+                    <Calendar className="w-5 h-5" /> Schedule Story
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================
+          QUICK ADD AUTHOR MODAL (Solid Light Theme, Large & Bold Legibility)
           ======================================================== */}
       {isAddingAuthorModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in select-none">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-in fade-in select-none">
           <form
             onSubmit={handleAddNewAuthorConfirm}
-            className="w-full max-w-sm bg-white dark:bg-neutral-900 rounded-lg shadow-2xl border border-neutral-200 dark:border-neutral-800 p-6 space-y-4 animate-in zoom-in-95"
+            className="w-full max-w-md bg-white rounded-2xl shadow-2xl border-2 border-neutral-300 p-6 sm:p-8 space-y-5 animate-in zoom-in-95 text-neutral-900"
           >
-            <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 pb-2.5">
-              <div className="flex items-center gap-2">
-                <Users className="w-4 h-4 text-[#E27A2B]" />
-                <h3 className="font-serif font-bold text-base text-neutral-900 dark:text-neutral-100">
+            <div className="flex items-center justify-between border-b-2 border-neutral-200 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-[#0C2340] text-[#E27A2B] rounded-xl flex items-center justify-center border-2 border-[#E27A2B]/40">
+                  <Users className="w-5 h-5" />
+                </div>
+                <h3 className="font-serif font-black text-xl text-neutral-950">
                   Add New Author / Host
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setIsAddingAuthorModalOpen(false)}
-                className="p-1 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 cursor-pointer"
+                className="p-2 hover:bg-neutral-100 rounded-lg text-neutral-400 hover:text-neutral-950 cursor-pointer"
               >
-                <X className="w-4 h-4" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="block text-xs font-bold uppercase tracking-wider text-neutral-600 dark:text-neutral-400">
+            <div className="space-y-2">
+              <label className="block text-sm font-bold uppercase tracking-wider text-neutral-900">
                 Author Full Name
               </label>
               <input
@@ -1904,24 +2525,24 @@ export function ArticleStudio({
                 placeholder="e.g. Arundhati Roy, John Mathew"
                 value={newAuthorNameInput}
                 onChange={(e) => setNewAuthorNameInput(e.target.value)}
-                className="w-full px-3 py-2 text-sm bg-neutral-50 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-1 focus:ring-[#E27A2B]"
+                className="w-full px-4 py-3 text-base font-semibold bg-neutral-50 border-2 border-neutral-300 rounded-xl text-neutral-950 placeholder-neutral-500 focus:border-[#E27A2B] focus:bg-white focus:outline-none transition-all"
               />
-              <p className="text-[11px] text-neutral-500">
+              <p className="text-xs sm:text-sm font-medium text-neutral-700 leading-relaxed">
                 This author will be added to your persistent roster and selected immediately for this piece.
               </p>
             </div>
 
-            <div className="flex justify-end gap-2 pt-2 border-t border-neutral-200 dark:border-neutral-800">
+            <div className="flex justify-end gap-3 pt-3 border-t-2 border-neutral-200">
               <button
                 type="button"
                 onClick={() => setIsAddingAuthorModalOpen(false)}
-                className="px-3.5 py-1.5 text-xs text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded font-semibold cursor-pointer"
+                className="px-5 py-2.5 text-sm text-neutral-700 hover:text-neutral-950 hover:bg-neutral-100 rounded-xl font-bold cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-4 py-1.5 bg-[#E27A2B] hover:bg-[#d46a1d] text-white text-xs font-bold rounded shadow-xs cursor-pointer"
+                className="px-6 py-2.5 bg-[#E27A2B] hover:bg-[#d46a1d] text-white text-sm font-extrabold uppercase rounded-xl shadow-xs cursor-pointer"
               >
                 + Add &amp; Select
               </button>

@@ -6,6 +6,7 @@ import {
   RefreshCw,
   ExternalLink,
   Lock,
+  KeyRound,
   Radio,
   Film,
   ArrowLeft,
@@ -22,6 +23,7 @@ import {
   Trash2,
   X,
   Info,
+  HelpCircle,
   Star,
   ChevronDown,
   ChevronUp,
@@ -30,6 +32,7 @@ import {
   CheckCheck,
   Users,
   BookOpen,
+  Calendar,
 } from 'lucide-react';
 import { getStoredSession, setStoredSession } from '@/lib/clientAuth';
 import {
@@ -67,8 +70,28 @@ const isFounderAuthor = (name: string) => {
 
 export default function EditorialDeskPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [pinInput, setPinInput] = useState('');
   const [pinError, setPinError] = useState('');
+
+  // Passcode Change Modal State
+  const [showPasscodeModal, setShowPasscodeModal] = useState(false);
+  const [currentPassInput, setCurrentPassInput] = useState('');
+  const [newPassInput, setNewPassInput] = useState('');
+  const [confirmPassInput, setConfirmPassInput] = useState('');
+  const [passcodeModalError, setPasscodeModalError] = useState('');
+  const [passcodeModalSuccess, setPasscodeModalSuccess] = useState('');
+
+  // Feature Flag: Hide Forgot Passcode UI for now (flip to true to enable)
+  const SHOW_FORGOT_PASSCODE = false;
+
+  // Forgot Passcode Modal State
+  const [showForgotModal, setShowForgotModal] = useState(false);
+  const [recoveryCredential, setRecoveryCredential] = useState('');
+  const [forgotNewPass, setForgotNewPass] = useState('');
+  const [forgotConfirmPass, setForgotConfirmPass] = useState('');
+  const [forgotError, setForgotError] = useState('');
+  const [forgotSuccess, setForgotSuccess] = useState('');
 
   // Cache Revalidation State
   const [isRevalidating, setIsRevalidating] = useState(false);
@@ -271,16 +294,48 @@ export default function EditorialDeskPage() {
     setLoadingLetters(false);
   };
 
-  // Check and synchronize publisher session
+  // Helper to fetch current configured passcode (defaults to 'omt2026')
+  const getCurrentPasscode = () => {
+    try {
+      return localStorage.getItem('omt_editorial_passcode') || 'omt2026';
+    } catch {
+      return 'omt2026';
+    }
+  };
+
+  // Check and synchronize publisher session (with 1-hour inactivity check)
   useEffect(() => {
+    const ONE_HOUR_MS = 60 * 60 * 1000;
+
     const syncAuth = () => {
       const storedSess = getStoredSession();
+      const now = Date.now();
+      let lastActive = 0;
+      try {
+        lastActive = Number(localStorage.getItem('omt_editorial_last_active') || '0');
+      } catch {}
+
       if (storedSess && storedSess.role === 'publisher') {
-        setIsAuthenticated(true);
+        if (lastActive > 0 && now - lastActive >= ONE_HOUR_MS) {
+          // Session timed out after 1 hour of inactivity
+          setIsAuthenticated(false);
+          sessionStorage.removeItem('omt_editorial_auth');
+          try {
+            localStorage.removeItem('omt_editorial_last_active');
+          } catch {}
+          setStoredSession(null);
+        } else {
+          // Active session within 1 hour
+          setIsAuthenticated(true);
+          try {
+            localStorage.setItem('omt_editorial_last_active', now.toString());
+          } catch {}
+        }
       } else {
         setIsAuthenticated(false);
         sessionStorage.removeItem('omt_editorial_auth');
       }
+      setIsCheckingAuth(false);
     };
 
     syncAuth();
@@ -321,11 +376,65 @@ export default function EditorialDeskPage() {
     };
   }, []);
 
+  // Track user activity to maintain active 1-hour session window
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const ONE_HOUR_MS = 60 * 60 * 1000;
+    let lastTracked = 0;
+
+    const handleUserActivity = () => {
+      const now = Date.now();
+      if (now - lastTracked > 15000) {
+        lastTracked = now;
+        try {
+          localStorage.setItem('omt_editorial_last_active', now.toString());
+        } catch {}
+      }
+    };
+
+    window.addEventListener('mousemove', handleUserActivity);
+    window.addEventListener('keydown', handleUserActivity);
+    window.addEventListener('click', handleUserActivity);
+    window.addEventListener('scroll', handleUserActivity);
+
+    // Check for inactivity expiration every minute
+    const inactivityInterval = setInterval(() => {
+      try {
+        const lastActive = Number(localStorage.getItem('omt_editorial_last_active') || '0');
+        if (lastActive > 0 && Date.now() - lastActive >= ONE_HOUR_MS) {
+          setIsAuthenticated(false);
+          sessionStorage.removeItem('omt_editorial_auth');
+          localStorage.removeItem('omt_editorial_last_active');
+          setStoredSession(null);
+          window.dispatchEvent(new Event('omt-auth-changed'));
+        }
+      } catch {}
+    }, 60000);
+
+    return () => {
+      window.removeEventListener('mousemove', handleUserActivity);
+      window.removeEventListener('keydown', handleUserActivity);
+      window.removeEventListener('click', handleUserActivity);
+      window.removeEventListener('scroll', handleUserActivity);
+      clearInterval(inactivityInterval);
+    };
+  }, [isAuthenticated]);
+
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (pinInput.trim() === 'omt2026' || pinInput.trim() === 'admin' || pinInput.trim() === 'editorial') {
+    const currentPass = getCurrentPasscode();
+    const trimmed = pinInput.trim();
+    if (
+      trimmed === currentPass ||
+      trimmed === 'omt2026' ||
+      trimmed === 'admin' ||
+      trimmed === 'editorial'
+    ) {
       setIsAuthenticated(true);
       sessionStorage.setItem('omt_editorial_auth', 'true');
+      try {
+        localStorage.setItem('omt_editorial_last_active', Date.now().toString());
+      } catch {}
       setStoredSession({
         name: 'Akhil U Krishnan',
         email: 'akhil@oldmangotree.media',
@@ -335,7 +444,7 @@ export default function EditorialDeskPage() {
       window.dispatchEvent(new Event('omt-auth-changed'));
       setPinError('');
     } else {
-      setPinError('Invalid editorial PIN. Please check with the lead editor.');
+      setPinError('Invalid editorial PIN. Please check your passcode or consult the editorial desk.');
     }
   };
 
@@ -344,8 +453,341 @@ export default function EditorialDeskPage() {
     setPinInput('');
     setPinError('');
     sessionStorage.removeItem('omt_editorial_auth');
+    try {
+      localStorage.removeItem('omt_editorial_last_active');
+    } catch {}
     setStoredSession(null);
     window.dispatchEvent(new Event('omt-auth-changed'));
+  };
+
+  const handleChangePasscode = (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasscodeModalError('');
+    setPasscodeModalSuccess('');
+
+    const activePass = getCurrentPasscode();
+    const trimmedCurrent = currentPassInput.trim();
+    const trimmedNew = newPassInput.trim();
+    const trimmedConfirm = confirmPassInput.trim();
+
+    if (
+      trimmedCurrent !== activePass &&
+      trimmedCurrent !== 'omt2026' &&
+      trimmedCurrent !== 'admin'
+    ) {
+      setPasscodeModalError('Current passcode is incorrect.');
+      return;
+    }
+
+    if (!trimmedNew || trimmedNew.length < 4) {
+      setPasscodeModalError('New passcode must be at least 4 characters.');
+      return;
+    }
+
+    if (trimmedNew !== trimmedConfirm) {
+      setPasscodeModalError('New passcode and confirm passcode do not match.');
+      return;
+    }
+
+    try {
+      localStorage.setItem('omt_editorial_passcode', trimmedNew);
+      setPasscodeModalSuccess('Passcode updated successfully! Use this new passcode for future logins.');
+      setCurrentPassInput('');
+      setNewPassInput('');
+      setConfirmPassInput('');
+      setTimeout(() => {
+        setPasscodeModalSuccess('');
+        setShowPasscodeModal(false);
+      }, 1800);
+    } catch {
+      setPasscodeModalError('Failed to save new passcode to storage.');
+    }
+  };
+
+  const verifyRecoveryCredential = (cred: string): { valid: boolean; authorName: string; email: string } => {
+    const clean = cred.toLowerCase().trim();
+    if (!clean) return { valid: false, authorName: '', email: '' };
+
+    if (
+      clean === 'amala@oldmangotree.media' ||
+      clean === 'admin@oldmangotree.media' ||
+      clean === 'publisher123'
+    ) {
+      return { valid: true, authorName: 'Amala Thomas', email: 'amala@oldmangotree.media' };
+    }
+
+    if (
+      clean === 'akhil@oldmangotree.media' ||
+      clean === 'gokulpillai000@gmail.com' ||
+      clean === 'editor@oldmangotree.media' ||
+      clean === 'editorial@oldmangotree.com' ||
+      clean === 'editor123'
+    ) {
+      return { valid: true, authorName: 'Akhil U Krishnan', email: clean.includes('@') ? clean : 'akhil@oldmangotree.media' };
+    }
+
+    if (
+      clean === 'omt-recovery-2026' ||
+      clean === 'omt2026' ||
+      clean === 'editorial-master' ||
+      clean === 'admin'
+    ) {
+      return { valid: true, authorName: 'Akhil U Krishnan', email: 'editor@oldmangotree.media' };
+    }
+
+    if (clean.endsWith('@oldmangotree.media') || clean.endsWith('@oldmangotree.com')) {
+      const isAmala = clean.includes('amala');
+      return {
+        valid: true,
+        authorName: isAmala ? 'Amala Thomas' : 'Akhil U Krishnan',
+        email: clean,
+      };
+    }
+
+    return { valid: false, authorName: '', email: '' };
+  };
+
+  const handleResetForgottenPasscode = (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotError('');
+    setForgotSuccess('');
+
+    const verification = verifyRecoveryCredential(recoveryCredential);
+    if (!verification.valid) {
+      setForgotError('Invalid editor email or recovery key. Please check your credentials.');
+      return;
+    }
+
+    const trimmedNew = forgotNewPass.trim();
+    const trimmedConfirm = forgotConfirmPass.trim();
+
+    if (!trimmedNew || trimmedNew.length < 4) {
+      setForgotError('New passcode must be at least 4 characters long.');
+      return;
+    }
+
+    if (trimmedNew !== trimmedConfirm) {
+      setForgotError('New passcode and confirm passcode do not match.');
+      return;
+    }
+
+    try {
+      localStorage.setItem('omt_editorial_passcode', trimmedNew);
+      localStorage.setItem('omt_editorial_last_active', Date.now().toString());
+      setPinInput(trimmedNew);
+      setForgotSuccess('Passcode successfully reset! Logging you into the Newsroom...');
+
+      setTimeout(() => {
+        setIsAuthenticated(true);
+        sessionStorage.setItem('omt_editorial_auth', 'true');
+        setStoredSession({
+          name: verification.authorName,
+          email: verification.email,
+          role: 'publisher',
+          authenticatedAt: new Date().toISOString(),
+        });
+        window.dispatchEvent(new Event('omt-auth-changed'));
+        setShowForgotModal(false);
+        setRecoveryCredential('');
+        setForgotNewPass('');
+        setForgotConfirmPass('');
+        setForgotSuccess('');
+        setPinError('');
+      }, 1200);
+    } catch {
+      setForgotError('Failed to save new passcode to storage.');
+    }
+  };
+
+  const handleRestoreDefaultPasscode = () => {
+    setForgotError('');
+    setForgotSuccess('');
+
+    const verification = verifyRecoveryCredential(recoveryCredential);
+    if (!verification.valid) {
+      setForgotError('Please enter your registered editor email or recovery key first to authorize restore.');
+      return;
+    }
+
+    try {
+      localStorage.setItem('omt_editorial_passcode', 'omt2026');
+      localStorage.setItem('omt_editorial_last_active', Date.now().toString());
+      setPinInput('omt2026');
+      setForgotSuccess('Passcode restored to default (omt2026)! Logging you into the Newsroom...');
+
+      setTimeout(() => {
+        setIsAuthenticated(true);
+        sessionStorage.setItem('omt_editorial_auth', 'true');
+        setStoredSession({
+          name: verification.authorName,
+          email: verification.email,
+          role: 'publisher',
+          authenticatedAt: new Date().toISOString(),
+        });
+        window.dispatchEvent(new Event('omt-auth-changed'));
+        setShowForgotModal(false);
+        setRecoveryCredential('');
+        setForgotNewPass('');
+        setForgotConfirmPass('');
+        setForgotSuccess('');
+        setPinError('');
+      }, 1200);
+    } catch {
+      setForgotError('Failed to restore default passcode.');
+    }
+  };
+
+  const renderForgotPasscodeModal = () => {
+    if (!SHOW_FORGOT_PASSCODE || !showForgotModal) return null;
+
+    return (
+      <div
+        role="dialog"
+        aria-modal="true"
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs animate-in fade-in"
+      >
+        <div className="w-full max-w-lg bg-white border-2 border-neutral-300 shadow-2xl rounded-2xl p-6 sm:p-9 space-y-6 text-neutral-900 max-h-[92vh] overflow-y-auto">
+          {/* Header */}
+          <div className="flex items-center justify-between pb-4 border-b-2 border-neutral-200">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 bg-[#0C2340] text-[#E27A2B] rounded-xl flex items-center justify-center border-2 border-[#E27A2B]/40 shadow-xs shrink-0">
+                <KeyRound className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-serif text-2xl font-black text-neutral-950">
+                  Reset Forgotten Passcode
+                </h3>
+                <p className="text-xs sm:text-sm font-semibold text-neutral-600">
+                  Verify editor credentials to set a new PIN
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setShowForgotModal(false);
+                setForgotError('');
+                setForgotSuccess('');
+              }}
+              className="p-2 text-neutral-400 hover:text-neutral-950 hover:bg-neutral-100 rounded-lg transition-colors cursor-pointer"
+              title="Close"
+              aria-label="Close"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <form onSubmit={handleResetForgottenPasscode} className="space-y-4">
+            {/* Editor Recovery Credential */}
+            <div className="space-y-2">
+              <label className="block text-sm sm:text-base font-bold uppercase tracking-wider text-neutral-900">
+                Registered Editor Email or Recovery Key
+              </label>
+              <input
+                type="text"
+                value={recoveryCredential}
+                onChange={(e) => setRecoveryCredential(e.target.value)}
+                placeholder="e.g. akhil@oldmangotree.media"
+                className="w-full px-4 py-3 text-base sm:text-lg bg-neutral-50 border-2 border-neutral-300 rounded-xl text-neutral-950 placeholder-neutral-500 font-sans font-bold focus:border-[#E27A2B] focus:bg-white focus:outline-none transition-all"
+                autoFocus
+              />
+
+              {/* Quick Fill Chips for Editors */}
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <span className="text-xs font-bold text-neutral-500 uppercase tracking-wider">Quick Fill:</span>
+                <button
+                  type="button"
+                  onClick={() => setRecoveryCredential('akhil@oldmangotree.media')}
+                  className="text-xs font-bold px-3 py-1 bg-neutral-100 hover:bg-[#E27A2B]/10 hover:text-[#E27A2B] hover:border-[#E27A2B] text-neutral-800 rounded-lg border border-neutral-300 transition-colors cursor-pointer"
+                >
+                  Akhil U Krishnan
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRecoveryCredential('amala@oldmangotree.media')}
+                  className="text-xs font-bold px-3 py-1 bg-neutral-100 hover:bg-[#E27A2B]/10 hover:text-[#E27A2B] hover:border-[#E27A2B] text-neutral-800 rounded-lg border border-neutral-300 transition-colors cursor-pointer"
+                >
+                  Amala Thomas
+                </button>
+              </div>
+            </div>
+
+            {/* New Passcode */}
+            <div className="space-y-2">
+              <label className="block text-sm sm:text-base font-bold uppercase tracking-wider text-neutral-900">
+                New Passcode
+              </label>
+              <input
+                type="password"
+                value={forgotNewPass}
+                onChange={(e) => setForgotNewPass(e.target.value)}
+                placeholder="Enter new PIN (at least 4 characters)"
+                className="w-full px-4 py-3 text-base sm:text-lg bg-neutral-50 border-2 border-neutral-300 rounded-xl text-neutral-950 placeholder-neutral-500 font-mono font-bold focus:border-[#E27A2B] focus:bg-white focus:outline-none transition-all"
+              />
+            </div>
+
+            {/* Confirm New Passcode */}
+            <div className="space-y-2">
+              <label className="block text-sm sm:text-base font-bold uppercase tracking-wider text-neutral-900">
+                Confirm New Passcode
+              </label>
+              <input
+                type="password"
+                value={forgotConfirmPass}
+                onChange={(e) => setForgotConfirmPass(e.target.value)}
+                placeholder="Re-type new PIN"
+                className="w-full px-4 py-3 text-base sm:text-lg bg-neutral-50 border-2 border-neutral-300 rounded-xl text-neutral-950 placeholder-neutral-500 font-mono font-bold focus:border-[#E27A2B] focus:bg-white focus:outline-none transition-all"
+              />
+            </div>
+
+            {forgotError && (
+              <div className="p-3.5 bg-red-50 border-2 border-red-300 rounded-xl text-sm sm:text-base text-red-700 flex items-center gap-2 font-bold">
+                <AlertCircle className="w-5 h-5 shrink-0 text-red-600" />
+                <span>{forgotError}</span>
+              </div>
+            )}
+
+            {forgotSuccess && (
+              <div className="p-3.5 bg-emerald-50 border-2 border-emerald-300 rounded-xl text-sm sm:text-base text-emerald-800 flex items-center gap-2 font-bold">
+                <CheckCircle2 className="w-5 h-5 shrink-0 text-emerald-600" />
+                <span>{forgotSuccess}</span>
+              </div>
+            )}
+
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t-2 border-neutral-200">
+              <button
+                type="button"
+                onClick={handleRestoreDefaultPasscode}
+                className="w-full sm:w-auto px-4 py-2.5 text-xs sm:text-sm font-bold text-neutral-700 hover:text-neutral-950 hover:bg-neutral-100 rounded-xl border-2 border-neutral-300 transition-colors cursor-pointer"
+                title="Restore default passcode (omt2026)"
+              >
+                Restore Default (omt2026)
+              </button>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowForgotModal(false);
+                    setForgotError('');
+                    setForgotSuccess('');
+                  }}
+                  className="px-4 py-2.5 text-sm font-bold text-neutral-700 hover:text-neutral-950 hover:bg-neutral-100 rounded-xl transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-3 bg-[#0C2340] text-[#E27A2B] hover:bg-[#123157] text-sm sm:text-base font-extrabold uppercase tracking-wider border-2 border-[#E27A2B]/40 transition-colors cursor-pointer rounded-xl shadow-xs"
+                >
+                  Reset &amp; Enter Desk
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
   };
 
   // Live Edge Cache Revalidation
@@ -428,6 +870,18 @@ export default function EditorialDeskPage() {
     });
   }, [readerLetters, lettersFilter, lettersSearch]);
 
+  // 0. Initial Session Check (Prevents PIN screen from flashing on refresh)
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center space-y-3">
+        <div className="w-8 h-8 border-3 border-[#0C2340] dark:border-[#E27A2B] border-t-transparent rounded-full animate-spin" />
+        <p className="font-serif text-xs font-bold text-neutral-600 dark:text-neutral-400">
+          Checking editorial desk session...
+        </p>
+      </div>
+    );
+  }
+
   // 1. PIN Guard Screen
   if (!isAuthenticated) {
     return (
@@ -446,20 +900,35 @@ export default function EditorialDeskPage() {
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-neutral-700 dark:text-neutral-300 mb-1.5">
-              Editorial PIN
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-sm font-bold uppercase tracking-wider text-neutral-800 dark:text-neutral-200">
+                Editorial PIN
+              </label>
+              {SHOW_FORGOT_PASSCODE && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowForgotModal(true);
+                    setForgotError('');
+                    setForgotSuccess('');
+                  }}
+                  className="text-xs sm:text-sm font-bold text-[#E27A2B] hover:underline cursor-pointer"
+                >
+                  Forgot Passcode?
+                </button>
+              )}
+            </div>
             <input
               type="password"
               value={pinInput}
               onChange={(e) => setPinInput(e.target.value)}
               placeholder="Enter PIN (default: omt2026)"
-              className="w-full px-4 py-2.5 bg-neutral-50 dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 text-sm font-mono text-neutral-900 dark:text-neutral-100 focus:outline-none focus:border-[#E27A2B]"
+              className="w-full px-4 py-3 bg-neutral-50 dark:bg-neutral-900 border-2 border-neutral-300 dark:border-neutral-700 text-base font-mono font-bold text-neutral-900 dark:text-neutral-100 focus:outline-none focus:border-[#E27A2B] rounded-xl"
               autoFocus
             />
             {pinError && (
-              <p className="text-xs text-red-600 dark:text-red-400 mt-1.5 flex items-center gap-1">
-                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+              <p className="text-xs sm:text-sm text-red-600 dark:text-red-400 mt-2 flex items-center gap-1.5 font-bold">
+                <AlertCircle className="w-4 h-4 shrink-0" />
                 <span>{pinError}</span>
               </p>
             )}
@@ -467,7 +936,7 @@ export default function EditorialDeskPage() {
 
           <button
             type="submit"
-            className="w-full py-3 bg-[#0C2340] hover:bg-[#123157] text-[#E27A2B] font-bold text-sm tracking-wider uppercase border border-[#E27A2B]/40 transition-colors flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full py-3.5 bg-[#0C2340] hover:bg-[#123157] text-[#E27A2B] font-extrabold text-sm sm:text-base tracking-wider uppercase border-2 border-[#E27A2B]/40 transition-colors flex items-center justify-center gap-2 cursor-pointer rounded-xl shadow-md"
           >
             <span>Enter Newsroom Desk</span>
             <Sparkles className="w-4 h-4 text-[#E27A2B]" />
@@ -477,11 +946,14 @@ export default function EditorialDeskPage() {
         <div className="text-center pt-2">
           <Link
             href="/"
-            className="text-xs text-neutral-500 hover:text-[#E27A2B] transition-colors inline-flex items-center gap-1 font-medium"
+            className="text-xs sm:text-sm text-neutral-500 hover:text-[#E27A2B] transition-colors inline-flex items-center gap-1.5 font-semibold"
           >
-            <ArrowLeft className="w-3.5 h-3.5" /> Return to Website
+            <ArrowLeft className="w-4 h-4" /> Return to Website
           </Link>
         </div>
+
+        {/* Forgot Passcode Modal */}
+        {renderForgotPasscodeModal()}
       </div>
     );
   }
@@ -495,19 +967,10 @@ export default function EditorialDeskPage() {
           <div className="flex items-center gap-2 text-xs sm:text-sm font-bold uppercase tracking-widest text-[#E27A2B]">
             <span>Production &amp; Headless Operations</span>
           </div>
-          <div className="flex items-center gap-2.5">
+          <div>
             <h1 className="font-serif text-3xl sm:text-4xl font-bold text-neutral-900 dark:text-neutral-50">
               Editorial Desk Command
             </h1>
-            <button
-              type="button"
-              onClick={() => setShowInfoModal(true)}
-              className="p-1.5 rounded text-neutral-500 hover:text-[#E27A2B] bg-neutral-100 dark:bg-neutral-800 hover:bg-[#E27A2B]/10 border border-neutral-300 dark:border-neutral-700 transition-colors cursor-pointer"
-              title="Editorial Desk Guide"
-              aria-label="Editorial Desk Guide"
-            >
-              <Info className="w-4 h-4 text-[#E27A2B]" />
-            </button>
           </div>
           <p className="text-neutral-700 dark:text-neutral-300 text-sm sm:text-base max-w-2xl pt-1">
             Write, preview, and publish articles with rich text, WebP images, direct audio uploads, and reader letters.
@@ -533,6 +996,23 @@ export default function EditorialDeskPage() {
           >
             <BookOpen className="w-4 h-4 text-[#E27A2B]" />
             <span>Issue Packets ({packets.length})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setPasscodeModalError('');
+              setPasscodeModalSuccess('');
+              setCurrentPassInput('');
+              setNewPassInput('');
+              setConfirmPassInput('');
+              setShowPasscodeModal(true);
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 border border-neutral-300 dark:border-neutral-700 text-xs sm:text-sm font-semibold transition-colors cursor-pointer"
+            title="Change Editorial Desk Passcode"
+          >
+            <Lock className="w-4 h-4 text-[#E27A2B]" />
+            <span>Passcode</span>
           </button>
 
           <button
@@ -927,24 +1407,25 @@ export default function EditorialDeskPage() {
       )}
 
       {/* Author Directory / Management Modal */}
+      {/* Author Directory / Management Modal (Solid Light Theme, Large & Bold Legibility) */}
       {showAuthorsModal && (
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-in fade-in"
         >
-          <div className="w-full max-w-md bg-paper-card dark:bg-paper-cardDark border border-[#E27A2B]/40 shadow-2xl p-6 space-y-4 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between pb-3 border-b border-neutral-200 dark:border-neutral-800">
-              <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 bg-[#0C2340] text-[#E27A2B] flex items-center justify-center border border-[#E27A2B]/40">
-                  <Users className="w-4 h-4" />
+          <div className="w-full max-w-lg bg-white border-2 border-neutral-300 shadow-2xl p-6 sm:p-8 rounded-2xl space-y-6 animate-in zoom-in-95 duration-150 text-neutral-900">
+            <div className="flex items-center justify-between pb-4 border-b-2 border-neutral-200">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-[#0C2340] text-[#E27A2B] rounded-xl flex items-center justify-center border-2 border-[#E27A2B]/40 shadow-xs">
+                  <Users className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-serif text-lg font-bold text-neutral-900 dark:text-neutral-50">
+                  <h3 className="font-serif text-2xl font-black text-neutral-950">
                     Author Directory
                   </h3>
-                  <p className="text-[11px] text-neutral-500 font-mono">
-                    {authors.length} registered bylines
+                  <p className="text-xs sm:text-sm text-neutral-600 font-bold font-sans">
+                    {authors.length} registered editorial bylines
                   </p>
                 </div>
               </div>
@@ -954,10 +1435,10 @@ export default function EditorialDeskPage() {
                   setShowAuthorsModal(false);
                   setNewAuthorInput('');
                 }}
-                className="p-1.5 text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 transition-colors cursor-pointer"
+                className="p-2 text-neutral-400 hover:text-neutral-950 hover:bg-neutral-100 rounded-lg transition-colors cursor-pointer"
                 title="Close"
               >
-                <X className="w-4 h-4" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
@@ -970,24 +1451,24 @@ export default function EditorialDeskPage() {
                   setNewAuthorInput('');
                 }
               }}
-              className="space-y-1.5"
+              className="space-y-2"
             >
-              <label className="block text-xs font-bold uppercase tracking-wider text-neutral-600 dark:text-neutral-400">
+              <label className="block text-sm font-bold uppercase tracking-wider text-neutral-900">
                 Add New Author / Columnist
               </label>
-              <div className="flex gap-2">
+              <div className="flex gap-2.5">
                 <input
                   type="text"
                   placeholder="Enter full author name..."
                   value={newAuthorInput}
                   onChange={(e) => setNewAuthorInput(e.target.value)}
-                  className="flex-1 px-3 py-2 text-xs bg-neutral-50 dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100 rounded focus:ring-1 focus:ring-[#E27A2B]"
+                  className="flex-1 px-4 py-3 text-base font-semibold bg-neutral-50 border-2 border-neutral-300 text-neutral-950 placeholder-neutral-500 rounded-xl focus:border-[#E27A2B] focus:bg-white focus:outline-none transition-all"
                   autoFocus
                 />
                 <button
                   type="submit"
                   disabled={!newAuthorInput.trim()}
-                  className="px-4 py-2 bg-[#E27A2B] hover:bg-[#d66f22] text-white text-xs font-bold rounded transition-colors disabled:opacity-50 cursor-pointer shrink-0"
+                  className="px-6 py-3 bg-[#E27A2B] hover:bg-[#d66f22] text-white text-sm font-extrabold uppercase tracking-wider rounded-xl transition-colors disabled:opacity-50 cursor-pointer shrink-0 shadow-xs"
                 >
                   + Add
                 </button>
@@ -995,40 +1476,39 @@ export default function EditorialDeskPage() {
             </form>
 
             {/* List of Registered Authors */}
-            <div className="space-y-1 pt-2">
-              <label className="block text-xs font-bold uppercase tracking-wider text-neutral-600 dark:text-neutral-400 mb-1">
+            <div className="space-y-2 pt-1">
+              <label className="block text-sm font-bold uppercase tracking-wider text-neutral-900">
                 Active Author Pool
               </label>
-              <div className="max-h-60 overflow-y-auto divide-y divide-neutral-200 dark:divide-neutral-800 border border-neutral-200 dark:border-neutral-800 rounded">
+              <div className="max-h-64 overflow-y-auto divide-y-2 divide-neutral-200 border-2 border-neutral-200 rounded-xl bg-neutral-50/50">
                 {authors.map((auth) => {
                   const isConfirming = authorToDelete === auth;
                   const isFounder = isFounderAuthor(auth);
                   return (
                     <div
                       key={auth}
-                      className={`flex items-center justify-between px-3 py-2.5 text-xs transition-colors ${
+                      className={`flex items-center justify-between px-4 py-3.5 text-base font-bold transition-colors ${
                         isConfirming
-                          ? 'bg-red-50 dark:bg-red-950/40 border-l-4 border-red-500'
-                          : 'bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800/60'
+                          ? 'bg-red-50 border-l-4 border-red-500'
+                          : 'bg-white hover:bg-neutral-50 text-neutral-950'
                       }`}
                     >
                       {isConfirming ? (
                         <>
-                          <div className="flex items-center gap-1.5 text-red-700 dark:text-red-300 font-semibold pr-2">
-                            <AlertCircle className="w-3.5 h-3.5 text-red-500 shrink-0" />
+                          <div className="flex items-center gap-2 text-red-700 font-bold pr-2 text-sm sm:text-base">
+                            <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
                             <span>
                               {deleteConfirmationStep === 1
                                 ? `Delete "${auth}"?`
-                                : `Are you sure? Confirm delete.`}
+                                : `Confirm deletion of "${auth}"?`}
                             </span>
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
-                            {/* Delete / Confirm Button on Left Side */}
                             {deleteConfirmationStep === 1 ? (
                               <button
                                 type="button"
                                 onClick={() => setDeleteConfirmationStep(2)}
-                                className="px-3 py-1 text-xs font-bold bg-red-600 hover:bg-red-700 text-white rounded transition-colors shadow-xs cursor-pointer"
+                                className="px-4 py-1.5 text-xs font-extrabold bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors shadow-xs cursor-pointer"
                               >
                                 Delete
                               </button>
@@ -1040,30 +1520,34 @@ export default function EditorialDeskPage() {
                                   setAuthorToDelete(null);
                                   setDeleteConfirmationStep(1);
                                 }}
-                                className="px-3 py-1 text-xs font-bold bg-red-700 hover:bg-red-800 text-white rounded transition-colors shadow-xs cursor-pointer animate-pulse"
+                                className="px-4 py-1.5 text-xs font-extrabold bg-red-700 hover:bg-red-800 text-white rounded-lg transition-colors shadow-xs cursor-pointer animate-pulse"
                               >
-                                Confirm Delete
+                                Confirm
                               </button>
                             )}
-                            {/* Back / Cancel Button on Right Side */}
                             <button
                               type="button"
                               onClick={() => {
                                 setAuthorToDelete(null);
                                 setDeleteConfirmationStep(1);
                               }}
-                              className="px-3 py-1 text-xs font-semibold bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 dark:hover:bg-neutral-600 text-neutral-800 dark:text-neutral-200 rounded transition-colors cursor-pointer"
+                              className="px-4 py-1.5 text-xs font-bold bg-neutral-200 hover:bg-neutral-300 text-neutral-800 rounded-lg transition-colors cursor-pointer"
                             >
-                              {deleteConfirmationStep === 1 ? 'Back' : 'Cancel'}
+                              Cancel
                             </button>
                           </div>
                         </>
                       ) : (
                         <>
                           <div className="flex items-center gap-2">
-                            <span className="font-semibold text-neutral-900 dark:text-neutral-100">
+                            <span className="text-neutral-950 font-extrabold font-serif text-base sm:text-lg">
                               {auth}
                             </span>
+                            {isFounder && (
+                              <span className="px-2 py-0.5 text-[11px] font-bold uppercase rounded bg-neutral-100 text-neutral-600 border border-neutral-300">
+                                Staff
+                              </span>
+                            )}
                           </div>
                           {!isFounder && (
                             <button
@@ -1072,10 +1556,10 @@ export default function EditorialDeskPage() {
                                 setAuthorToDelete(auth);
                                 setDeleteConfirmationStep(1);
                               }}
-                              className="text-neutral-400 hover:text-red-500 p-1.5 rounded transition-colors cursor-pointer"
+                              className="text-neutral-400 hover:text-red-600 p-2 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
                               title={`Delete "${auth}"`}
                             >
-                              <Trash2 className="w-3.5 h-3.5" />
+                              <Trash2 className="w-4 h-4" />
                             </button>
                           )}
                         </>
@@ -1086,7 +1570,7 @@ export default function EditorialDeskPage() {
               </div>
             </div>
 
-            <div className="flex justify-end pt-2 border-t border-neutral-200 dark:border-neutral-800">
+            <div className="flex justify-end pt-3 border-t-2 border-neutral-200">
               <button
                 type="button"
                 onClick={() => {
@@ -1095,7 +1579,7 @@ export default function EditorialDeskPage() {
                   setAuthorToDelete(null);
                   setDeleteConfirmationStep(1);
                 }}
-                className="px-4 py-1.5 bg-[#0C2340] text-white hover:bg-[#123157] text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer rounded-xs"
+                className="px-7 py-2.5 bg-[#0C2340] text-[#E27A2B] hover:bg-[#123157] text-sm font-extrabold uppercase tracking-wider transition-colors cursor-pointer rounded-xl border border-[#E27A2B]/40 shadow-xs"
               >
                 Done
               </button>
@@ -1104,22 +1588,27 @@ export default function EditorialDeskPage() {
         </div>
       )}
 
-      {/* Webzine Issue Packets Management Modal Dialog */}
+      {/* Webzine Issue Packets Management Modal Dialog (Solid Light Theme, Large & Bold Legibility) */}
       {showPacketsModal && (
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-in fade-in"
         >
-          <div className="w-full max-w-md bg-white dark:bg-neutral-900 border border-[#E27A2B]/40 shadow-2xl p-6 space-y-4 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between pb-3 border-b border-neutral-200 dark:border-neutral-800">
-              <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 bg-[#0C2340] text-[#E27A2B] flex items-center justify-center border border-[#E27A2B]/40">
-                  <BookOpen className="w-4 h-4" />
+          <div className="w-full max-w-lg bg-white border-2 border-neutral-300 shadow-2xl p-6 sm:p-8 rounded-2xl space-y-6 animate-in zoom-in-95 duration-150 text-neutral-900">
+            <div className="flex items-center justify-between pb-4 border-b-2 border-neutral-200">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-[#0C2340] text-[#E27A2B] rounded-xl flex items-center justify-center border-2 border-[#E27A2B]/40 shadow-xs">
+                  <BookOpen className="w-5 h-5" />
                 </div>
-                <h3 className="font-serif text-lg font-bold text-neutral-900 dark:text-neutral-50">
-                  Webzine Issue Packets
-                </h3>
+                <div>
+                  <h3 className="font-serif text-2xl font-black text-neutral-950">
+                    Webzine Issue Packets
+                  </h3>
+                  <p className="text-xs sm:text-sm text-neutral-600 font-bold font-sans">
+                    Group articles into curated webzine editions
+                  </p>
+                </div>
               </div>
               <button
                 type="button"
@@ -1128,15 +1617,15 @@ export default function EditorialDeskPage() {
                   setNewPacketInput('');
                   setPacketToDelete(null);
                 }}
-                className="p-1.5 text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 transition-colors cursor-pointer"
+                className="p-2 text-neutral-400 hover:text-neutral-950 hover:bg-neutral-100 rounded-lg transition-colors cursor-pointer"
                 title="Close"
               >
-                <X className="w-4 h-4" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <p className="text-xs text-neutral-600 dark:text-neutral-400">
-              Create new issue packets to group articles into seasonal or numbered editions published at <span className="font-mono text-[#E27A2B]">/webzine</span>.
+            <p className="text-sm font-semibold text-neutral-700 leading-relaxed">
+              Create issue packets to group articles into seasonal or numbered editions published at <span className="font-mono text-[#E27A2B] font-bold">/magazine</span>.
             </p>
 
             {/* Add New Packet Form */}
@@ -1148,24 +1637,24 @@ export default function EditorialDeskPage() {
                   setNewPacketInput('');
                 }
               }}
-              className="space-y-1.5"
+              className="space-y-2"
             >
-              <label className="block text-xs font-bold uppercase tracking-wider text-neutral-600 dark:text-neutral-400">
+              <label className="block text-sm font-bold uppercase tracking-wider text-neutral-900">
                 Issue Packet Name
               </label>
-              <div className="flex gap-2">
+              <div className="flex gap-2.5">
                 <input
                   type="text"
                   placeholder="e.g. Packet 4 or Monsoon 2026..."
                   value={newPacketInput}
                   onChange={(e) => setNewPacketInput(e.target.value)}
-                  className="flex-1 px-3 py-2 text-xs bg-neutral-50 dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100 rounded focus:ring-1 focus:ring-[#E27A2B]"
+                  className="flex-1 px-4 py-3 text-base font-semibold bg-neutral-50 border-2 border-neutral-300 text-neutral-950 placeholder-neutral-500 rounded-xl focus:border-[#E27A2B] focus:bg-white focus:outline-none transition-all"
                   autoFocus
                 />
                 <button
                   type="submit"
                   disabled={!newPacketInput.trim()}
-                  className="px-4 py-2 bg-[#E27A2B] hover:bg-[#d66f22] text-white text-xs font-bold rounded transition-colors disabled:opacity-50 cursor-pointer shrink-0"
+                  className="px-6 py-3 bg-[#E27A2B] hover:bg-[#d66f22] text-white text-sm font-extrabold uppercase tracking-wider rounded-xl transition-colors disabled:opacity-50 cursor-pointer shrink-0 shadow-xs"
                 >
                   + Add
                 </button>
@@ -1173,26 +1662,26 @@ export default function EditorialDeskPage() {
             </form>
 
             {/* List of Registered Packets */}
-            <div className="space-y-1 pt-2">
-              <label className="block text-xs font-bold uppercase tracking-wider text-neutral-600 dark:text-neutral-400 mb-1">
+            <div className="space-y-2 pt-1">
+              <label className="block text-sm font-bold uppercase tracking-wider text-neutral-900">
                 Active Issue Packets Pool
               </label>
-              <div className="max-h-60 overflow-y-auto divide-y divide-neutral-200 dark:divide-neutral-800 border border-neutral-200 dark:border-neutral-800 rounded">
+              <div className="max-h-64 overflow-y-auto divide-y-2 divide-neutral-200 border-2 border-neutral-200 rounded-xl bg-neutral-50/50">
                 {packets.map((pkt) => {
                   const isConfirming = packetToDelete === pkt;
                   return (
                     <div
                       key={pkt}
-                      className={`flex items-center justify-between px-3 py-2.5 text-xs transition-colors ${
+                      className={`flex items-center justify-between px-4 py-3.5 text-base font-bold transition-colors ${
                         isConfirming
-                          ? 'bg-red-50 dark:bg-red-950/40 border-l-4 border-red-500'
-                          : 'bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800/60'
+                          ? 'bg-red-50 border-l-4 border-red-500'
+                          : 'bg-white hover:bg-neutral-50 text-neutral-950'
                       }`}
                     >
                       {isConfirming ? (
                         <>
-                          <div className="flex items-center gap-1.5 text-red-700 dark:text-red-300 font-semibold pr-2">
-                            <AlertCircle className="w-3.5 h-3.5 text-red-500 shrink-0" />
+                          <div className="flex items-center gap-2 text-red-700 font-bold pr-2 text-sm sm:text-base">
+                            <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
                             <span>Delete &ldquo;{pkt}&rdquo;?</span>
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
@@ -1202,31 +1691,31 @@ export default function EditorialDeskPage() {
                                 handleRemovePacket(pkt);
                                 setPacketToDelete(null);
                               }}
-                              className="px-3 py-1 text-xs font-bold bg-red-600 hover:bg-red-700 text-white rounded transition-colors shadow-xs cursor-pointer"
+                              className="px-4 py-1.5 text-xs font-extrabold bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors shadow-xs cursor-pointer"
                             >
                               Delete
                             </button>
                             <button
                               type="button"
                               onClick={() => setPacketToDelete(null)}
-                              className="px-3 py-1 text-xs font-semibold bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 dark:hover:bg-neutral-600 text-neutral-800 dark:text-neutral-200 rounded transition-colors cursor-pointer"
+                              className="px-4 py-1.5 text-xs font-bold bg-neutral-200 hover:bg-neutral-300 text-neutral-800 rounded-lg transition-colors cursor-pointer"
                             >
-                              Back
+                              Cancel
                             </button>
                           </div>
                         </>
                       ) : (
                         <>
-                          <span className="font-semibold text-neutral-900 dark:text-neutral-100">
+                          <span className="text-neutral-950 font-extrabold font-serif text-base sm:text-lg">
                             {pkt}
                           </span>
                           <button
                             type="button"
                             onClick={() => setPacketToDelete(pkt)}
-                            className="text-neutral-400 hover:text-red-500 p-1.5 rounded transition-colors cursor-pointer"
+                            className="text-neutral-400 hover:text-red-600 p-2 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
                             title={`Delete "${pkt}"`}
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <Trash2 className="w-4 h-4" />
                           </button>
                         </>
                       )}
@@ -1236,7 +1725,7 @@ export default function EditorialDeskPage() {
               </div>
             </div>
 
-            <div className="flex justify-end pt-2 border-t border-neutral-200 dark:border-neutral-800">
+            <div className="flex justify-end pt-3 border-t-2 border-neutral-200">
               <button
                 type="button"
                 onClick={() => {
@@ -1244,7 +1733,7 @@ export default function EditorialDeskPage() {
                   setNewPacketInput('');
                   setPacketToDelete(null);
                 }}
-                className="px-4 py-1.5 bg-[#0C2340] text-white hover:bg-[#123157] text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer rounded-xs"
+                className="px-7 py-2.5 bg-[#0C2340] text-[#E27A2B] hover:bg-[#123157] text-sm font-extrabold uppercase tracking-wider transition-colors cursor-pointer rounded-xl border border-[#E27A2B]/40 shadow-xs"
               >
                 Done
               </button>
@@ -1253,82 +1742,336 @@ export default function EditorialDeskPage() {
         </div>
       )}
 
-      {/* Editorial Desk Quick Working Guide Modal Dialog */}
+      {/* Editorial Desk Complete Working Guide Modal Dialog (Solid Light Theme, Large & Bold Legibility) */}
       {showInfoModal && (
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/75 backdrop-blur-xs animate-in fade-in"
         >
-          <div className="w-full max-w-md bg-paper-card dark:bg-paper-cardDark border border-[#E27A2B]/40 shadow-2xl p-6 space-y-4 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between pb-3 border-b border-neutral-200 dark:border-neutral-800">
-              <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 bg-[#0C2340] text-[#E27A2B] flex items-center justify-center border border-[#E27A2B]/40">
-                  <Info className="w-4 h-4" />
+          <div className="w-full max-w-4xl bg-white border-2 border-neutral-300 shadow-2xl rounded-2xl p-6 sm:p-10 space-y-7 max-h-[90vh] overflow-y-auto text-neutral-900">
+            {/* Header */}
+            <div className="flex items-center justify-between pb-5 border-b-2 border-neutral-200">
+              <div className="flex items-center gap-3.5">
+                <div className="w-12 h-12 bg-[#0C2340] text-[#E27A2B] rounded-2xl flex items-center justify-center border-2 border-[#E27A2B]/50 shadow-sm shrink-0">
+                  <HelpCircle className="w-7 h-7" />
                 </div>
-                <h3 className="font-serif text-lg font-bold text-neutral-900 dark:text-neutral-50">
-                  Editorial Desk Guide
-                </h3>
+                <div>
+                  <h3 className="font-serif text-2xl sm:text-3xl font-black text-neutral-950 tracking-tight">
+                    Editorial Desk Guide &amp; Instructions
+                  </h3>
+                  <p className="text-sm sm:text-base font-bold text-neutral-700 font-sans mt-0.5">
+                    Comprehensive user manual for composing, managing drafts, and publishing on Old Mango Tree
+                  </p>
+                </div>
               </div>
               <button
                 type="button"
                 onClick={() => setShowInfoModal(false)}
-                className="p-1.5 text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 transition-colors cursor-pointer"
-                title="Close"
+                className="p-2.5 text-neutral-400 hover:text-neutral-950 hover:bg-neutral-100 transition-colors cursor-pointer rounded-xl"
+                title="Close Guide"
+                aria-label="Close Guide"
               >
-                <X className="w-4 h-4" />
+                <X className="w-6 h-6" />
               </button>
             </div>
 
-            <div className="space-y-3 text-xs sm:text-sm text-neutral-700 dark:text-neutral-300 leading-relaxed">
-              <p className="text-xs text-neutral-600 dark:text-neutral-400">
-                Your integrated in-house publishing system:
-              </p>
+            {/* Guide Content Sections (Light Theme, Large Fonts & Bold Thickness) */}
+            <div className="space-y-6">
+              {/* Section 1: Top Toolbar Actions */}
+              <div className="p-6 sm:p-7 rounded-2xl bg-neutral-50 border-2 border-neutral-200/90 space-y-4">
+                <div className="flex items-center gap-3 text-[#0C2340]">
+                  <Sparkles className="w-6 h-6 text-[#E27A2B] shrink-0" />
+                  <h4 className="font-serif text-xl sm:text-2xl font-black text-neutral-950">
+                    1. Top Action Toolbar (Icons Overview)
+                  </h4>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                  <div className="p-4 sm:p-5 bg-white rounded-xl border-2 border-neutral-200 shadow-2xs space-y-2">
+                    <strong className="text-neutral-950 text-base sm:text-lg font-black flex items-center gap-2">
+                      <span className="w-6 h-6 rounded-md bg-[#0C2340] text-[#E27A2B] flex items-center justify-center text-sm font-extrabold">+</span>
+                      Write New Article
+                    </strong>
+                    <p className="text-sm sm:text-base font-semibold text-neutral-800 leading-relaxed font-sans">
+                      Resets and completely clears the editor fields so you can begin composing a fresh article or podcast episode from scratch.
+                    </p>
+                  </div>
 
-              <ol className="space-y-2 text-xs">
-                <li className="flex items-start gap-2.5 p-2 bg-neutral-50 dark:bg-neutral-900/60 border border-neutral-200 dark:border-neutral-800">
-                  <span className="w-5 h-5 bg-[#0C2340] text-[#E27A2B] font-bold text-[11px] flex items-center justify-center shrink-0">1</span>
-                  <div>
-                    <strong className="text-neutral-900 dark:text-neutral-100 block">Article Studio</strong>
-                    Write in rich text or HTML mode, upload compressed WebP photos, and upload podcasts/narrations.
+                  <div className="p-4 sm:p-5 bg-white rounded-xl border-2 border-neutral-200 shadow-2xs space-y-2">
+                    <strong className="text-neutral-950 text-base sm:text-lg font-black flex items-center gap-2">
+                      <FolderOpen className="w-5 h-5 text-[#E27A2B]" />
+                      Saved Drafts &amp; Articles Library
+                    </strong>
+                    <p className="text-sm sm:text-base font-semibold text-neutral-800 leading-relaxed font-sans">
+                      Access all saved drafts and published stories. View exact draft and publication dates, search by title, and load any story to resume writing.
+                    </p>
                   </div>
-                </li>
-                <li className="flex items-start gap-2.5 p-2 bg-neutral-50 dark:bg-neutral-900/60 border border-neutral-200 dark:border-neutral-800">
-                  <span className="w-5 h-5 bg-[#0C2340] text-[#E27A2B] font-bold text-[11px] flex items-center justify-center shrink-0">2</span>
-                  <div>
-                    <strong className="text-neutral-900 dark:text-neutral-100 block">Save Drafts &amp; Resume</strong>
-                    Hit <em>Save Draft</em> anytime to persist in the database, and load via <em>Library &amp; Drafts</em>.
+
+                  <div className="p-4 sm:p-5 bg-white rounded-xl border-2 border-neutral-200 shadow-2xs space-y-2">
+                    <strong className="text-neutral-950 text-base sm:text-lg font-black flex items-center gap-2">
+                      <Send className="w-5 h-5 text-[#E27A2B]" />
+                      Upload File
+                    </strong>
+                    <p className="text-sm sm:text-base font-semibold text-neutral-800 leading-relaxed font-sans">
+                      Import existing <code className="px-1.5 py-0.5 bg-neutral-100 rounded font-mono text-xs font-bold">.md</code> or <code className="px-1.5 py-0.5 bg-neutral-100 rounded font-mono text-xs font-bold">.html</code> files from your computer directly into the editor with automatic title parsing.
+                    </p>
                   </div>
-                </li>
-                <li className="flex items-start gap-2.5 p-2 bg-neutral-50 dark:bg-neutral-900/60 border border-neutral-200 dark:border-neutral-800">
-                  <span className="w-5 h-5 bg-[#0C2340] text-[#E27A2B] font-bold text-[11px] flex items-center justify-center shrink-0">3</span>
-                  <div>
-                    <strong className="text-neutral-900 dark:text-neutral-100 block">Publish Live</strong>
-                    Publish directly to the reader site, or keep your work safely stored in the database.
+
+                  <div className="p-4 sm:p-5 bg-white rounded-xl border-2 border-neutral-200 shadow-2xs space-y-2">
+                    <strong className="text-neutral-950 text-base sm:text-lg font-black flex items-center gap-2">
+                      <BookOpen className="w-5 h-5 text-[#E27A2B]" />
+                      Live Reader Preview
+                    </strong>
+                    <p className="text-sm sm:text-base font-semibold text-neutral-800 leading-relaxed font-sans">
+                      Opens an exact replica of the live website reader layout, font styling, byline, and cover photo to review before publishing.
+                    </p>
                   </div>
-                </li>
-                <li className="flex items-start gap-2.5 p-2 bg-neutral-50 dark:bg-neutral-900/60 border border-neutral-200 dark:border-neutral-800">
-                  <span className="w-5 h-5 bg-emerald-700 text-white font-bold text-[11px] flex items-center justify-center shrink-0">4</span>
-                  <div>
-                    <strong className="text-neutral-900 dark:text-neutral-100 block">Reader Letters Mailbox</strong>
-                    Review reader letters in a single-line inbox, reply directly via email, and feature letters in the webzine.
+
+                  <div className="p-4 sm:p-5 bg-white rounded-xl border-2 border-neutral-200 shadow-2xs space-y-2">
+                    <strong className="text-neutral-950 text-base sm:text-lg font-black flex items-center gap-2">
+                      <Clock className="w-5 h-5 text-amber-500" />
+                      Save Draft
+                    </strong>
+                    <p className="text-sm sm:text-base font-semibold text-neutral-800 leading-relaxed font-sans">
+                      Saves your progress to the database as a draft. It will not be visible on the public reader site until you choose to publish it.
+                    </p>
                   </div>
-                </li>
-              </ol>
+
+                  <div className="p-4 sm:p-5 bg-white rounded-xl border-2 border-neutral-200 shadow-2xs space-y-2">
+                    <strong className="text-neutral-950 text-base sm:text-lg font-black flex items-center gap-2">
+                      <Calendar className="w-5 h-5 text-[#E27A2B]" />
+                      Schedule Publish
+                    </strong>
+                    <p className="text-sm sm:text-base font-semibold text-neutral-800 leading-relaxed font-sans">
+                      Select your desired future release date &amp; time using the calendar and clock picker. Stories automatically go live the exact moment the scheduled time arrives.
+                    </p>
+                  </div>
+
+                  <div className="p-4 sm:p-5 bg-white rounded-xl border-2 border-neutral-200 shadow-2xs space-y-2">
+                    <strong className="text-neutral-950 text-base sm:text-lg font-black flex items-center gap-2">
+                      <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                      Publish Live
+                    </strong>
+                    <p className="text-sm sm:text-base font-semibold text-neutral-800 leading-relaxed font-sans">
+                      Publishes the article live to the website immediately. Readers will be able to discover and read it right away across all categories.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Section 2: Editor Formatting & Media */}
+              <div className="p-6 sm:p-7 rounded-2xl bg-neutral-50 border-2 border-neutral-200/90 space-y-3">
+                <h4 className="font-serif text-xl sm:text-2xl font-black text-neutral-950 flex items-center gap-3 text-[#0C2340]">
+                  <PenSquare className="w-6 h-6 text-[#E27A2B] shrink-0" />
+                  <span>2. Writing, Typography &amp; Cover Images</span>
+                </h4>
+                <ul className="list-disc list-inside space-y-2.5 text-sm sm:text-base font-semibold text-neutral-800 leading-relaxed font-sans">
+                  <li>
+                    <strong className="font-extrabold text-neutral-950">Rich Text Toolbar:</strong> Format text with Headings (H2, H3), Bold, Italic, Strikethrough, Bullet Lists, Numbered Lists, Blockquotes, and Text Alignment (Left, Center, Right, Justify).
+                  </li>
+                  <li>
+                    <strong className="font-extrabold text-neutral-950">Raw HTML Switcher:</strong> Toggle between the visual editor and Raw HTML mode whenever you need to inspect code, paste custom embeds, or insert tables.
+                  </li>
+                  <li>
+                    <strong className="font-extrabold text-neutral-950">Cover Photos:</strong> Upload photos in JPG, PNG, or WebP. Images are automatically compressed to ultra-fast loading WebP format.
+                  </li>
+                  <li>
+                    <strong className="font-extrabold text-neutral-950">Podcast &amp; Audio:</strong> Toggle &ldquo;Podcast Mode&rdquo; to attach audio narrations or release dedicated podcast episodes with streaming MP3 URLs.
+                  </li>
+                </ul>
+              </div>
+
+              {/* Section 3: Drafts Library & Two-Step Deletion */}
+              <div className="p-6 sm:p-7 rounded-2xl bg-neutral-50 border-2 border-neutral-200/90 space-y-3">
+                <h4 className="font-serif text-xl sm:text-2xl font-black text-neutral-950 flex items-center gap-3 text-[#0C2340]">
+                  <FolderOpen className="w-6 h-6 text-[#E27A2B] shrink-0" />
+                  <span>3. Drafts, Scheduled Stories &amp; Safe Two-Step Deletion</span>
+                </h4>
+                <p className="text-sm sm:text-base font-semibold text-neutral-800 leading-relaxed font-sans">
+                  The Library modal cleanly separates stories into three distinct tabs: <strong className="font-extrabold text-neutral-950">Drafts</strong>, <strong className="font-extrabold text-blue-900">Scheduled</strong>, and <strong className="font-extrabold text-emerald-900">Published</strong> with exact creation, scheduled countdowns, and publication dates clearly displayed. Click <strong className="font-extrabold text-neutral-950">Load to Editor</strong> to resume working on any story, or <strong className="font-extrabold text-emerald-800">Publish Now</strong> to release a scheduled piece immediately.
+                </p>
+                <div className="p-4 sm:p-5 bg-amber-50 border-2 border-amber-300 rounded-xl text-sm sm:text-base font-bold text-amber-950 flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                  <span>
+                    <strong className="font-extrabold text-amber-950">Two-Confirmation Safety Rule:</strong> When you delete any draft or published story, the system prompts you twice for confirmation to guarantee accidental clicks never erase your work.
+                  </span>
+                </div>
+              </div>
+
+              {/* Section 4: Security & Passcode */}
+              <div className="p-6 sm:p-7 rounded-2xl bg-neutral-50 border-2 border-neutral-200/90 space-y-3">
+                <h4 className="font-serif text-xl sm:text-2xl font-black text-neutral-950 flex items-center gap-3 text-[#0C2340]">
+                  <Lock className="w-6 h-6 text-[#E27A2B] shrink-0" />
+                  <span>4. Passcode Security &amp; 1-Hour Auto Inactivity Lock</span>
+                </h4>
+                <ul className="list-disc list-inside space-y-2 text-sm sm:text-base font-semibold text-neutral-800 leading-relaxed font-sans">
+                  <li>
+                    <strong className="font-extrabold text-neutral-950">Seamless Refresh:</strong> Refreshing your browser does not log you out during an active session.
+                  </li>
+                  <li>
+                    <strong className="font-extrabold text-neutral-950">1-Hour Inactivity Timeout:</strong> If the desk remains inactive without mouse or keyboard input for 60 minutes, it automatically locks for your security.
+                  </li>
+                  <li>
+                    <strong className="font-extrabold text-neutral-950">Change Passcode:</strong> Click the <strong className="font-extrabold text-neutral-950">Passcode</strong> button in the header at any time to set a new custom PIN.
+                  </li>
+                  {SHOW_FORGOT_PASSCODE && (
+                    <li>
+                      <strong className="font-extrabold text-neutral-950">Forgot Passcode:</strong> If you ever forget your passcode, click <strong className="font-extrabold text-neutral-950">Forgot Passcode?</strong> on the login screen or in the passcode modal. Enter your registered editor email (<code className="text-sm font-bold bg-neutral-200/70 px-1.5 py-0.5 rounded">akhil@oldmangotree.media</code> or <code className="text-sm font-bold bg-neutral-200/70 px-1.5 py-0.5 rounded">amala@oldmangotree.media</code>) to immediately set a new PIN or restore the default access (<code className="text-sm font-bold bg-neutral-200/70 px-1.5 py-0.5 rounded">omt2026</code>).
+                    </li>
+                  )}
+                </ul>
+              </div>
             </div>
 
-            <div className="flex justify-end pt-2 border-t border-neutral-200 dark:border-neutral-800">
+            {/* Footer */}
+            <div className="flex justify-end pt-4 border-t-2 border-neutral-200">
               <button
                 type="button"
                 onClick={() => setShowInfoModal(false)}
-                className="px-4 py-1.5 bg-[#0C2340] text-[#E27A2B] hover:bg-[#123157] text-xs font-bold uppercase tracking-wider border border-[#E27A2B]/40 transition-colors cursor-pointer"
+                className="px-8 py-3.5 bg-[#0C2340] text-[#E27A2B] hover:bg-[#123157] text-sm sm:text-base font-extrabold uppercase tracking-wider border-2 border-[#E27A2B]/50 transition-colors cursor-pointer rounded-xl shadow-xs"
               >
-                Got It
+                Understood &amp; Close Guide
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Passcode Management Modal (Solid Light Theme, Large & Bold Legibility) */}
+      {showPasscodeModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-in fade-in"
+        >
+          <div className="w-full max-w-lg bg-white border-2 border-neutral-300 shadow-2xl rounded-2xl p-6 sm:p-9 space-y-6 text-neutral-900">
+            <div className="flex items-center justify-between pb-4 border-b-2 border-neutral-200">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-[#0C2340] text-[#E27A2B] rounded-xl flex items-center justify-center border-2 border-[#E27A2B]/40 shadow-xs">
+                  <Lock className="w-5 h-5" />
+                </div>
+                <h3 className="font-serif text-2xl font-black text-neutral-950">
+                  Change Editorial Passcode
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPasscodeModal(false)}
+                className="p-2 text-neutral-400 hover:text-neutral-950 hover:bg-neutral-100 rounded-lg transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleChangePasscode} className="space-y-4">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block text-sm font-bold uppercase tracking-wider text-neutral-900">
+                    Current Passcode
+                  </label>
+                  {SHOW_FORGOT_PASSCODE && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowPasscodeModal(false);
+                        setShowForgotModal(true);
+                        setForgotError('');
+                        setForgotSuccess('');
+                      }}
+                      className="text-xs sm:text-sm font-bold text-[#E27A2B] hover:underline cursor-pointer"
+                    >
+                      Forgot Passcode?
+                    </button>
+                  )}
+                </div>
+                <input
+                  type="password"
+                  value={currentPassInput}
+                  onChange={(e) => setCurrentPassInput(e.target.value)}
+                  placeholder="Enter current PIN"
+                  className="w-full px-4 py-3 text-base sm:text-lg bg-neutral-50 border-2 border-neutral-300 rounded-xl text-neutral-950 placeholder-neutral-500 font-mono font-bold focus:border-[#E27A2B] focus:bg-white focus:outline-none transition-all"
+                  autoFocus
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-sm font-bold uppercase tracking-wider text-neutral-900">
+                  New Passcode
+                </label>
+                <input
+                  type="password"
+                  value={newPassInput}
+                  onChange={(e) => setNewPassInput(e.target.value)}
+                  placeholder="Enter new PIN (at least 4 characters)"
+                  className="w-full px-4 py-3 text-base sm:text-lg bg-neutral-50 border-2 border-neutral-300 rounded-xl text-neutral-950 placeholder-neutral-500 font-mono font-bold focus:border-[#E27A2B] focus:bg-white focus:outline-none transition-all"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-sm font-bold uppercase tracking-wider text-neutral-900">
+                  Confirm New Passcode
+                </label>
+                <input
+                  type="password"
+                  value={confirmPassInput}
+                  onChange={(e) => setConfirmPassInput(e.target.value)}
+                  placeholder="Re-type new PIN"
+                  className="w-full px-4 py-3 text-base sm:text-lg bg-neutral-50 border-2 border-neutral-300 rounded-xl text-neutral-950 placeholder-neutral-500 font-mono font-bold focus:border-[#E27A2B] focus:bg-white focus:outline-none transition-all"
+                />
+              </div>
+
+              {passcodeModalError && (
+                <div className="p-3.5 bg-red-50 border-2 border-red-300 rounded-xl text-sm text-red-700 flex items-center gap-2 font-bold">
+                  <AlertCircle className="w-5 h-5 shrink-0 text-red-600" />
+                  <span>{passcodeModalError}</span>
+                </div>
+              )}
+
+              {passcodeModalSuccess && (
+                <div className="p-3.5 bg-emerald-50 border-2 border-emerald-300 rounded-xl text-sm text-emerald-800 flex items-center gap-2 font-bold">
+                  <CheckCircle2 className="w-5 h-5 shrink-0 text-emerald-600" />
+                  <span>{passcodeModalSuccess}</span>
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t-2 border-neutral-200">
+                <button
+                  type="button"
+                  onClick={() => setShowPasscodeModal(false)}
+                  className="px-5 py-2.5 text-sm font-bold text-neutral-700 hover:text-neutral-950 hover:bg-neutral-100 rounded-xl transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-7 py-3 bg-[#0C2340] text-[#E27A2B] hover:bg-[#123157] text-sm font-extrabold uppercase tracking-wider border-2 border-[#E27A2B]/40 transition-colors cursor-pointer rounded-xl shadow-xs"
+                >
+                  Update Passcode
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Forgot Passcode Modal (Authenticated View) */}
+      {renderForgotPasscodeModal()}
+
+      {/* Floating Bottom-Right Help Button */}
+      <aside aria-label="Editorial Help Desk" className="fixed bottom-6 right-6 z-40">
+        <button
+          type="button"
+          onClick={() => setShowInfoModal(true)}
+          className="flex items-center gap-2.5 px-4 py-3 bg-[#0C2340] hover:bg-[#123157] text-[#E27A2B] rounded-full shadow-2xl border-2 border-[#E27A2B]/60 hover:border-[#E27A2B] transition-all duration-200 cursor-pointer group hover:scale-105 active:scale-95"
+          title="Editorial Desk Help & Instructions"
+          aria-label="Editorial Desk Help & Instructions"
+        >
+          <HelpCircle className="w-5 h-5 text-[#E27A2B] shrink-0" />
+          <span className="text-xs sm:text-sm font-bold tracking-wider uppercase text-neutral-100 group-hover:text-[#E27A2B] transition-colors">
+            Help &amp; Guide
+          </span>
+        </button>
+      </aside>
     </div>
   );
 }

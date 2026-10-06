@@ -18,9 +18,11 @@ interface ArticlePageProps {
 }
 
 export const revalidate = 60;
+export const dynamicParams = true;
 
 export async function generateStaticParams() {
   const articles = await getAllArticles();
+  if (articles.length === 0) return [{ slug: '_empty' }];
   return articles.map((a) => ({
     slug: a.slug,
   }));
@@ -102,7 +104,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
         </header>
 
         {/* Featured Image */}
-        {article.coverImage && (
+        {article.coverImage && article.coverImage.trim() !== '' && (
           <div className="relative aspect-[16/10] sm:aspect-[16/9] w-full rounded-xl sm:rounded-2xl overflow-hidden shadow-lg">
             <Image
               src={article.coverImage}
@@ -200,7 +202,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
                   <div>
                     <div className="relative aspect-[16/10] sm:aspect-[16/9] w-full overflow-hidden bg-neutral-100 dark:bg-neutral-800">
                       <Image
-                        src={rel.coverImage}
+                        src={rel.coverImage || '/images/logo-oldmangotree.jpg'}
                         alt={rel.title}
                         fill
                         sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"

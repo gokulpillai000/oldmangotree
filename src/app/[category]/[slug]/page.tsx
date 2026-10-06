@@ -21,6 +21,7 @@ export const revalidate = 60;
 
 export async function generateStaticParams() {
   const articles = await getAllArticles();
+  if (articles.length === 0) return [{ category: 'politics', slug: '_empty' }];
   return articles.map((a) => ({
     category: a.category.toLowerCase(),
     slug: a.slug,

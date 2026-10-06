@@ -13,9 +13,11 @@ interface SeriesPageProps {
 }
 
 export const revalidate = 60;
+export const dynamicParams = true;
 
 export async function generateStaticParams() {
   const series = await getAllSeries();
+  if (series.length === 0) return [{ slug: '_empty' }];
   return series.map((s) => ({
     slug: s.slug,
   }));
@@ -53,7 +55,7 @@ export default async function SeriesDetailPage({ params }: SeriesPageProps) {
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6 sm:gap-8 items-start pb-8 border-b border-neutral-200 dark:border-neutral-800">
         <div className="md:col-span-5 relative aspect-[4/3] md:aspect-square w-full rounded-none overflow-hidden">
           <Image
-            src={series.coverImage}
+            src={series.coverImage || '/images/logo-oldmangotree.jpg'}
             alt={series.title}
             fill
             className="object-cover rounded-none"

@@ -54,13 +54,13 @@ export function WidgetGrid({ articles }: WidgetGridProps) {
   return (
     <div className="space-y-12 sm:space-y-16">
       {/* 1. Lead & Top Highlights Section (Latest 4 Items) */}
-      <section className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 items-start">
-        {/* Left Column: Top Latest Lead Story (7 cols) */}
-        <div className="relative lg:col-span-7 pb-6 border-b lg:border-b-0 lg:border-r border-neutral-200 dark:border-neutral-800 lg:pr-8 group flex flex-col justify-between cursor-pointer transition-colors">
+      <section className={`grid grid-cols-1 ${highlightArticles.length > 0 ? 'lg:grid-cols-12' : ''} gap-6 sm:gap-8 items-start`}>
+        {/* Left Column: Top Latest Lead Story */}
+        <div className={`relative ${highlightArticles.length > 0 ? 'lg:col-span-7 lg:border-r lg:pr-8' : 'w-full'} pb-6 border-b lg:border-b-0 border-neutral-200 dark:border-neutral-800 group flex flex-col justify-between cursor-pointer transition-colors`}>
           <div>
             <div className="relative h-64 sm:h-80 md:h-96 w-full overflow-hidden bg-neutral-100 dark:bg-neutral-800">
               <Image
-                src={leadArticle.coverImage}
+                src={leadArticle.coverImage || '/images/logo-oldmangotree.jpg'}
                 alt={leadArticle.title}
                 fill
                 sizes="(max-width: 1024px) 100vw, 60vw"
@@ -124,23 +124,24 @@ export function WidgetGrid({ articles }: WidgetGridProps) {
         </div>
 
         {/* Right Column: Next 3 Latest Stories (5 cols) */}
-        <div className="lg:col-span-5 space-y-4">
-          <div className="flex items-center gap-2 pb-2 border-b border-neutral-200 dark:border-neutral-800">
-            <Sparkles className="w-4 h-4 text-brand-600 dark:text-brand-400" />
-            <h3 className="font-serif text-lg sm:text-xl font-bold text-neutral-900 dark:text-neutral-50">
-              Latest Highlights
-            </h3>
-          </div>
+        {highlightArticles.length > 0 && (
+          <div className="lg:col-span-5 space-y-4">
+            <div className="flex items-center gap-2 pb-2 border-b border-neutral-200 dark:border-neutral-800">
+              <Sparkles className="w-4 h-4 text-brand-600 dark:text-brand-400" />
+              <h3 className="font-serif text-lg sm:text-xl font-bold text-neutral-900 dark:text-neutral-50">
+                Latest Highlights
+              </h3>
+            </div>
 
-          <div className="space-y-4">
-            {highlightArticles.map((art) => (
+            <div className="space-y-4">
+              {highlightArticles.map((art) => (
               <article
                 key={art.slug}
                 className="relative flex items-center gap-3 sm:gap-4 pb-4 border-b border-neutral-200 dark:border-neutral-800 last:border-b-0 group cursor-pointer transition-colors"
               >
                 <div className="relative w-24 h-24 sm:w-28 sm:h-28 overflow-hidden shrink-0 bg-neutral-100 dark:bg-neutral-800">
                   <Image
-                    src={art.coverImage}
+                    src={art.coverImage || '/images/logo-oldmangotree.jpg'}
                     alt={art.title}
                     fill
                     sizes="112px"
@@ -173,7 +174,8 @@ export function WidgetGrid({ articles }: WidgetGridProps) {
             ))}
           </div>
         </div>
-      </section>
+      )}
+    </section>
 
       {/* 2. Latest Stories Feed Grid */}
       {displayArticles.length > 0 && (
@@ -220,7 +222,7 @@ export function WidgetGrid({ articles }: WidgetGridProps) {
                 <div>
                   <div className="relative aspect-[16/10] sm:aspect-[16/9] w-full overflow-hidden bg-neutral-100 dark:bg-neutral-800">
                     <Image
-                      src={art.coverImage}
+                      src={art.coverImage || '/images/logo-oldmangotree.jpg'}
                       alt={art.title}
                       fill
                       sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"

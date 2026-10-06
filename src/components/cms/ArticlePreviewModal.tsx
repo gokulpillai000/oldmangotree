@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { X, Volume2, Calendar, User, Clock, Bookmark, Share2, Tag } from 'lucide-react';
+import { X, Volume2, Calendar, Tag, ArrowLeft, BookOpen } from 'lucide-react';
 
 interface ArticlePreviewModalProps {
   isOpen: boolean;
@@ -40,108 +40,99 @@ export function ArticlePreviewModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-sm animate-in fade-in">
       <div className="fixed inset-0" onClick={onClose} aria-hidden="true" />
 
-      {/* Main Preview Container - Completely Opaque Solid Paper Background */}
-      <div className="relative z-10 w-full max-w-4xl max-h-[94vh] bg-[#fcfbf7] dark:bg-[#0a1424] text-neutral-900 dark:text-neutral-100 border border-neutral-300 dark:border-neutral-700 shadow-2xl overflow-y-auto rounded-sm flex flex-col">
+      {/* Main Preview Container - Completely Opaque Solid Paper Background matching reader */}
+      <div className="relative z-10 w-full max-w-4xl max-h-[94vh] bg-paper-card dark:bg-paper-cardDark text-neutral-900 dark:text-neutral-100 border border-neutral-300 dark:border-neutral-700 shadow-2xl overflow-y-auto rounded-sm flex flex-col">
         {/* Sticky Preview Top Bar */}
         <div className="sticky top-0 z-20 px-4 sm:px-6 py-3 bg-[#0C2340] text-white flex items-center justify-between border-b border-neutral-700 shadow-sm">
-          <div className="flex items-center gap-2">
-            <span className="px-2 py-0.5 bg-[#E27A2B] text-white text-[10px] font-bold uppercase tracking-wider rounded-xs">
+          <div className="flex items-center gap-2.5">
+            <span className="px-3 py-1 bg-[#E27A2B] text-white text-xs sm:text-sm font-black uppercase tracking-wider rounded-sm shadow-xs">
               Live Reader Preview
             </span>
-            <span className="text-xs text-neutral-300 hidden sm:inline font-mono">
-              Exact typography and styling as seen by readers
+            <span className="text-xs sm:text-sm text-neutral-200 hidden sm:inline font-mono font-bold">
+              Exact typography and layout identical to the live website
             </span>
           </div>
           <button
             onClick={onClose}
             className="p-1.5 text-neutral-300 hover:text-white hover:bg-white/10 rounded-xs transition-colors cursor-pointer"
             title="Close Preview"
+            aria-label="Close Preview"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Article Document Canvas */}
-        <div className="p-6 sm:p-12 max-w-3xl mx-auto w-full space-y-6">
-          {/* Top Breadcrumb / Category / Packet */}
-          <div className="flex items-center gap-2 flex-wrap text-xs">
-            <span className="font-bold text-[#E27A2B] uppercase tracking-wider">
-              {category || 'Politics'}
+        {/* Article Document Canvas - Exact replica of src/app/articles/[slug]/page.tsx */}
+        <article className="max-w-3xl mx-auto w-full space-y-6 p-6 sm:p-12">
+          {/* Back navigation mockup */}
+          <div className="flex items-center justify-between">
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-500">
+              <ArrowLeft className="w-4 h-4" /> Back to Webzine
             </span>
+
             {packet && packet !== 'None' && (
-              <>
-                <span className="text-neutral-400">•</span>
-                <span className="px-2 py-0.5 bg-neutral-200 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 font-bold uppercase text-[10px] rounded-xs">
-                  {packet}
-                </span>
-              </>
-            )}
-            {tags && tags.length > 0 && (
-              <div className="flex items-center gap-1 ml-auto flex-wrap">
-                {tags.map((t) => (
-                  <span
-                    key={t}
-                    className="px-2 py-0.5 bg-neutral-100 dark:bg-neutral-800/80 border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400 text-[10px] rounded-xs flex items-center gap-0.5"
-                  >
-                    <Tag className="w-2.5 h-2.5 text-[#E27A2B]" />
-                    {t}
-                  </span>
-                ))}
-              </div>
+              <span className="inline-flex items-center gap-1 text-xs font-bold text-brand-600 dark:text-brand-400">
+                <BookOpen className="w-3.5 h-3.5" />
+                <span>{packet.toUpperCase()} Issue</span>
+              </span>
             )}
           </div>
 
-          {/* Article Title */}
-          <h1 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold text-neutral-900 dark:text-neutral-50 leading-tight">
-            {title || 'Untitled Article'}
-          </h1>
+          {/* Article Header: Category, Title, Excerpt */}
+          <header className="space-y-4 sm:space-y-6">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-xs sm:text-sm font-bold uppercase tracking-wider text-brand-600 dark:text-brand-400 underline decoration-brand-600 dark:decoration-brand-400 underline-offset-4 decoration-2">
+                {category || 'Politics'}
+              </span>
+              {packet && packet !== 'None' && (
+                <span className="text-xs sm:text-sm font-semibold uppercase tracking-wider text-neutral-600 dark:text-neutral-400 underline decoration-neutral-300 dark:decoration-neutral-700 underline-offset-4 decoration-1">
+                  {packet.toUpperCase()} Issue
+                </span>
+              )}
+            </div>
 
-          {/* Subtitle / Excerpt */}
-          {excerpt && (
-            <p className="text-base sm:text-xl text-neutral-700 dark:text-neutral-300 font-serif leading-relaxed italic border-l-3 border-[#E27A2B] pl-4 py-1">
-              {excerpt}
-            </p>
+            <h1 className="font-serif text-2xl sm:text-4xl lg:text-5xl font-bold text-neutral-900 dark:text-neutral-50 leading-tight break-words">
+              {title || 'Untitled Article'}
+            </h1>
+
+            {excerpt && (
+              <p className="text-base sm:text-xl lg:text-2xl text-neutral-800 dark:text-neutral-200 font-serif leading-relaxed italic break-words">
+                {excerpt}
+              </p>
+            )}
+          </header>
+
+          {/* Featured Image (Rendered right above byline) */}
+          {coverImage && (
+            <div className="relative aspect-[16/10] sm:aspect-[16/9] w-full rounded-xl sm:rounded-2xl overflow-hidden shadow-lg border border-neutral-200 dark:border-neutral-800">
+              <img
+                src={coverImage}
+                alt={title}
+                className="w-full h-full object-cover"
+              />
+            </div>
           )}
 
-          {/* Byline & Read-time metadata */}
-          <div className="flex flex-wrap items-center justify-between gap-3 py-3 border-y border-neutral-200 dark:border-neutral-800 text-xs sm:text-sm text-neutral-600 dark:text-neutral-400">
-            <div className="flex items-center gap-3">
-              <span className="font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-1.5">
-                <User className="w-4 h-4 text-[#E27A2B]" /> {author || 'Akhil U Krishnan'}
-              </span>
-              <span>•</span>
-              <span className="flex items-center gap-1">
-                <Calendar className="w-3.5 h-3.5" />{' '}
-                {new Date().toLocaleDateString(undefined, {
-                  month: 'short',
-                  day: 'numeric',
-                  year: 'numeric',
-                })}
-              </span>
-              <span>•</span>
-              <span className="flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5" /> {readTimeMin} min read
-              </span>
-            </div>
-
-            <div className="flex items-center gap-3 text-neutral-400">
-              <span className="flex items-center gap-1 hover:text-[#E27A2B] transition-colors cursor-pointer">
-                <Bookmark className="w-4 h-4" /> Save
-              </span>
-              <span className="flex items-center gap-1 hover:text-[#E27A2B] transition-colors cursor-pointer">
-                <Share2 className="w-4 h-4" /> Share
-              </span>
-            </div>
+          {/* Author Name & Published Date (Displayed below cover image with border-y) */}
+          <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-4 py-2.5 sm:py-3 border-y border-neutral-200 dark:border-neutral-800 text-xs sm:text-sm">
+            <span className="font-serif font-bold text-sm sm:text-base text-neutral-900 dark:text-neutral-100">
+              {author || 'Akhil U Krishnan'}
+            </span>
+            <span className="flex items-center gap-1.5 text-neutral-600 dark:text-neutral-400 font-medium">
+              <Calendar className="w-3.5 h-3.5 text-neutral-400" />
+              {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+              <span className="text-neutral-400 font-mono ml-2">• {readTimeMin} min read</span>
+            </span>
           </div>
 
-          {/* Audio Narration Bar */}
+          {/* Audio Narration Bar (if audio track attached) */}
           {audioUrl && (
-            <div className="p-4 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 rounded-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+            <div className="p-4 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
               <div className="flex items-center gap-2 text-amber-900 dark:text-amber-200 text-xs sm:text-sm font-semibold">
                 <Volume2 className="w-5 h-5 text-[#E27A2B] shrink-0" />
                 <div>
                   <p className="font-bold">Listen to Audio Narration</p>
-                  <p className="text-[11px] text-neutral-500 dark:text-neutral-400 font-mono truncate max-w-xs">
+                  <p className="text-xs text-neutral-600 dark:text-neutral-300 font-mono font-semibold truncate max-w-xs">
                     {audioUrl}
                   </p>
                 </div>
@@ -150,33 +141,39 @@ export function ArticlePreviewModal({
             </div>
           )}
 
-          {/* Cover Photo */}
-          {coverImage && (
-            <div className="relative overflow-hidden rounded-xs shadow-md border border-neutral-200 dark:border-neutral-800">
-              <img
-                src={coverImage}
-                alt={title}
-                className="w-full h-auto max-h-[500px] object-cover"
-              />
-            </div>
-          )}
-
-          {/* Article Body HTML Content */}
+          {/* Article Body Content (Exact reader prose styling) */}
           <div
-            className="tiptap ProseMirror max-w-none text-neutral-900 dark:text-neutral-100 font-serif text-base sm:text-lg leading-relaxed space-y-4 pt-2"
+            className="prose dark:prose-invert max-w-none font-text is__text text-lg sm:text-xl leading-relaxed mt-6"
             dangerouslySetInnerHTML={{
               __html:
                 contentHtml ||
-                '<p class="text-neutral-400 italic">No content written yet...</p>',
+                '<p class="text-neutral-400 italic">No article content written yet...</p>',
             }}
           />
 
-          {/* Editorial Desk Sign-off */}
+          {/* Tags at bottom */}
+          {tags && tags.length > 0 && (
+            <div className="flex items-center gap-2 pt-6 border-t border-neutral-200 dark:border-neutral-800">
+              <Tag className="w-4 h-4 text-brand-600 dark:text-brand-400" />
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                {tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="text-xs sm:text-sm font-medium text-neutral-700 dark:text-neutral-300 underline decoration-brand-600 dark:decoration-brand-400 underline-offset-4 decoration-1 font-sans"
+                  >
+                    #{tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Sign-off footer */}
           <div className="pt-8 mt-12 border-t border-neutral-200 dark:border-neutral-800 text-xs text-neutral-500 font-mono flex items-center justify-between">
-            <span>oldmangotree Editorial Desk</span>
+            <span>oldmangotree Reader Edition</span>
             <span>{wordCount} words</span>
           </div>
-        </div>
+        </article>
       </div>
     </div>
   );
