@@ -4,7 +4,7 @@ slug: "solitude-under-the-mango-tree"
 excerpt: "A philosophical contemplation on slow thinking, observation, and the timeless art of sitting with one's ideas."
 category: "miscellaneous"
 authors:
-  - "kamalram-sajeev"
+  - "akhil-u-krishnan"
 publishedAt: "2026-09-09T09:00:00Z"
 coverImage: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80"
 audioNarrationUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3"

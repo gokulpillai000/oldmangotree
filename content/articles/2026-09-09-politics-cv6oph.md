@@ -4,7 +4,7 @@ slug: "2026-09-09-politics-cv6oph"
 excerpt: "സാങ്കേതികവിദ്യ ജീവിതം എളുപ്പമാക്കുമ്പോഴും അത് സൃഷ്ടിക്കുന്ന അമിത സമ്മർദ്ദത്തിൽ നിന്ന് മനസ്സിനെ വീണ്ടെടുക്കാനുള്ള പ്രായോഗിക വഴികൾ."
 category: "politics"
 authors:
-  - "kamalram-sajeev"
+  - "akhil-u-krishnan"
 publishedAt: "2026-09-09T10:28:00.000Z"
 coverImage: "https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=1200&q=80"
 isPremium: false

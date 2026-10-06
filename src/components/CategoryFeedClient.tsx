@@ -144,7 +144,7 @@ export function CategoryFeedClient({
 
               <div className="pt-3 border-t border-neutral-100 dark:border-neutral-800/80 mt-2 space-y-1 text-xs sm:text-sm">
                 <p className="font-serif font-bold text-sm sm:text-base text-neutral-900 dark:text-neutral-100 line-clamp-1">
-                  {article.authorNames || (article.authors?.[0] ? article.authors[0] : 'Editorial Desk')}
+                  {article.authorNames || (article.authors?.[0] ? article.authors[0] : 'Akhil U Krishnan')}
                 </p>
                 <div className="flex items-center justify-between text-neutral-600 dark:text-neutral-400 text-xs sm:text-sm font-medium">
                   <span className="flex items-center gap-1.5">

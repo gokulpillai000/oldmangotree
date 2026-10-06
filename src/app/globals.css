@@ -117,3 +117,192 @@
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;  /* Firefox */
 }
+
+/* ========================================================
+   TIPTAP / PROSEMIRROR IN-HOUSE CMS EDITOR STYLES
+   Ensures text is always visible, high-contrast, and formatted
+   ======================================================== */
+.tiptap.ProseMirror,
+.ProseMirror {
+  outline: none !important;
+  min-height: 420px;
+  color: #171717;
+  caret-color: #E27A2B !important;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 15px;
+  line-height: 1.65;
+  cursor: text;
+}
+
+.dark .tiptap.ProseMirror,
+.dark .ProseMirror {
+  color: #f5f5f5 !important;
+}
+
+.tiptap.ProseMirror p {
+  color: inherit;
+  margin-bottom: 0.85rem;
+  line-height: 1.65;
+  font-size: 15px;
+}
+
+.dark .tiptap.ProseMirror p {
+  color: #f5f5f5 !important;
+}
+
+.tiptap.ProseMirror span {
+  color: inherit;
+}
+
+.tiptap.ProseMirror strong {
+  font-weight: 700 !important;
+  color: inherit;
+}
+
+.tiptap.ProseMirror em {
+  font-style: italic !important;
+  color: inherit;
+}
+
+.tiptap.ProseMirror a {
+  color: #E27A2B !important;
+  text-decoration: underline !important;
+}
+
+.dark .tiptap.ProseMirror a {
+  color: #fb923c !important;
+}
+
+.tiptap.ProseMirror h1 {
+  font-size: 2rem !important;
+  font-weight: 700 !important;
+  margin-top: 1.5rem !important;
+  margin-bottom: 0.75rem !important;
+  color: #0C2340 !important;
+}
+.dark .tiptap.ProseMirror h1 {
+  color: #f5f5f5 !important;
+}
+
+.tiptap.ProseMirror h2 {
+  font-size: 1.5rem !important;
+  font-weight: 700 !important;
+  margin-top: 1.25rem !important;
+  margin-bottom: 0.5rem !important;
+  color: #0C2340 !important;
+}
+.dark .tiptap.ProseMirror h2 {
+  color: #f5f5f5 !important;
+}
+
+.tiptap.ProseMirror h3 {
+  font-size: 1.25rem !important;
+  font-weight: 700 !important;
+  margin-top: 1rem !important;
+  margin-bottom: 0.5rem !important;
+  color: #0C2340 !important;
+}
+.dark .tiptap.ProseMirror h3 {
+  color: #f5f5f5 !important;
+}
+
+.tiptap.ProseMirror blockquote {
+  border-left: 4px solid #E27A2B !important;
+  padding-left: 1rem !important;
+  margin: 1.5rem 0 !important;
+  font-style: italic !important;
+  color: #374151 !important;
+  background-color: rgba(226, 122, 43, 0.06) !important;
+  padding-top: 0.5rem !important;
+  padding-bottom: 0.5rem !important;
+}
+.dark .tiptap.ProseMirror blockquote {
+  color: #d1d5db !important;
+  background-color: rgba(255, 255, 255, 0.04) !important;
+}
+
+.tiptap.ProseMirror ul {
+  list-style-type: disc !important;
+  padding-left: 1.75rem !important;
+  margin-bottom: 1.25rem !important;
+  color: inherit !important;
+}
+
+.tiptap.ProseMirror ol {
+  list-style-type: decimal !important;
+  padding-left: 1.75rem !important;
+  margin-bottom: 1.25rem !important;
+  color: inherit !important;
+}
+
+.tiptap.ProseMirror p.is-editor-empty:first-child::before,
+.tiptap.ProseMirror.is-empty::before {
+  color: #9ca3af !important;
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+.dark .tiptap.ProseMirror p.is-editor-empty:first-child::before,
+.dark .tiptap.ProseMirror.is-empty::before {
+  color: #6b7280 !important;
+}
+
+.omt-jump-break,
+hr.read-more-break {
+  border: none !important;
+  border-top: 2px dashed #E27A2B !important;
+  margin: 2rem 0 !important;
+  position: relative !important;
+  overflow: visible !important;
+  height: 2px !important;
+}
+
+.omt-jump-break::after,
+hr.read-more-break::after {
+  content: '✂️ Read More Break (Blogger Jump Break)' !important;
+  position: absolute !important;
+  top: -12px !important;
+  right: 12px !important;
+  background: #E27A2B !important;
+  color: #ffffff !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  padding: 2px 8px !important;
+  border-radius: 4px !important;
+  font-family: sans-serif !important;
+  letter-spacing: 0.05em !important;
+}
+
+/* ========================================================
+   TIPTAP INTERACTABLE IMAGES: BLOCK ALIGNMENT (NO TEXT WRAP)
+   ======================================================== */
+.tiptap.ProseMirror img {
+  display: block !important;
+  clear: both !important;
+  max-width: 100% !important;
+  height: auto !important;
+}
+
+.tiptap.ProseMirror img[data-align="left"] {
+  display: block !important;
+  margin-right: auto !important;
+  margin-left: 0 !important;
+  clear: both !important;
+}
+
+.tiptap.ProseMirror img[data-align="center"] {
+  display: block !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  clear: both !important;
+}
+
+.tiptap.ProseMirror img[data-align="right"] {
+  display: block !important;
+  margin-left: auto !important;
+  margin-right: 0 !important;
+  clear: both !important;
+}
+
+

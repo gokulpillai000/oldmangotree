@@ -5,8 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Article, IssuePacket, Podcast, Series, Video } from '@/lib/content';
 import { formatDate } from '@/lib/format';
-import { useAudio } from './AudioContext';
-import { Volume2, ArrowRight, Calendar, Clock, Sparkles, Newspaper } from 'lucide-react';
+import { ArrowRight, Calendar, Clock, Sparkles, Newspaper } from 'lucide-react';
 
 interface WidgetGridProps {
   articles: Article[];
@@ -27,7 +26,6 @@ const CATEGORY_TABS = [
 ];
 
 export function WidgetGrid({ articles }: WidgetGridProps) {
-  const { playTrack } = useAudio();
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
   if (!articles || articles.length === 0) {
@@ -81,7 +79,7 @@ export function WidgetGrid({ articles }: WidgetGridProps) {
                 </Link>
                 <div className="flex flex-wrap items-center gap-2 text-sm sm:text-base text-neutral-700 dark:text-neutral-300 font-medium">
                   <span className="font-serif font-bold text-neutral-900 dark:text-neutral-100">
-                    {leadArticle.authorNames || (leadArticle.authors?.[0] ? leadArticle.authors[0] : 'Editorial Desk')}
+                    {leadArticle.authorNames || (leadArticle.authors?.[0] ? leadArticle.authors[0] : 'Akhil U Krishnan')}
                   </span>
                   <span>•</span>
                   <span className="flex items-center gap-1">
@@ -121,25 +119,6 @@ export function WidgetGrid({ articles }: WidgetGridProps) {
                 <span>Read Full Story</span>
                 <ArrowRight className="w-4 h-4" />
               </span>
-
-              {leadArticle.audioNarrationUrl && (
-                <button
-                  type="button"
-                  onClick={() =>
-                    playTrack({
-                      title: leadArticle.title,
-                      speaker: leadArticle.authorNames || 'Editorial Audio',
-                      url: leadArticle.audioNarrationUrl!,
-                      durationSeconds: leadArticle.audioDurationSeconds,
-                      articleSlug: leadArticle.slug,
-                    })
-                  }
-                  className="relative z-20 flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-[#E27A2B] text-white hover:bg-[#c9661d] transition-colors shadow-xs"
-                >
-                  <Volume2 className="w-4 h-4" />
-                  <span>Listen</span>
-                </button>
-              )}
             </div>
           </div>
         </div>
@@ -183,7 +162,7 @@ export function WidgetGrid({ articles }: WidgetGridProps) {
                     </h4>
                   </Link>
                   <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100 line-clamp-1">
-                    {art.authorNames || (art.authors?.[0] ? art.authors[0] : 'Editorial Desk')}
+                    {art.authorNames || (art.authors?.[0] ? art.authors[0] : 'Akhil U Krishnan')}
                   </p>
                   <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 flex items-center gap-1 font-medium">
                     <Calendar className="w-3.5 h-3.5" />
@@ -270,7 +249,7 @@ export function WidgetGrid({ articles }: WidgetGridProps) {
 
                 <div className="pt-3 border-t border-neutral-100 dark:border-neutral-800/80 mt-2 space-y-1.5 text-xs sm:text-sm">
                   <p className="font-serif font-bold text-sm sm:text-base text-neutral-900 dark:text-neutral-100 line-clamp-1">
-                    {art.authorNames || (art.authors?.[0] ? art.authors[0] : 'Editorial Desk')}
+                    {art.authorNames || (art.authors?.[0] ? art.authors[0] : 'Akhil U Krishnan')}
                   </p>
                   <div className="flex items-center justify-between text-neutral-600 dark:text-neutral-400 text-xs sm:text-sm font-medium">
                     <span className="flex items-center gap-1">

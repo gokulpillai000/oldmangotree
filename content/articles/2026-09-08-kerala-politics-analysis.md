@@ -4,7 +4,7 @@ slug: "2026-09-08-kerala-politics-analysis"
 excerpt: "A deep dive into emerging political alignments, youth dynamics, and environmental policy debates in Kerala."
 category: "politics"
 authors:
-  - "kamalram-sajeev"
+  - "akhil-u-krishnan"
 publishedAt: "2026-09-08T10:00:00Z"
 coverImage: "https://images.unsplash.com/photo-1541872703-74c5e44368f9?auto=format&fit=crop&w=1200&q=80"
 audioNarrationUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3"

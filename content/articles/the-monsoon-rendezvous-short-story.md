@@ -4,7 +4,7 @@ slug: "the-monsoon-rendezvous-short-story"
 excerpt: "Under the shade of an ancestral veranda, two lifelong friends recount the promises and silent longings of unwritten years."
 category: "literature"
 authors:
-  - "kamalram-sajeev"
+  - "amala-thomas"
 publishedAt: "2026-09-11T14:30:00Z"
 coverImage: "https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=1200&q=80"
 audioNarrationUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3"

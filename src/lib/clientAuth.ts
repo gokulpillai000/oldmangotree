@@ -11,28 +11,33 @@ export interface UserSession {
 
 // Pre-seeded accounts for static hosting (e.g. GitHub Pages without Node backend)
 export const STATIC_AUTH_ACCOUNTS: Record<string, { name: string; passwordHash: string; role: 'publisher' | 'reader' }> = {
+  'akhil@oldmangotree.media': {
+    name: 'Akhil U Krishnan',
+    passwordHash: 'editor123',
+    role: 'publisher',
+  },
+  'amala@oldmangotree.media': {
+    name: 'Amala Thomas',
+    passwordHash: 'publisher123',
+    role: 'publisher',
+  },
   'gokulpillai000@gmail.com': {
-    name: 'Gokul Krishnan',
+    name: 'Akhil U Krishnan',
     passwordHash: 'editorial123',
     role: 'publisher',
   },
   'editor@oldmangotree.media': {
-    name: 'Kamalram Sajeev',
+    name: 'Akhil U Krishnan',
     passwordHash: 'editor123',
     role: 'publisher',
   },
   'editorial@oldmangotree.com': {
-    name: 'Editorial Desk',
+    name: 'Akhil U Krishnan',
     passwordHash: 'editorial123',
     role: 'publisher',
   },
-  'manila@oldmangotree.media': {
-    name: 'Manila C. Mohan',
-    passwordHash: 'publisher123',
-    role: 'publisher',
-  },
   'admin@oldmangotree.media': {
-    name: 'Publisher Admin',
+    name: 'Amala Thomas',
     passwordHash: 'admin123',
     role: 'publisher',
   },

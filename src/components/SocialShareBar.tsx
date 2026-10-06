@@ -17,9 +17,12 @@ import {
   isBookmarked,
   toggleBookmark,
   getArticleReactions,
+  syncArticleReactions,
   toggleReaction,
+  toggleReactionRemote,
   recordReadArticle,
 } from '@/lib/readerStore';
+import { subscribeToArticleLikes } from '@/lib/supabase';
 
 const LetterToEditorModal = dynamic(
   () => import('./LetterToEditorModal').then((m) => m.LetterToEditorModal),
@@ -56,6 +59,11 @@ export function SocialShareBar({
     setBookmarked(isBookmarked(slug));
     setReaction(getArticleReactions(slug));
 
+    // Fetch and sync global reaction count from Supabase
+    syncArticleReactions(slug).then((res) => {
+      setReaction(res);
+    });
+
     // Automatically record reading history
     recordReadArticle({
       slug,
@@ -67,6 +75,13 @@ export function SocialShareBar({
       publishedAt,
     });
 
+    // Subscribe to dynamic realtime likes across devices
+    const unsubscribeLikes = subscribeToArticleLikes(slug, () => {
+      syncArticleReactions(slug).then((res) => {
+        setReaction(res);
+      });
+    });
+
     const handleUpdate = () => {
       setBookmarked(isBookmarked(slug));
       setReaction(getArticleReactions(slug));
@@ -74,6 +89,7 @@ export function SocialShareBar({
 
     window.addEventListener('omt-reader-updated', handleUpdate);
     return () => {
+      unsubscribeLikes();
       window.removeEventListener('omt-reader-updated', handleUpdate);
     };
   }, [slug, title, category, excerpt, authorNames, coverImage, publishedAt]);
@@ -91,8 +107,8 @@ export function SocialShareBar({
     setBookmarked(newState);
   };
 
-  const handleReactionToggle = () => {
-    const updated = toggleReaction(slug);
+  const handleReactionToggle = async () => {
+    const updated = await toggleReactionRemote(slug);
     setReaction(updated);
   };
 

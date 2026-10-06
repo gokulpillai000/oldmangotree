@@ -117,7 +117,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
         {/* Author Name & Published Date (Displayed below cover image) */}
         <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-4 py-2.5 sm:py-3 border-y border-neutral-200 dark:border-neutral-800 text-xs sm:text-sm">
           <span className="font-serif font-bold text-sm sm:text-base text-neutral-900 dark:text-neutral-100">
-            {article.authorNames || authorObj?.name || (article.authors?.[0] ? article.authors[0] : 'Editorial Desk')}
+            {article.authorNames || authorObj?.name || (article.authors?.[0] ? article.authors[0] : 'Akhil U Krishnan')}
           </span>
           <span className="flex items-center gap-1.5 text-neutral-600 dark:text-neutral-400 font-medium">
             <Calendar className="w-3.5 h-3.5 text-neutral-400" />

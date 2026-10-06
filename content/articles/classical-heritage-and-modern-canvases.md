@@ -4,7 +4,7 @@ slug: "classical-heritage-and-modern-canvases"
 excerpt: "How contemporary painters and muralists are reinterpreting indigenous cultural motifs into bold modern aesthetic statements."
 category: "arts-culture"
 authors:
-  - "kamalram-sajeev"
+  - "akhil-u-krishnan"
 publishedAt: "2026-09-10T12:00:00Z"
 coverImage: "https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?auto=format&fit=crop&w=1200&q=80"
 audioNarrationUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3"

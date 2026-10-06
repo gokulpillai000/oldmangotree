@@ -4,7 +4,7 @@ slug: "barcelona-champions-league"
 excerpt: "ചാമ്പ്യൻസ് ലീഗിലെ ബാഴ്സലോണയുടെ പുനരുജ്ജീവനവും യുവതാരങ്ങളുടെ തകർപ്പൻ പ്രകടനങ്ങളും വിലയിരുത്തുന്ന സ്പോർട്സ് അനാലിസിസ്."
 category: "sports"
 authors:
-  - "kamalram-sajeev"
+  - "akhil-u-krishnan"
 publishedAt: "2026-09-08T08:00:00Z"
 coverImage: "https://images.unsplash.com/photo-1518091043644-c1d4457512c6?auto=format&fit=crop&w=1200&q=80"
 audioNarrationUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3"

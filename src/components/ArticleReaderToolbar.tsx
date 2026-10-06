@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useAudio } from './AudioContext';
-import { Volume2, Type, Share2, Bookmark } from 'lucide-react';
+import { Type, Share2, Bookmark } from 'lucide-react';
 
 interface ArticleReaderToolbarProps {
   title: string;
@@ -19,7 +18,6 @@ export function ArticleReaderToolbar({
   slug,
   onFontSizeChange,
 }: ArticleReaderToolbarProps) {
-  const { playTrack } = useAudio();
   const [activeSize, setActiveSize] = useState<'sm' | 'md' | 'lg'>('md');
   const [copied, setCopied] = useState(false);
 
@@ -38,25 +36,7 @@ export function ArticleReaderToolbar({
 
   return (
     <div className="relative z-10 border-y border-neutral-200 dark:border-neutral-800 py-2.5 my-4 flex items-center justify-between gap-2 transition-colors">
-      {/* Audio Play Trigger */}
-      {audioNarrationUrl ? (
-        <button
-          onClick={() =>
-            playTrack({
-              title,
-              url: audioNarrationUrl,
-              durationSeconds: audioDurationSeconds,
-              articleSlug: slug,
-            })
-          }
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-700 hover:bg-brand-600 active:scale-95 text-white text-xs sm:text-sm font-bold transition-all shrink-0"
-        >
-          <Volume2 className="w-4 h-4" />
-          <span>Listen<span className="hidden sm:inline"> Audio</span></span>
-        </button>
-      ) : (
-        <span className="text-xs sm:text-sm font-medium text-neutral-600 dark:text-neutral-400">Long-form Reader</span>
-      )}
+      <span className="text-xs sm:text-sm font-medium text-neutral-600 dark:text-neutral-400">Long-form Reader</span>
 
       {/* Font Size Adjuster & Share */}
       <div className="flex items-center gap-2">
