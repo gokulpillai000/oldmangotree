@@ -1,7 +1,8 @@
 {
   "slug": "fallen-mangoes",
   "name": "Fallen mangoes",
-  "icon": "💭",
+  "icon": "🥭",
+  "imageIcon": "/images/fallen-mango.jpg",
   "description": "Curated reflections, philosophy, satire, commentaries, and open inquiries.",
   "color": "teal"
 }

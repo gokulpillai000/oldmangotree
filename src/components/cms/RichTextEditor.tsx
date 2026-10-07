@@ -2177,15 +2177,15 @@ export function RichTextEditor({
           {isHtmlMode ? (
             <div className="max-w-4xl mx-auto p-4 bg-neutral-950 border border-neutral-800 rounded-none shadow-md flex flex-col h-full">
               <div className="text-[11px] font-mono text-neutral-500 mb-2 flex items-center justify-between">
-                <span>HTML Source Code Mode (Directly edit tags and styles)</span>
-                <span className="text-[#E27A2B] font-bold">HTML Active</span>
+                <span>Code &amp; Embed View (Formatting codes &amp; custom embeds)</span>
+                <span className="text-[#E27A2B] font-bold">Code View Active</span>
               </div>
               <textarea
                 value={rawHtml}
                 onChange={handleRawHtmlChange}
                 rows={24}
                 className="w-full flex-1 p-4 font-mono text-xs sm:text-sm bg-neutral-950 text-emerald-400 border border-neutral-800 focus:outline-none focus:ring-1 focus:ring-[#E27A2B] rounded-none leading-relaxed"
-                placeholder="<p>Write raw HTML here...</p>"
+                placeholder="Paste embed code or text here..."
               />
             </div>
           ) : (

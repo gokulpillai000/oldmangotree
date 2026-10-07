@@ -12,6 +12,8 @@
 # Blogger xml
 /blogger-theme
 
+/content
+
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
