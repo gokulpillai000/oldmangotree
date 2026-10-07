@@ -1,5 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { Header } from '@/components/Header';
@@ -109,9 +110,21 @@ export default function RootLayout({
                         <Link
                           key={cat.name}
                           href={cat.href}
-                          className="hover:text-[#E27A2B] dark:hover:text-[#E27A2B] transition-colors flex items-center gap-2"
+                          className="hover:text-[#E27A2B] dark:hover:text-[#E27A2B] transition-colors flex items-center gap-2 group"
                         >
-                          <span className="text-base sm:text-lg shrink-0" aria-hidden="true">{cat.symbol}</span>
+                          {cat.imageIcon ? (
+                            <span className="relative w-5 h-5 rounded-full overflow-hidden shrink-0 border border-amber-200/80 dark:border-slate-700 bg-[#fdf9ee] flex items-center justify-center">
+                              <Image
+                                src={`${basePath}${cat.imageIcon}`}
+                                alt={cat.name}
+                                width={20}
+                                height={20}
+                                className="object-cover w-full h-full"
+                              />
+                            </span>
+                          ) : (
+                            <span className="text-base sm:text-lg shrink-0" aria-hidden="true">{cat.symbol}</span>
+                          )}
                           <span>{cat.name}</span>
                         </Link>
                       ))}

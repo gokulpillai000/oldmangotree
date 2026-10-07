@@ -802,19 +802,19 @@ export default function EditorialDeskPage() {
       if (res.ok) {
         setRevalidateStatus({
           success: true,
-          message: 'Website edge cache purged successfully! Live readers are now seeing the newest stories.',
+          message: 'Live website updated successfully! Readers can now see the newest stories immediately.',
           timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
         });
       } else {
         setRevalidateStatus({
           success: false,
-          message: data.message || 'Cache purge failed. Check your revalidation secret.',
+          message: data.message || 'Website update failed. Please try again or check your connection.',
         });
       }
     } catch (err: any) {
       setRevalidateStatus({
         success: false,
-        message: err?.message || 'Network connection failed during cache purge.',
+        message: err?.message || 'Network connection failed during live website update.',
       });
     } finally {
       setIsRevalidating(false);
@@ -1020,10 +1020,10 @@ export default function EditorialDeskPage() {
             onClick={handleRevalidate}
             disabled={isRevalidating}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white text-xs sm:text-sm font-bold transition-colors cursor-pointer disabled:opacity-50"
-            title="Purge Next.js edge cache so published articles go live immediately"
+            title="Update the live website so newly published stories appear immediately for all readers"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isRevalidating ? 'animate-spin' : ''}`} />
-            <span>{isRevalidating ? 'Purging Cache...' : 'Purge Edge Cache'}</span>
+            <span>{isRevalidating ? 'Updating Site...' : 'Update Live Site'}</span>
           </button>
 
           <Link
@@ -1042,7 +1042,7 @@ export default function EditorialDeskPage() {
         </div>
       </header>
 
-      {/* Cache Revalidation Notification Banner */}
+      {/* Website Update Notification Banner */}
       {revalidateStatus && (
         <div
           className={`p-3.5 border text-xs sm:text-sm flex items-start gap-2.5 animate-in fade-in ${
@@ -1060,7 +1060,7 @@ export default function EditorialDeskPage() {
             <p className="font-bold">{revalidateStatus.message}</p>
             {revalidateStatus.timestamp && (
               <p className="text-[11px] text-neutral-500 font-mono">
-                Purged at: {revalidateStatus.timestamp}
+                Updated at: {revalidateStatus.timestamp}
               </p>
             )}
           </div>
@@ -1086,7 +1086,7 @@ export default function EditorialDeskPage() {
           }`}
         >
           <Sparkles className="w-4 h-4 text-[#E27A2B]" />
-          <span>Article Studio (Custom CMS)</span>
+          <span>Article Studio &amp; Editor</span>
         </button>
 
         <button
@@ -1810,10 +1810,10 @@ export default function EditorialDeskPage() {
                   <div className="p-4 sm:p-5 bg-white rounded-xl border-2 border-neutral-200 shadow-2xs space-y-2">
                     <strong className="text-neutral-950 text-base sm:text-lg font-black flex items-center gap-2">
                       <Send className="w-5 h-5 text-[#E27A2B]" />
-                      Upload File
+                      Import Document
                     </strong>
                     <p className="text-sm sm:text-base font-semibold text-neutral-800 leading-relaxed font-sans">
-                      Import existing <code className="px-1.5 py-0.5 bg-neutral-100 rounded font-mono text-xs font-bold">.md</code> or <code className="px-1.5 py-0.5 bg-neutral-100 rounded font-mono text-xs font-bold">.html</code> files from your computer directly into the editor with automatic title parsing.
+                      Import existing document or text files from your computer directly into the editor with automatic title detection.
                     </p>
                   </div>
 
@@ -1833,7 +1833,7 @@ export default function EditorialDeskPage() {
                       Save Draft
                     </strong>
                     <p className="text-sm sm:text-base font-semibold text-neutral-800 leading-relaxed font-sans">
-                      Saves your progress to the database as a draft. It will not be visible on the public reader site until you choose to publish it.
+                      Saves your progress safely as a private draft. It will not be visible on the public reader site until you choose to publish it.
                     </p>
                   </div>
 
@@ -1870,7 +1870,7 @@ export default function EditorialDeskPage() {
                     <strong className="font-extrabold text-neutral-950">Rich Text Toolbar:</strong> Format text with Headings (H2, H3), Bold, Italic, Strikethrough, Bullet Lists, Numbered Lists, Blockquotes, and Text Alignment (Left, Center, Right, Justify).
                   </li>
                   <li>
-                    <strong className="font-extrabold text-neutral-950">Raw HTML Switcher:</strong> Toggle between the visual editor and Raw HTML mode whenever you need to inspect code, paste custom embeds, or insert tables.
+                    <strong className="font-extrabold text-neutral-950">Code &amp; Embed View:</strong> Toggle between the visual editor and Code View whenever you need to paste custom embeds, insert tables, or fine-tune formatting.
                   </li>
                   <li>
                     <strong className="font-extrabold text-neutral-950">Cover Photos:</strong> Upload photos in JPG, PNG, or WebP. Images are automatically compressed to ultra-fast loading WebP format.
@@ -2058,17 +2058,16 @@ export default function EditorialDeskPage() {
       {renderForgotPasscodeModal()}
 
       {/* Floating Bottom-Right Help Button */}
-      <aside aria-label="Editorial Help Desk" className="fixed bottom-6 right-6 z-40">
+      <aside aria-label="Editorial Help Desk" className="fixed bottom-20 md:bottom-6 right-4 sm:right-6 z-50">
         <button
           type="button"
           onClick={() => setShowInfoModal(true)}
-          className="flex items-center gap-2.5 px-4 py-3 bg-[#0C2340] hover:bg-[#123157] text-[#E27A2B] rounded-full shadow-2xl border-2 border-[#E27A2B]/60 hover:border-[#E27A2B] transition-all duration-200 cursor-pointer group hover:scale-105 active:scale-95"
-          title="Editorial Desk Help & Instructions"
+          className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-[#0C2340] hover:bg-[#123157] text-[#E27A2B] shadow-2xl border-2 border-[#E27A2B] hover:border-amber-400 transition-all duration-200 cursor-pointer flex items-center justify-center hover:scale-110 active:scale-95 group focus:outline-none focus:ring-4 focus:ring-[#E27A2B]/40"
+          title="Editorial Desk Help & Instructions (?)"
           aria-label="Editorial Desk Help & Instructions"
         >
-          <HelpCircle className="w-5 h-5 text-[#E27A2B] shrink-0" />
-          <span className="text-xs sm:text-sm font-bold tracking-wider uppercase text-neutral-100 group-hover:text-[#E27A2B] transition-colors">
-            Help &amp; Guide
+          <span className="font-serif font-black text-2xl sm:text-3xl leading-none text-[#E27A2B] group-hover:text-amber-300 transition-colors select-none">
+            ?
           </span>
         </button>
       </aside>

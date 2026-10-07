@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { Search, Moon, Sun, Menu, X, BookOpen, Bookmark, PenTool, ShieldCheck, ArrowRight } from 'lucide-react';
+import { Search, Moon, Sun, Menu, X, Bookmark, PenTool, ShieldCheck, ArrowRight } from 'lucide-react';
 
 import { Logo } from './Logo';
 import { SITE_CATEGORIES } from '@/lib/categories';
@@ -26,22 +27,15 @@ export function Header() {
   const currentPath = pathname || '';
   const headerRef = useRef<HTMLElement>(null);
   const drawerRef = useRef<HTMLElement>(null);
-  const toggleButtonRef = useRef<HTMLButtonElement>(null);
   const [headerHeight, setHeaderHeight] = useState(0);
+  const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
 
-  // Track scroll and resize so hamburger docks to the top as hero scrolls out of view
+  // Track scroll and resize so drawer height/position aligns smoothly
   useEffect(() => {
     const updatePositions = () => {
       const scrollY = window.scrollY || document.documentElement.scrollTop || 0;
       const hHeight = headerRef.current?.offsetHeight || (window.innerWidth >= 768 ? 93 : window.innerWidth >= 640 ? 85 : 68);
       setHeaderHeight(hHeight);
-
-      // Dock hamburger button to the top (12px on mobile, 14px on desktop) when hero scrolls out of view
-      const minTop = window.innerWidth >= 640 ? 14 : 12;
-      const buttonTop = Math.max(minTop, (hHeight + 8) - scrollY);
-      if (toggleButtonRef.current) {
-        toggleButtonRef.current.style.top = `${buttonTop}px`;
-      }
 
       // Adjust drawer top and height so it aligns cleanly whether hero is visible or scrolled away
       const drawerTop = Math.max(0, hHeight - scrollY);
@@ -105,25 +99,22 @@ export function Header() {
     };
   }, []);
 
-  // Hamburger drawer slides back when clicking somewhere else other than hamburger body.
-  // Scrolling does not close it, allowing users to scroll freely.
+  // Hamburger drawer slides back when clicking outside or pressing Escape
   useEffect(() => {
     if (!isMobileMenuOpen) return;
 
     const handleOutsideClick = (event: MouseEvent) => {
-      const target = event.target as Node | null;
+      const target = event.target as HTMLElement | null;
       if (
         drawerRef.current &&
         target &&
         !drawerRef.current.contains(target) &&
-        toggleButtonRef.current &&
-        !toggleButtonRef.current.contains(target)
+        !target.closest('button[data-drawer-trigger="true"]')
       ) {
         setIsMobileMenuOpen(false);
       }
     };
 
-    // Escape key closes the menu
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setIsMobileMenuOpen(false);
@@ -160,10 +151,9 @@ export function Header() {
   return (
     <>
       <header ref={headerRef} className="relative z-40 w-full bg-[#0C2340] text-white transition-colors">
-
         <div className="w-full pl-3.5 sm:pl-5 lg:pl-6 xl:pl-8 pr-3 sm:pr-6 lg:pr-8">
           <div className="flex items-center justify-between h-16 sm:h-20 md:h-[88px]">
-            {/* Brand Logo with rounded corners, fitted inside hero with left margin */}
+            {/* Brand Logo */}
             <div className="flex items-center min-w-0 shrink-0">
               <Link href="/" className="flex items-center gap-2 sm:gap-3.5 group">
                 <Logo variant="reference" />
@@ -172,14 +162,20 @@ export function Header() {
 
             {/* Desktop Navigation & Actions */}
             <div className="flex flex-col items-end justify-center">
-              {/* Top Utility Icons (Search, Theme, Library, Profile) */}
+              {/* Top Utility Icons (Search first, Library, Theme toggle, Profile) */}
               <div className="hidden lg:flex items-center gap-4 text-white text-xs sm:text-sm pb-1.5 pr-1">
                 <button
-                  onClick={toggleDarkMode}
-                  className="p-1 hover:text-[#E27A2B] transition-colors"
-                  title="Toggle Theme"
+                  type="button"
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    setSearchInitialQuery('');
+                    setIsSearchOpen(true);
+                  }}
+                  className="p-1 hover:text-[#E27A2B] transition-colors cursor-pointer"
+                  title="Search"
+                  aria-label="Search articles"
                 >
-                  {isDarkMode ? <Sun className="w-4 h-4 sm:w-[18px] sm:h-[18px] text-amber-400" /> : <Moon className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />}
+                  <Search className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />
                 </button>
                 <button
                   onClick={() => setIsLibraryOpen(true)}
@@ -194,17 +190,11 @@ export function Header() {
                   )}
                 </button>
                 <button
-                  type="button"
-                  onClick={() => {
-                    setIsMobileMenuOpen(false);
-                    setSearchInitialQuery('');
-                    setIsSearchOpen(true);
-                  }}
-                  className="p-1 hover:text-[#E27A2B] transition-colors cursor-pointer"
-                  title="Search"
-                  aria-label="Search articles"
+                  onClick={toggleDarkMode}
+                  className="p-1 hover:text-[#E27A2B] transition-colors"
+                  title="Toggle Theme"
                 >
-                  <Search className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />
+                  {isDarkMode ? <Sun className="w-4 h-4 sm:w-[18px] sm:h-[18px] text-amber-400" /> : <Moon className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />}
                 </button>
                 {publisherSession && (
                   <Link
@@ -246,10 +236,26 @@ export function Header() {
                       </Link>
                     );
                   })}
+
+                  {/* Hamburger Menu button placed directly next to Audio & Podcast */}
+                  <button
+                    type="button"
+                    data-drawer-trigger="true"
+                    onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                    className="ml-1 xl:ml-2 p-1 text-white hover:text-[#E27A2B] transition-colors flex items-center justify-center cursor-pointer group"
+                    aria-label={isMobileMenuOpen ? 'Close Navigation Drawer' : 'Open Navigation Drawer'}
+                    title={isMobileMenuOpen ? 'Close Menu' : 'All Sections & Menu'}
+                  >
+                    {isMobileMenuOpen ? (
+                      <X className="w-4 h-4 sm:w-5 sm:h-5 text-[#E27A2B]" />
+                    ) : (
+                      <Menu className="w-4 h-4 sm:w-5 sm:h-5 group-hover:scale-105 transition-transform" />
+                    )}
+                  </button>
                 </nav>
 
-                {/* Mobile utility: Search & Theme */}
-                <div className="flex lg:hidden items-center gap-1.5 text-white">
+                {/* Mobile utility: Search, Theme, and Hamburger Menu */}
+                <div className="flex lg:hidden items-center gap-1 sm:gap-1.5 text-white">
                   {publisherSession && (
                     <Link
                       href="/publisher"
@@ -261,13 +267,7 @@ export function Header() {
                       <span className="text-xs font-bold uppercase hidden sm:inline">Desk</span>
                     </Link>
                   )}
-                  <button
-                    onClick={toggleDarkMode}
-                    className="p-1.5 hover:text-[#E27A2B] transition-colors rounded-none hover:bg-white/10"
-                    aria-label="Toggle Theme"
-                  >
-                    {isDarkMode ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5" />}
-                  </button>
+                  {/* Search Icon */}
                   <button
                     type="button"
                     onClick={() => {
@@ -277,8 +277,33 @@ export function Header() {
                     }}
                     className="p-1.5 hover:text-[#E27A2B] transition-colors cursor-pointer rounded-none hover:bg-white/10"
                     aria-label="Search articles"
+                    title="Search"
                   >
                     <Search className="w-5 h-5" />
+                  </button>
+                  {/* Dark/Light Theme Icon */}
+                  <button
+                    onClick={toggleDarkMode}
+                    className="p-1.5 hover:text-[#E27A2B] transition-colors rounded-none hover:bg-white/10"
+                    aria-label="Toggle Theme"
+                    title="Toggle Theme"
+                  >
+                    {isDarkMode ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5" />}
+                  </button>
+                  {/* Hamburger Menu Icon next to search and dark-light */}
+                  <button
+                    type="button"
+                    data-drawer-trigger="true"
+                    onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                    className="p-1.5 hover:text-[#E27A2B] transition-colors rounded-none hover:bg-white/10 flex items-center justify-center cursor-pointer"
+                    aria-label={isMobileMenuOpen ? 'Close Menu' : 'Open Menu'}
+                    title={isMobileMenuOpen ? 'Close Menu' : 'Open Navigation Menu'}
+                  >
+                    {isMobileMenuOpen ? (
+                      <X className="w-5 h-5 text-[#E27A2B]" />
+                    ) : (
+                      <Menu className="w-5 h-5" />
+                    )}
                   </button>
                 </div>
               </div>
@@ -286,17 +311,17 @@ export function Header() {
           </div>
         </div>
 
-        {/* Bottom Mango Amber Stripe (Matching logo brand) */}
+        {/* Bottom Mango Amber Stripe */}
         <div className="h-1 sm:h-[5px] bg-[#E27A2B] w-full" />
 
-        {/* Right-aligned Slim Side Drawer (Starting immediately after hero bottom border, smoothly slides in and slides back) */}
+        {/* Right-aligned Slim Side Drawer */}
         <aside
           ref={drawerRef}
           style={{
             top: headerHeight ? `${headerHeight}px` : undefined,
             height: headerHeight ? `calc(100dvh - ${headerHeight}px)` : undefined,
           }}
-          className={`fixed top-[68px] sm:top-[85px] md:top-[93px] right-0 z-50 h-[calc(100dvh-68px)] sm:h-[calc(100dvh-85px)] md:h-[calc(100dvh-93px)] w-[200px] sm:w-[215px] bg-white dark:bg-[#1E293B] border-l border-b border-gray-200 dark:border-slate-800 flex flex-col transition-[transform,opacity] duration-300 ease-in-out ${
+          className={`fixed top-[68px] sm:top-[85px] md:top-[93px] right-0 z-50 h-[calc(100dvh-68px)] sm:h-[calc(100dvh-85px)] md:h-[calc(100dvh-93px)] w-[220px] sm:w-[240px] bg-white dark:bg-[#1E293B] border-l border-b border-gray-200 dark:border-slate-800 flex flex-col transition-[transform,opacity] duration-300 ease-in-out ${
             isMobileMenuOpen
               ? 'translate-x-0 opacity-100 shadow-[-6px_0_24px_rgba(0,0,0,0.18)] pointer-events-auto'
               : 'translate-x-[110%] opacity-0 shadow-none pointer-events-none'
@@ -304,11 +329,19 @@ export function Header() {
           aria-label="Navigation Drawer"
           aria-hidden={!isMobileMenuOpen}
         >
-          {/* Drawer Header with Title */}
-          <div className="px-3.5 py-2.5 border-b border-gray-100 dark:border-slate-800/80 bg-gray-50/60 dark:bg-slate-900/40 shrink-0">
+          {/* Drawer Header with Title and Close Button */}
+          <div className="px-3.5 py-2.5 border-b border-gray-100 dark:border-slate-800/80 bg-gray-50/60 dark:bg-slate-900/40 shrink-0 flex items-center justify-between">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-100">
-              Menu
+              Navigation Menu
             </span>
+            <button
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="p-1 text-slate-500 hover:text-[#E27A2B] transition-colors cursor-pointer"
+              aria-label="Close Menu"
+              title="Close Menu"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
 
           <div className="p-2.5 flex flex-col gap-2.5 flex-1 overflow-y-auto pb-10">
@@ -352,12 +385,25 @@ export function Header() {
                     key={cat.name}
                     href={cat.href}
                     onClick={() => setIsMobileMenuOpen(false)}
-                    className={`block py-2.5 px-1.5 border-b border-gray-100 dark:border-slate-800/80 font-bold transition-colors hover:underline hover:decoration-[#E27A2B] ${
+                    className={`flex items-center gap-2.5 py-2.5 px-2 border-b border-gray-100 dark:border-slate-800/80 font-bold transition-colors hover:underline hover:decoration-[#E27A2B] ${
                       isActive
                         ? 'text-[#E27A2B] font-extrabold underline decoration-[#E27A2B] underline-offset-4 decoration-2'
                         : 'text-slate-900 dark:text-slate-100 hover:text-[#E27A2B]'
                     }`}
                   >
+                    {cat.imageIcon ? (
+                      <span className="relative w-4 h-4 rounded-full overflow-hidden shrink-0 border border-amber-200/80 dark:border-slate-700 bg-[#fdf9ee] flex items-center justify-center">
+                        <Image
+                          src={`${basePath}${cat.imageIcon}`}
+                          alt={cat.name}
+                          width={16}
+                          height={16}
+                          className="object-cover w-full h-full"
+                        />
+                      </span>
+                    ) : (
+                      <span className="text-sm shrink-0" aria-hidden="true">{cat.symbol}</span>
+                    )}
                     <span className="truncate">{cat.name}</span>
                   </Link>
                 );
@@ -366,25 +412,6 @@ export function Header() {
           </div>
         </aside>
       </header>
-
-      {/* Floating Hamburger Menu Button (Positioned below hero, stays in top when hero scrolls out) */}
-      <button
-        ref={toggleButtonRef}
-        type="button"
-        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        style={{ top: headerHeight ? `${headerHeight + 8}px` : undefined }}
-        className={`fixed top-[76px] sm:top-[93px] md:top-[101px] right-3.5 sm:right-6 lg:right-8 z-40 w-9 h-9 sm:w-10 sm:h-10 bg-[#0C2340] text-white hover:text-[#E27A2B] border border-[#E27A2B] shadow-md transition-colors flex items-center justify-center cursor-pointer rounded-none group ${
-          isMobileMenuOpen ? 'border-amber-400 text-[#E27A2B]' : ''
-        }`}
-        aria-label={isMobileMenuOpen ? 'Close Menu' : 'Open Menu'}
-        title={isMobileMenuOpen ? 'Close Menu' : 'Open Navigation Menu'}
-      >
-        {isMobileMenuOpen ? (
-          <X className="w-5 h-5 transition-transform group-hover:scale-110" />
-        ) : (
-          <Menu className="w-5 h-5 transition-transform group-hover:scale-110" />
-        )}
-      </button>
 
       {/* Reader Library Modal */}
       <MyLibraryModal

@@ -1,7 +1,8 @@
 {
   "slug": "the-shade",
   "name": "The shade",
-  "icon": "🎨",
+  "icon": "🌳",
+  "imageIcon": "/images/the-shade-icon.jpg",
   "description": "Visual arts, heritage, theatre, folklore, music, and cultural conversations.",
   "color": "indigo"
 }

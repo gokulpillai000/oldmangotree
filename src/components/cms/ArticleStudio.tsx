@@ -722,7 +722,7 @@ export function ArticleStudio({
       });
       setTimeout(() => setStatusMessage(null), 4000);
     } else {
-      alert(`Failed to publish article: ${res.error || 'Database error'}`);
+      alert(`Failed to publish article: ${res.error || 'Please try again'}`);
     }
   };
 
@@ -737,7 +737,7 @@ export function ArticleStudio({
 
     // 2nd Confirmation (Double Confirmation requirement)
     const secondConfirm = confirm(
-      `⚠️ FINAL CONFIRMATION (Step 2 of 2):\n\nAre you completely sure you want to permanently delete ${itemLabel} from the database?\n\nThis action CANNOT be undone.`
+      `⚠️ FINAL CONFIRMATION (Step 2 of 2):\n\nAre you completely sure you want to permanently delete ${itemLabel}?\n\nThis action CANNOT be undone.`
     );
     if (!secondConfirm) return;
 
@@ -750,7 +750,7 @@ export function ArticleStudio({
         setLoadedScheduledAt(null);
       }
       setStatusMessage({
-        text: `Permanently deleted ${itemLabel} from database.`,
+        text: `Permanently deleted ${itemLabel}.`,
         type: 'success',
       });
       setTimeout(() => setStatusMessage(null), 4000);
@@ -919,14 +919,14 @@ export function ArticleStudio({
         } else {
           setStatusMessage({
             text: editingArticleSlug
-              ? 'Draft updated in database! Click the Saved Drafts folder icon above to view all drafts.'
-              : 'Draft saved to database! Click the Saved Drafts folder icon above to view and resume anytime.',
+              ? 'Draft updated successfully! Click the Saved Drafts folder icon above to view all drafts.'
+              : 'Draft saved successfully! Click the Saved Drafts folder icon above to view and resume anytime.',
             type: 'success',
           });
         }
         localStorage.removeItem('omt_cms_draft_v1');
       } else {
-        setStatusMessage({ text: res.error || 'Failed to save to database', type: 'error' });
+        setStatusMessage({ text: res.error || 'Failed to save story. Please try again.', type: 'error' });
       }
     } catch (err: any) {
       setStatusMessage({ text: err?.message || 'Saving error', type: 'error' });
@@ -1059,13 +1059,13 @@ export function ArticleStudio({
             )}
           </button>
 
-          {/* 3. Upload File (Icon Only) */}
+          {/* 3. Import Document (Icon Only) */}
           <button
             type="button"
             onClick={() => articleFileInputRef.current?.click()}
             className="p-2.5 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 rounded-md transition-colors cursor-pointer"
-            title="Upload article file from computer (.md, .html, .txt)"
-            aria-label="Upload Article File"
+            title="Import document file from computer"
+            aria-label="Import Document"
           >
             <UploadCloud className="w-5 h-5 text-[#E27A2B]" />
           </button>
@@ -1081,14 +1081,14 @@ export function ArticleStudio({
             <Eye className="w-5 h-5 text-[#E27A2B]" />
           </button>
 
-          {/* 5. Save Draft to Database (Icon Only) */}
+          {/* 5. Save Draft (Icon Only) */}
           <button
             type="button"
             onClick={() => handleSaveToDatabase('draft')}
             disabled={isSavingDraft || isPublishing || isScheduling}
             className="p-2.5 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 rounded-md transition-all cursor-pointer disabled:opacity-50"
-            title="Save Draft to Database"
-            aria-label="Save Draft to Database"
+            title="Save Draft (Private)"
+            aria-label="Save Draft"
           >
             {isSavingDraft ? (
               <Loader2 className="w-5 h-5 animate-spin text-[#E27A2B]" />
@@ -1858,7 +1858,7 @@ export function ArticleStudio({
           <div className="p-5 sm:p-6 bg-white dark:bg-neutral-900 border-2 border-neutral-300 dark:border-neutral-700 rounded-lg shadow-xs space-y-5">
             <h3 className="text-sm sm:text-base font-bold uppercase tracking-wider text-neutral-900 dark:text-neutral-100 border-b border-neutral-200 dark:border-neutral-800 pb-2.5 flex items-center gap-2">
               <User className="w-4 h-4 text-[#E27A2B]" />
-              <span>Byline, Issue Packet &amp; Slug</span>
+              <span>Author Byline, Issue &amp; Web Link</span>
             </h3>
 
             {/* Primary Author / Columnist */}
@@ -1964,10 +1964,10 @@ export function ArticleStudio({
               </p>
             </div>
 
-            {/* URL Slug */}
+            {/* Web Address (Link) */}
             <div className="space-y-1.5 pt-1">
               <label className="text-xs sm:text-sm font-bold uppercase tracking-wider text-neutral-900 dark:text-neutral-100 block">
-                URL Slug (Web address)
+                Article Web Address (Link)
               </label>
               <input
                 type="text"
@@ -1976,7 +1976,7 @@ export function ArticleStudio({
                   setSlug(e.target.value);
                   setSlugCustomized(true);
                 }}
-                placeholder="article-url-slug"
+                placeholder="article-web-link"
                 className="w-full px-3.5 py-2 font-mono text-xs sm:text-sm bg-neutral-50 dark:bg-neutral-800 border-2 border-neutral-300 dark:border-neutral-600 text-neutral-900 dark:text-neutral-100 rounded-md focus:ring-1 focus:ring-[#E27A2B]"
               />
             </div>
@@ -2408,7 +2408,7 @@ export function ArticleStudio({
                 {title || 'Untitled Story'}
               </h4>
               <p className="text-xs font-semibold text-neutral-600 font-mono">
-                Slug: /{slug || 'auto-generated'} • By: {audioSpeaker || author || 'Akhil U Krishnan'}
+                Link: /{slug || 'auto-generated'} • By: {audioSpeaker || author || 'Akhil U Krishnan'}
               </p>
             </div>
 
