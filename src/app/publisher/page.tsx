@@ -1625,7 +1625,7 @@ export default function EditorialDeskPage() {
             </div>
 
             <p className="text-sm font-semibold text-neutral-700 leading-relaxed">
-              Create issue packets to group articles into seasonal or numbered editions published at <span className="font-mono text-[#E27A2B] font-bold">/magazine</span>.
+              Create issue packets to group articles into seasonal or numbered editions published in the Webzine.
             </p>
 
             {/* Add New Packet Form */}
@@ -1873,7 +1873,7 @@ export default function EditorialDeskPage() {
                     <strong className="font-extrabold text-neutral-950">Code &amp; Embed View:</strong> Toggle between the visual editor and Code View whenever you need to paste custom embeds, insert tables, or fine-tune formatting.
                   </li>
                   <li>
-                    <strong className="font-extrabold text-neutral-950">Cover Photos:</strong> Upload photos in JPG, PNG, or WebP. Images are automatically compressed to ultra-fast loading WebP format.
+                    <strong className="font-extrabold text-neutral-950">Cover Photos:</strong> Upload high-resolution photos or artwork to feature at the top of your story.
                   </li>
                   <li>
                     <strong className="font-extrabold text-neutral-950">Podcast &amp; Audio:</strong> Toggle &ldquo;Podcast Mode&rdquo; to attach audio narrations or release dedicated podcast episodes with streaming MP3 URLs.

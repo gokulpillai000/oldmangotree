@@ -1677,12 +1677,12 @@ export function ArticleStudio({
                 <ImageIcon className="w-4 h-4 text-[#E27A2B]" />
                 <span>Cover Photo &amp; Art</span>
               </span>
-              <span className="text-xs text-neutral-400 font-mono">16:9 WebP</span>
+              <span className="text-xs text-neutral-400 font-mono">16:9</span>
             </h3>
 
             <div className="space-y-3">
               <p className="text-xs text-neutral-600 dark:text-neutral-400">
-                Upload a high-resolution cover image. It is automatically compressed to lightweight WebP.
+                Upload a high-resolution cover image.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-2">
@@ -1960,7 +1960,7 @@ export function ArticleStudio({
                 </select>
               )}
               <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 font-medium">
-                Articles assigned to a packet are bundled in the Webzine reader edition at <span className="font-mono text-[#E27A2B] font-bold">/magazine</span>.
+                Articles assigned to a packet are bundled together in the Webzine reader edition.
               </p>
             </div>
 
