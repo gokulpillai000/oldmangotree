@@ -55,6 +55,8 @@ const STANDARD_CATEGORIES = [
   'Sports',
   'The shade',
   'Fallen mangoes',
+  'Special Series',
+  'Webzine',
   'Media',
   'Society',
   'Environment',
@@ -63,7 +65,6 @@ const STANDARD_CATEGORIES = [
   'Interview',
   'Opinion',
   'Podcast',
-  'Webzine',
 ];
 
 function formatFriendlyError(error: any, fallback: string = 'Operation failed'): string {
@@ -490,7 +491,7 @@ export function ArticleStudio({
       setCategory(rec.category ? rec.category.charAt(0).toUpperCase() + rec.category.slice(1) : 'Politics');
       setSelectedTags(rec.tags && rec.tags.length > 0 ? rec.tags : [rec.category || 'Politics']);
       setAuthor(rec.author_names || (rec.authors && rec.authors[0]) || authors[0]);
-      setPacket(rec.webzine_issue || 'None');
+      setPacket(rec.webzine_issue || '');
       setCoverImage(rec.cover_image || '');
       setAudioUrl(rec.audio_narration_url || '');
       setAudioDurationSeconds(rec.audio_duration_seconds || 0);
@@ -901,13 +902,18 @@ export function ArticleStudio({
       cover_image: coverImage.trim() || undefined,
       audio_narration_url: audioUrl.trim() || undefined,
       audio_duration_seconds: audioDurationSeconds || undefined,
-      webzine_issue: packet && packet !== 'None' ? packet : undefined,
+      webzine_issue:
+        packet && packet !== 'None'
+          ? packet
+          : effectiveCategory === 'webzine'
+          ? 'Packet 1'
+          : undefined,
       is_lead_story: isLeadStory,
       is_cover: isCover,
       is_premium: isPremium,
       is_longform: isLongform,
-      series_title: seriesTitle.trim() || undefined,
-      series_episode: seriesTitle.trim() ? parseInt(seriesEpisode, 10) || 1 : undefined,
+      series_title: seriesTitle.trim() || (effectiveCategory === 'special-series' ? 'Special Series' : undefined),
+      series_episode: seriesTitle.trim() || effectiveCategory === 'special-series' ? parseInt(seriesEpisode, 10) || 1 : undefined,
       status,
       published_at: publishedAtIso,
     };
@@ -1813,6 +1819,9 @@ export function ArticleStudio({
                   if (val && !selectedTags.includes(val)) {
                     setSelectedTags([val, ...selectedTags]);
                   }
+                  if (val.toLowerCase() === 'webzine' && (!packet || packet === 'None')) {
+                    setPacket('Packet 1');
+                  }
                 }}
                 className="w-full px-3.5 py-2.5 bg-white dark:bg-neutral-800 border-2 border-neutral-300 dark:border-neutral-600 text-neutral-900 dark:text-neutral-100 rounded-md text-sm sm:text-base font-bold focus:ring-1 focus:ring-[#E27A2B] focus:border-[#E27A2B]"
               >
@@ -2001,7 +2010,7 @@ export function ArticleStudio({
                   className="w-full px-3.5 py-2.5 bg-white dark:bg-neutral-800 border-2 border-neutral-300 dark:border-neutral-600 text-neutral-900 dark:text-neutral-100 rounded-md text-sm sm:text-base font-semibold focus:ring-1 focus:ring-[#E27A2B]"
                 >
                   <option value="">-- None (General Feed) --</option>
-                  {packets.map((pkt) => (
+                  {Array.from(new Set(['Packet 1', 'Packet 2', 'Packet 3', ...(packets || [])])).map((pkt) => (
                     <option key={pkt} value={pkt}>
                       {pkt}
                     </option>
@@ -2049,7 +2058,7 @@ export function ArticleStudio({
                 <span className="text-xs font-mono text-[#E27A2B] font-bold">Series Hub</span>
               </div>
               <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 font-medium">
-                Articles with a Series Title are cataloged under <span className="font-mono text-[#E27A2B] font-bold">/series</span> in sequential episode order.
+                Articles with a Series Title are cataloged under the Special Series section in sequential episode order.
               </p>
 
               <div className="space-y-2">

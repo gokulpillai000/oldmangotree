@@ -13,6 +13,7 @@ const isProd = process.env.NODE_ENV === 'production';
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  optimizeFonts: false,
   ...(isProd ? { output: 'export' } : {}),
   reactStrictMode: true,
   ...(basePath ? { basePath, trailingSlash: true } : {}),

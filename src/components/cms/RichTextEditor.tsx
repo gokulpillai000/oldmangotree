@@ -242,34 +242,58 @@ export const FontSize = Mark.create({
   },
 });
 
-// Comprehensive Inbuilt Fonts List
-const INBUILT_FONTS = [
-  { name: 'Default Font', value: 'inherit' },
+// Comprehensive Inbuilt & Malayalam Fonts List
+export interface FontOption {
+  name: string;
+  value: string;
+  category: 'Default' | 'Malayalam' | 'Latin Serif' | 'Latin Sans' | 'Monospace' | 'Custom';
+  description?: string;
+}
+
+const INBUILT_FONTS: FontOption[] = [
+  { name: 'Default Site Font', value: 'inherit', category: 'Default' },
+
+  // ==================== 17 MALAYALAM FONTS ====================
+  { name: 'മീര — Meera', value: '"Meera", serif', category: 'Malayalam', description: 'Classic Book & Literature' },
+  { name: 'രചന — Rachana', value: '"Rachana", serif', category: 'Malayalam', description: 'Traditional Script' },
+  { name: 'മഞ്ചേരി — Manjari', value: '"Manjari", sans-serif', category: 'Malayalam', description: 'Modern Clean Sans' },
+  { name: 'ഗായത്രി — Gayathri', value: '"Gayathri", sans-serif', category: 'Malayalam', description: 'Contemporary Headline' },
+  { name: 'നോട്ടോ സെരിഫ് — Noto Serif', value: '"Noto Serif Malayalam", serif', category: 'Malayalam', description: 'Formal Editorial' },
+  { name: 'നോട്ടോ സാൻസ് — Noto Sans', value: '"Noto Sans Malayalam", sans-serif', category: 'Malayalam', description: 'Clear High-Legibility' },
+  { name: 'ചിലങ്ക — Chilanka', value: '"Chilanka", cursive', category: 'Malayalam', description: 'Handwriting / Poetry' },
+  { name: 'ദ്യുതി — Dyuthi', value: '"Dyuthi", serif', category: 'Malayalam', description: 'Calligraphic Title' },
+  { name: 'കേരളീയം — Keraleeyam', value: '"Keraleeyam", serif', category: 'Malayalam', description: 'Vintage Periodical' },
+  { name: 'ഉറൂബ് — Uroob', value: '"Uroob", sans-serif', category: 'Malayalam', description: 'Bold Magazine Display' },
+  { name: 'അനേക് — Anek Malayalam', value: '"Anek Malayalam", sans-serif', category: 'Malayalam', description: 'Modern Geometric' },
+  { name: 'ബാലൂ ചേട്ടൻ — Baloo Chettan 2', value: '"Baloo Chettan 2", cursive', category: 'Malayalam', description: 'Warm Engaging Display' },
+  { name: 'അരിമ — Arima', value: '"Arima", cursive', category: 'Malayalam', description: 'Soft Literary Curve' },
+  { name: 'അഞ്ജലി പഴയലിപി — AnjaliOldLipi', value: '"AnjaliOldLipi", serif', category: 'Malayalam', description: 'Classical Orthography' },
+  { name: 'കറുമ്പി — Karumbi', value: '"Karumbi", cursive', category: 'Malayalam', description: 'Casual Script' },
+  { name: 'സുറുമ — Suruma', value: '"Suruma", serif', category: 'Malayalam', description: 'Stylized Editorial' },
+  { name: 'ഡിസൈൻ — DzainTrueCopy', value: '"DzainTrueCopy", sans-serif', category: 'Malayalam', description: 'Old Mango Tree Signature' },
+
+  // ==================== ENGLISH / LATIN FONTS ====================
   // Serif
-  { name: 'Georgia (Serif)', value: 'Georgia, serif' },
-  { name: 'Times New Roman', value: '"Times New Roman", Times, serif' },
-  { name: 'Garamond', value: 'Garamond, Baskerville, serif' },
-  { name: 'Merriweather (Google)', value: '"Merriweather", Georgia, serif' },
-  { name: 'Playfair Display (Google)', value: '"Playfair Display", serif' },
-  { name: 'Lora (Google)', value: '"Lora", serif' },
+  { name: 'Georgia (Serif)', value: 'Georgia, serif', category: 'Latin Serif' },
+  { name: 'Times New Roman', value: '"Times New Roman", Times, serif', category: 'Latin Serif' },
+  { name: 'Garamond', value: 'Garamond, Baskerville, serif', category: 'Latin Serif' },
+  { name: 'Merriweather (Google)', value: '"Merriweather", Georgia, serif', category: 'Latin Serif' },
+  { name: 'Playfair Display (Google)', value: '"Playfair Display", serif', category: 'Latin Serif' },
+  { name: 'Lora (Google)', value: '"Lora", serif', category: 'Latin Serif' },
+
   // Sans-Serif
-  { name: 'Arial (Sans)', value: 'Arial, Helvetica, sans-serif' },
-  { name: 'Trebuchet MS', value: '"Trebuchet MS", sans-serif' },
-  { name: 'Verdana', value: 'Verdana, sans-serif' },
-  { name: 'Roboto (Google)', value: '"Roboto", Arial, sans-serif' },
-  { name: 'Inter (Google)', value: '"Inter", sans-serif' },
-  { name: 'Open Sans (Google)', value: '"Open Sans", sans-serif' },
-  { name: 'Montserrat (Google)', value: '"Montserrat", sans-serif' },
+  { name: 'Arial (Sans)', value: 'Arial, Helvetica, sans-serif', category: 'Latin Sans' },
+  { name: 'Trebuchet MS', value: '"Trebuchet MS", sans-serif', category: 'Latin Sans' },
+  { name: 'Verdana', value: 'Verdana, sans-serif', category: 'Latin Sans' },
+  { name: 'Roboto (Google)', value: '"Roboto", Arial, sans-serif', category: 'Latin Sans' },
+  { name: 'Inter (Google)', value: '"Inter", sans-serif', category: 'Latin Sans' },
+  { name: 'Open Sans (Google)', value: '"Open Sans", sans-serif', category: 'Latin Sans' },
+  { name: 'Montserrat (Google)', value: '"Montserrat", sans-serif', category: 'Latin Sans' },
+
   // Monospace
-  { name: 'Courier New (Mono)', value: '"Courier New", Courier, monospace' },
-  { name: 'Consolas (Mono)', value: 'Consolas, "Courier New", monospace' },
-  { name: 'Fira Code (Mono)', value: '"Fira Code", monospace' },
-  // Malayalam & Indic
-  { name: 'Manjari (Malayalam)', value: '"Manjari", sans-serif' },
-  { name: 'Chilanka (Handwriting)', value: '"Chilanka", cursive' },
-  { name: 'Gayathri (Malayalam)', value: '"Gayathri", sans-serif' },
-  { name: 'Noto Sans Malayalam', value: '"Noto Sans Malayalam", sans-serif' },
-  { name: 'Noto Serif Malayalam', value: '"Noto Serif Malayalam", serif' },
+  { name: 'Courier New (Mono)', value: '"Courier New", Courier, monospace', category: 'Monospace' },
+  { name: 'Consolas (Mono)', value: 'Consolas, "Courier New", monospace', category: 'Monospace' },
+  { name: 'Fira Code (Mono)', value: '"Fira Code", monospace', category: 'Monospace' },
 ];
 
 const FONT_SIZES = [
@@ -420,7 +444,7 @@ export function RichTextEditor({
   >(null);
 
   // Custom fonts uploaded from device
-  const [customFonts, setCustomFonts] = useState<{ name: string; value: string }[]>([]);
+  const [customFonts, setCustomFonts] = useState<FontOption[]>([]);
 
   // Current selections
   const [currentTextColor, setCurrentTextColor] = useState('#171717');
@@ -636,7 +660,13 @@ export function RichTextEditor({
             }).catch(() => {});
           }
         });
-        setCustomFonts(parsed.map((f) => ({ name: f.name, value: f.value })));
+        setCustomFonts(
+          parsed.map((f) => ({
+            name: f.name,
+            value: f.value,
+            category: 'Custom' as const,
+          }))
+        );
       }
     } catch {}
   }, []);
@@ -743,7 +773,11 @@ export function RichTextEditor({
           const loaded = await fontFace.load();
           document.fonts.add(loaded);
         }
-        const newFont = { name: `${cleanName} (Uploaded)`, value: fontFaceName };
+        const newFont: FontOption = {
+          name: `${cleanName} (Uploaded)`,
+          value: fontFaceName,
+          category: 'Custom',
+        };
         const updated = [...customFonts.filter((f) => f.value !== fontFaceName), newFont];
         setCustomFonts(updated);
         try {
@@ -1083,57 +1117,162 @@ export function RichTextEditor({
           {activeDropdown === 'font' && (
             <div
               onMouseDown={(e) => e.preventDefault()}
-              className="absolute top-full left-0 mt-0.5 w-64 max-h-80 overflow-y-auto bg-white dark:bg-[#1e293b] border border-[#dadce0] dark:border-neutral-700 shadow-xl rounded-none py-1.5 z-[100] animate-in fade-in-50 duration-75 select-none"
+              className="absolute top-full left-0 mt-0.5 w-80 max-h-96 overflow-y-auto bg-white dark:bg-[#1e293b] border border-[#dadce0] dark:border-neutral-700 shadow-xl rounded-none py-1 z-[100] animate-in fade-in-50 duration-75 select-none"
             >
-              <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-neutral-400 border-b border-neutral-200 dark:border-neutral-800">
-                Inbuilt &amp; Malayalam Fonts
+              {/* Default Site Font */}
+              <div className="p-1">
+                {combinedFonts.filter((f) => f.category === 'Default').map((f) => {
+                  const isActive = !editor?.getAttributes('textStyle').fontFamily;
+                  return (
+                    <button
+                      key={f.value}
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => {
+                        editor?.chain().focus().unsetFontFamily().run();
+                        setActiveDropdown(null);
+                      }}
+                      className={`w-full px-3 py-1.5 text-left text-xs hover:bg-[#f1f3f4] dark:hover:bg-neutral-800 flex items-center justify-between cursor-pointer rounded-xs ${
+                        isActive
+                          ? 'bg-[#f1f3f4] dark:bg-neutral-800 font-bold text-neutral-900 dark:text-neutral-100'
+                          : 'text-neutral-800 dark:text-neutral-200'
+                      }`}
+                    >
+                      <span className="font-sans font-medium">{f.name}</span>
+                      {isActive && <Check className="w-3.5 h-3.5 text-[#E27A2B]" />}
+                    </button>
+                  );
+                })}
               </div>
 
-              {combinedFonts.map((f) => {
-                const isActive =
-                  f.value === 'inherit'
-                    ? !editor?.getAttributes('textStyle').fontFamily
-                    : editor?.isActive('textStyle', { fontFamily: f.value });
-                return (
-                  <button
-                    key={f.value}
-                    type="button"
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => {
-                      if (f.value === 'inherit') {
-                        editor?.chain().focus().unsetFontFamily().run();
-                      } else {
-                        editor?.chain().focus().setFontFamily(f.value).run();
-                      }
-                      setActiveDropdown(null);
-                    }}
-                    className={`w-full px-3 py-2 text-left text-xs hover:bg-[#f1f3f4] dark:hover:bg-neutral-800 flex items-center cursor-pointer ${
-                      isActive
-                        ? 'bg-[#f1f3f4] dark:bg-neutral-800 font-semibold text-neutral-900 dark:text-neutral-100'
-                        : 'text-neutral-800 dark:text-neutral-200'
-                    }`}
-                    style={{ fontFamily: f.value }}
-                  >
-                    <div className="w-5 flex items-center justify-center shrink-0">
-                      {isActive && <Check className="w-3.5 h-3.5 text-[#E27A2B]" />}
-                    </div>
-                    <span className="truncate">{f.name}</span>
-                  </button>
-                );
-              })}
+              {/* SECTION: MALAYALAM FONTS */}
+              <div className="border-t border-neutral-200 dark:border-neutral-800 pt-1">
+                <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[#E27A2B] bg-orange-50/50 dark:bg-orange-950/20 flex items-center justify-between">
+                  <span>മലയാളം ഫോണ്ടുകൾ (Malayalam)</span>
+                  <span className="text-[9px] font-mono opacity-80">17 FONTS</span>
+                </div>
+
+                <div className="p-1 space-y-0.5">
+                  {combinedFonts
+                    .filter((f) => f.category === 'Malayalam')
+                    .map((f) => {
+                      const isActive = editor?.isActive('textStyle', { fontFamily: f.value });
+                      return (
+                        <button
+                          key={f.value}
+                          type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => {
+                            editor?.chain().focus().setFontFamily(f.value).run();
+                            setActiveDropdown(null);
+                          }}
+                          className={`w-full px-3 py-1.5 text-left hover:bg-[#f1f3f4] dark:hover:bg-neutral-800 flex items-center justify-between cursor-pointer rounded-xs transition-colors ${
+                            isActive
+                              ? 'bg-orange-50 dark:bg-orange-950/40 text-neutral-900 dark:text-neutral-100 font-semibold'
+                              : 'text-neutral-800 dark:text-neutral-200'
+                          }`}
+                        >
+                          <div className="flex flex-col min-w-0 pr-2">
+                            <span
+                              className="text-[13px] leading-snug truncate"
+                              style={{ fontFamily: f.value }}
+                            >
+                              {f.name}
+                            </span>
+                            {f.description && (
+                              <span className="text-[10px] text-neutral-400 dark:text-neutral-500 font-sans font-normal">
+                                {f.description}
+                              </span>
+                            )}
+                          </div>
+                          {isActive && <Check className="w-3.5 h-3.5 text-[#E27A2B] shrink-0" />}
+                        </button>
+                      );
+                    })}
+                </div>
+              </div>
+
+              {/* SECTION: LATIN / ENGLISH FONTS */}
+              <div className="border-t border-neutral-200 dark:border-neutral-800 pt-1">
+                <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 bg-neutral-50 dark:bg-neutral-800/50">
+                  English &amp; Latin Typography
+                </div>
+
+                <div className="p-1 space-y-0.5">
+                  {combinedFonts
+                    .filter((f) => f.category.startsWith('Latin') || f.category === 'Monospace')
+                    .map((f) => {
+                      const isActive = editor?.isActive('textStyle', { fontFamily: f.value });
+                      return (
+                        <button
+                          key={f.value}
+                          type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => {
+                            editor?.chain().focus().setFontFamily(f.value).run();
+                            setActiveDropdown(null);
+                          }}
+                          className={`w-full px-3 py-1.5 text-left text-xs hover:bg-[#f1f3f4] dark:hover:bg-neutral-800 flex items-center justify-between cursor-pointer rounded-xs ${
+                            isActive
+                              ? 'bg-[#f1f3f4] dark:bg-neutral-800 font-semibold text-neutral-900 dark:text-neutral-100'
+                              : 'text-neutral-800 dark:text-neutral-200'
+                          }`}
+                          style={{ fontFamily: f.value }}
+                        >
+                          <span className="truncate">{f.name}</span>
+                          {isActive && <Check className="w-3.5 h-3.5 text-[#E27A2B] shrink-0" />}
+                        </button>
+                      );
+                    })}
+                </div>
+              </div>
+
+              {/* SECTION: CUSTOM UPLOADED FONTS (IF ANY) */}
+              {customFonts.length > 0 && (
+                <div className="border-t border-neutral-200 dark:border-neutral-800 pt-1">
+                  <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400">
+                    Custom Uploaded Fonts
+                  </div>
+                  <div className="p-1 space-y-0.5">
+                    {customFonts.map((f) => {
+                      const isActive = editor?.isActive('textStyle', { fontFamily: f.value });
+                      return (
+                        <button
+                          key={f.value}
+                          type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => {
+                            editor?.chain().focus().setFontFamily(f.value).run();
+                            setActiveDropdown(null);
+                          }}
+                          className={`w-full px-3 py-1.5 text-left text-xs hover:bg-[#f1f3f4] dark:hover:bg-neutral-800 flex items-center justify-between cursor-pointer rounded-xs ${
+                            isActive
+                              ? 'bg-purple-50 dark:bg-purple-950/40 text-purple-900 dark:text-purple-200 font-semibold'
+                              : 'text-neutral-800 dark:text-neutral-200'
+                          }`}
+                          style={{ fontFamily: f.value }}
+                        >
+                          <span className="truncate">{f.name}</span>
+                          {isActive && <Check className="w-3.5 h-3.5 text-[#E27A2B] shrink-0" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* Upload Font From Device */}
-              <div className="border-t border-neutral-200 dark:border-neutral-800 mt-1 pt-1">
+              <div className="border-t border-neutral-200 dark:border-neutral-800 mt-1 pt-1 bg-neutral-50 dark:bg-neutral-800/30">
                 <button
                   type="button"
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => {
                     fontFileInputRef.current?.click();
                   }}
-                  className="w-full px-3 py-2 text-left text-xs text-[#E27A2B] hover:bg-[#f1f3f4] dark:hover:bg-neutral-800 font-bold flex items-center gap-2 cursor-pointer"
+                  className="w-full px-3 py-2 text-left text-xs text-[#E27A2B] hover:bg-[#f1f3f4] dark:hover:bg-neutral-800 font-bold flex items-center gap-2 cursor-pointer transition-colors"
                 >
                   <Upload className="w-4 h-4" />
-                  <span>+ Upload Font (.ttf, .otf, .woff)</span>
+                  <span>+ Upload Custom Font (.ttf, .otf, .woff)</span>
                 </button>
               </div>
             </div>

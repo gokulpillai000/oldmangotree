@@ -1,6 +1,6 @@
 import React from 'react';
 import Image from 'next/image';
-import { Author } from '@/lib/content';
+import type { Author } from '@/lib/content';
 import { UserCheck } from 'lucide-react';
 
 interface AuthorBioCardProps {

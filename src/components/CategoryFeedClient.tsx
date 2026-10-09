@@ -3,10 +3,15 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Article } from '@/lib/content';
+import type { Article } from '@/lib/content';
 import { formatDate } from '@/lib/format';
 import { Lock, BookOpen, Calendar } from 'lucide-react';
-import { fetchLiveArticlesFromSupabase, subscribeToContentUpdates } from '@/lib/liveArticles';
+import {
+  fetchLiveArticlesFromSupabase,
+  subscribeToContentUpdates,
+  getCachedLiveArticles,
+  filterCategoryArticles,
+} from '@/lib/liveArticles';
 
 interface CategoryFeedClientProps {
   category: string;
@@ -20,8 +25,21 @@ export function CategoryFeedClient({
   articles: initialArticles = [],
 }: CategoryFeedClientProps) {
   const [activeSubcategory, setActiveSubcategory] = useState<string>('all');
-  const [currentArticles, setCurrentArticles] = useState<Article[]>(initialArticles);
-  const [isLoadingLive, setIsLoadingLive] = useState<boolean>(initialArticles.length === 0);
+
+  // Synchronously initialize with live cached articles if available in browser
+  const [currentArticles, setCurrentArticles] = useState<Article[]>(() => {
+    const cached = getCachedLiveArticles();
+    if (cached !== null) {
+      return filterCategoryArticles(cached, category);
+    }
+    return initialArticles;
+  });
+
+  const [isLoadingLive, setIsLoadingLive] = useState<boolean>(() => {
+    const cached = getCachedLiveArticles();
+    if (cached !== null) return false;
+    return initialArticles.length === 0;
+  });
 
   useEffect(() => {
     let isMounted = true;
@@ -29,27 +47,8 @@ export function CategoryFeedClient({
     const loadLive = async () => {
       try {
         const live = await fetchLiveArticlesFromSupabase();
-        if (isMounted && live && live.length > 0) {
-          const target = category.toLowerCase().trim();
-          const aliasTargets =
-            target === 'fallen-mangoes' || target === 'miscellaneous' || target === 'fallen mangoes'
-              ? ['fallen-mangoes', 'fallen mangoes', 'miscellaneous']
-              : target === 'the-shade' || target === 'the shade' || target === 'arts-culture' || target === 'arts & culture' || target === 'art & culture'
-              ? ['the-shade', 'the shade', 'arts-culture', 'arts & culture', 'art & culture']
-              : [target];
-
-          const categoryArticles = live.filter((a) => {
-            const artCat = a.category?.toLowerCase().trim();
-            if (artCat && aliasTargets.includes(artCat)) return true;
-            if (a.tags && Array.isArray(a.tags)) {
-              return a.tags.some((t) => {
-                const cleanTag = t.toLowerCase().trim().replace(/\s*&\s*|\s+/g, '-');
-                return aliasTargets.includes(cleanTag) || aliasTargets.includes(t.toLowerCase().trim());
-              });
-            }
-            return false;
-          });
-
+        if (isMounted) {
+          const categoryArticles = filterCategoryArticles(live, category);
           setCurrentArticles(categoryArticles);
         }
       } catch (err) {

@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Anek+Malayalam:wght@300;400;600;700;800&family=Arima:wght@400;700&family=Baloo+Chettan+2:wght@400;600;700;800&family=Chilanka&family=Gayathri:wght@400;700&family=Manjari:wght@400;700&family=Noto+Sans+Malayalam:wght@300;400;600;700&family=Noto+Serif+Malayalam:wght@400;600;700&display=swap');
+
 @font-face {
   font-family: 'DzainTrueCopy';
   src: url('/fonts/DzainTrueCopy-Light.woff2') format('woff2');
@@ -34,6 +36,78 @@
   font-family: 'DzainTrueCopy Inline';
   src: url('/fonts/DzainTrueCopy-Inline.woff2') format('woff2');
   font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Meera';
+  src: url('/fonts/Meera-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Rachana';
+  src: url('/fonts/Rachana-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Rachana';
+  src: url('/fonts/Rachana-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Dyuthi';
+  src: url('/fonts/Dyuthi-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Keraleeyam';
+  src: url('/fonts/Keraleeyam-Regular.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Uroob';
+  src: url('/fonts/Uroob-Regular.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'AnjaliOldLipi';
+  src: url('/fonts/AnjaliOldLipi-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Karumbi';
+  src: url('/fonts/Karumbi-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Suruma';
+  src: url('/fonts/Suruma.woff2') format('woff2');
+  font-weight: 400;
   font-style: normal;
   font-display: swap;
 }

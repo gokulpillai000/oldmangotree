@@ -33,6 +33,12 @@ import {
   Users,
   BookOpen,
   Calendar,
+  Globe,
+  Tag,
+  Bookmark,
+  FileText,
+  Eye,
+  ShieldCheck,
 } from 'lucide-react';
 import { getStoredSession, setStoredSession } from '@/lib/clientAuth';
 import {
@@ -1804,12 +1810,63 @@ export default function EditorialDeskPage() {
 
             {/* Guide Content Sections (Light Theme, Large Fonts & Bold Thickness) */}
             <div className="space-y-6">
-              {/* Section 1: Top Toolbar Actions */}
+              {/* Section 1: Header Bar & Live Site Sync */}
+              <div className="p-6 sm:p-7 rounded-2xl bg-neutral-50 border-2 border-neutral-200/90 space-y-4">
+                <div className="flex items-center gap-3 text-[#0C2340]">
+                  <Globe className="w-6 h-6 text-[#E27A2B] shrink-0" />
+                  <h4 className="font-serif text-xl sm:text-2xl font-black text-neutral-950">
+                    1. Header Bar &amp; Live Site Update
+                  </h4>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                  <div className="p-4 sm:p-5 bg-white rounded-xl border-2 border-neutral-200 shadow-2xs space-y-2">
+                    <strong className="text-neutral-950 text-base sm:text-lg font-black flex items-center gap-2">
+                      <RefreshCw className="w-5 h-5 text-emerald-600" />
+                      Update Live Site (Green Button)
+                    </strong>
+                    <p className="text-sm sm:text-base font-semibold text-neutral-800 leading-relaxed font-sans">
+                      Whenever you publish a new article, update existing text, or delete a piece, click <strong className="text-emerald-700 font-extrabold">Update Live Site</strong> in the top header. This immediately refreshes the public website so all readers see the newest stories across the homepage, section feeds, and search.
+                    </p>
+                  </div>
+
+                  <div className="p-4 sm:p-5 bg-white rounded-xl border-2 border-neutral-200 shadow-2xs space-y-2">
+                    <strong className="text-neutral-950 text-base sm:text-lg font-black flex items-center gap-2">
+                      <Lock className="w-5 h-5 text-[#E27A2B]" />
+                      Passcode Management
+                    </strong>
+                    <p className="text-sm sm:text-base font-semibold text-neutral-800 leading-relaxed font-sans">
+                      Click the <strong className="text-neutral-950 font-extrabold">Passcode</strong> button at any time to set a new custom PIN for newsroom security. The initial default passcode is <code className="px-1.5 py-0.5 bg-neutral-100 rounded font-mono text-xs font-bold text-[#E27A2B]">omt2026</code>.
+                    </p>
+                  </div>
+
+                  <div className="p-4 sm:p-5 bg-white rounded-xl border-2 border-neutral-200 shadow-2xs space-y-2">
+                    <strong className="text-neutral-950 text-base sm:text-lg font-black flex items-center gap-2">
+                      <ArrowLeft className="w-5 h-5 text-neutral-700" />
+                      View Live Site
+                    </strong>
+                    <p className="text-sm sm:text-base font-semibold text-neutral-800 leading-relaxed font-sans">
+                      Quick shortcut to open the public reader website so you can inspect your publication as visitors see it in real time.
+                    </p>
+                  </div>
+
+                  <div className="p-4 sm:p-5 bg-white rounded-xl border-2 border-neutral-200 shadow-2xs space-y-2">
+                    <strong className="text-neutral-950 text-base sm:text-lg font-black flex items-center gap-2">
+                      <LogOut className="w-5 h-5 text-red-600" />
+                      Sign Out
+                    </strong>
+                    <p className="text-sm sm:text-base font-semibold text-neutral-800 leading-relaxed font-sans">
+                      Safely concludes your current editing session and locks the editorial desk.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Section 2: Story Studio Toolbar */}
               <div className="p-6 sm:p-7 rounded-2xl bg-neutral-50 border-2 border-neutral-200/90 space-y-4">
                 <div className="flex items-center gap-3 text-[#0C2340]">
                   <Sparkles className="w-6 h-6 text-[#E27A2B] shrink-0" />
                   <h4 className="font-serif text-xl sm:text-2xl font-black text-neutral-950">
-                    1. Top Action Toolbar (Icons Overview)
+                    2. Story Studio Toolbar (Icons Overview)
                   </h4>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
@@ -1819,7 +1876,7 @@ export default function EditorialDeskPage() {
                       Write New Article
                     </strong>
                     <p className="text-sm sm:text-base font-semibold text-neutral-800 leading-relaxed font-sans">
-                      Resets and completely clears the editor fields so you can begin composing a fresh article or podcast episode from scratch.
+                      Clears and resets all editor fields so you can begin composing a fresh article, essay, or podcast episode from scratch.
                     </p>
                   </div>
 
@@ -1829,7 +1886,7 @@ export default function EditorialDeskPage() {
                       Saved Drafts &amp; Articles Library
                     </strong>
                     <p className="text-sm sm:text-base font-semibold text-neutral-800 leading-relaxed font-sans">
-                      Access all saved drafts and published stories. View exact draft and publication dates, search by title, and load any story to resume writing.
+                      Access all private drafts, scheduled releases, and live articles. Search by title, inspect publication dates, and click <strong className="text-neutral-950 font-extrabold">Load</strong> to resume working on any story.
                     </p>
                   </div>
 
@@ -1839,27 +1896,27 @@ export default function EditorialDeskPage() {
                       Import Document
                     </strong>
                     <p className="text-sm sm:text-base font-semibold text-neutral-800 leading-relaxed font-sans">
-                      Import existing document or text files from your computer directly into the editor with automatic title detection.
+                      Import existing document or text files (<code className="px-1.5 py-0.5 bg-neutral-100 rounded font-mono text-xs font-bold">.txt</code>, <code className="px-1.5 py-0.5 bg-neutral-100 rounded font-mono text-xs font-bold">.html</code>) directly from your computer with automatic title detection.
                     </p>
                   </div>
 
                   <div className="p-4 sm:p-5 bg-white rounded-xl border-2 border-neutral-200 shadow-2xs space-y-2">
                     <strong className="text-neutral-950 text-base sm:text-lg font-black flex items-center gap-2">
-                      <BookOpen className="w-5 h-5 text-[#E27A2B]" />
+                      <Eye className="w-5 h-5 text-[#E27A2B]" />
                       Live Reader Preview
                     </strong>
                     <p className="text-sm sm:text-base font-semibold text-neutral-800 leading-relaxed font-sans">
-                      Opens an exact replica of the live website reader layout, font styling, byline, and cover photo to review before publishing.
+                      Opens an exact replica of the live website reader layout, headline typography, byline, cover photo, audio player, and estimated read time to review before publishing.
                     </p>
                   </div>
 
                   <div className="p-4 sm:p-5 bg-white rounded-xl border-2 border-neutral-200 shadow-2xs space-y-2">
                     <strong className="text-neutral-950 text-base sm:text-lg font-black flex items-center gap-2">
                       <Clock className="w-5 h-5 text-amber-500" />
-                      Save Draft
+                      Save Draft (Private)
                     </strong>
                     <p className="text-sm sm:text-base font-semibold text-neutral-800 leading-relaxed font-sans">
-                      Saves your progress safely as a private draft. It will not be visible on the public reader site until you choose to publish it.
+                      Saves your progress safely as a private draft. Drafts are securely stored and will never be visible on the public reader website until you choose to publish them.
                     </p>
                   </div>
 
@@ -1879,39 +1936,100 @@ export default function EditorialDeskPage() {
                       Publish Live
                     </strong>
                     <p className="text-sm sm:text-base font-semibold text-neutral-800 leading-relaxed font-sans">
-                      Publishes the article live to the website immediately. Readers will be able to discover and read it right away across all categories.
+                      Publishes the article live to the website immediately. Readers can discover and read it right away across its category feed and the homepage.
+                    </p>
+                  </div>
+
+                  <div className="p-4 sm:p-5 bg-white rounded-xl border-2 border-neutral-200 shadow-2xs space-y-2">
+                    <strong className="text-neutral-950 text-base sm:text-lg font-black flex items-center gap-2">
+                      <ShieldCheck className="w-5 h-5 text-blue-600" />
+                      Continuous Auto-Save Safety
+                    </strong>
+                    <p className="text-sm sm:text-base font-semibold text-neutral-800 leading-relaxed font-sans">
+                      In addition to manual saves, the studio continuously preserves your writing in your browser memory every few seconds so unexpected power drops or closed tabs never lose your work.
                     </p>
                   </div>
                 </div>
               </div>
 
-              {/* Section 2: Editor Formatting & Media */}
+              {/* Section 3: Writing, Typography & Media */}
               <div className="p-6 sm:p-7 rounded-2xl bg-neutral-50 border-2 border-neutral-200/90 space-y-3">
                 <h4 className="font-serif text-xl sm:text-2xl font-black text-neutral-950 flex items-center gap-3 text-[#0C2340]">
                   <PenSquare className="w-6 h-6 text-[#E27A2B] shrink-0" />
-                  <span>2. Writing, Typography &amp; Cover Images</span>
+                  <span>3. Writing, Typography &amp; Cover Images</span>
                 </h4>
                 <ul className="list-disc list-inside space-y-2.5 text-sm sm:text-base font-semibold text-neutral-800 leading-relaxed font-sans">
                   <li>
-                    <strong className="font-extrabold text-neutral-950">Rich Text Toolbar:</strong> Format text with Headings (H2, H3), Bold, Italic, Strikethrough, Bullet Lists, Numbered Lists, Blockquotes, and Text Alignment (Left, Center, Right, Justify).
+                    <strong className="font-extrabold text-neutral-950">Rich Text Toolbar:</strong> Format text with Headings (H2, H3), Bold, Italic, Strikethrough, Bullet Lists, Numbered Lists, Blockquotes, Text Alignment (Left, Center, Right, Justify), and Text Color/Highlights.
                   </li>
                   <li>
-                    <strong className="font-extrabold text-neutral-950">Code &amp; Embed View:</strong> Toggle between the visual editor and Code View whenever you need to paste custom embeds, insert tables, or fine-tune formatting.
+                    <strong className="font-extrabold text-neutral-950">Code &amp; Embed View:</strong> Toggle between the visual editor and Code View whenever you need to paste custom embeds (such as YouTube videos, maps, or interactive charts), insert tables, or fine-tune formatting.
                   </li>
                   <li>
-                    <strong className="font-extrabold text-neutral-950">Cover Photos:</strong> Upload high-resolution photos or artwork to feature at the top of your story.
+                    <strong className="font-extrabold text-neutral-950">Cover Photos &amp; Artwork:</strong> Upload high-resolution photos or illustrations in landscape (16:9 ratio) to feature at the top of your article and on homepage preview cards.
                   </li>
                   <li>
-                    <strong className="font-extrabold text-neutral-950">Podcast &amp; Audio:</strong> Toggle &ldquo;Podcast Mode&rdquo; to attach audio narrations or release dedicated podcast episodes with streaming MP3 URLs.
+                    <strong className="font-extrabold text-neutral-950">Podcast &amp; Audio Episode Mode:</strong> Toggle &ldquo;Podcast Mode&rdquo; to attach audio narrations or release dedicated podcast episodes with streaming MP3 URLs. Readers can listen seamlessly via the floating player.
+                  </li>
+                  <li>
+                    <strong className="font-extrabold text-neutral-950">Story Summary (Excerpt):</strong> Craft a 1&ndash;3 sentence summary that engages readers. This excerpt is displayed on category grid cards, social media sharing cards, and search previews.
                   </li>
                 </ul>
               </div>
 
-              {/* Section 3: Drafts Library & Two-Step Deletion */}
+              {/* Section 4: Sections, Bylines, Packets & Placement */}
+              <div className="p-6 sm:p-7 rounded-2xl bg-neutral-50 border-2 border-neutral-200/90 space-y-3">
+                <h4 className="font-serif text-xl sm:text-2xl font-black text-neutral-950 flex items-center gap-3 text-[#0C2340]">
+                  <Bookmark className="w-6 h-6 text-[#E27A2B] shrink-0" />
+                  <span>4. Coverage Sections, Bylines &amp; Placement</span>
+                </h4>
+                <ul className="list-disc list-inside space-y-2.5 text-sm sm:text-base font-semibold text-neutral-800 leading-relaxed font-sans">
+                  <li>
+                    <strong className="font-extrabold text-neutral-950">Coverage Sections:</strong> File your story under the most appropriate primary section:
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 pb-1 pl-4 not-italic font-normal">
+                      <span>• <strong className="font-extrabold text-neutral-950">The shade:</strong> Visual arts, heritage, theatre, folklore, and culture.</span>
+                      <span>• <strong className="font-extrabold text-neutral-950">Cinema:</strong> Film reviews, cinema analyses, and director essays.</span>
+                      <span>• <strong className="font-extrabold text-neutral-950">Literature:</strong> Book critiques, essays, poetry, and translations.</span>
+                      <span>• <strong className="font-extrabold text-neutral-950">Politics:</strong> Governance, state affairs, and political commentary.</span>
+                      <span>• <strong className="font-extrabold text-neutral-950">Sports:</strong> In-depth cricket, football, and sporting narratives.</span>
+                      <span>• <strong className="font-extrabold text-neutral-950">Fallen mangoes:</strong> Satire, philosophy, reflections, and inquiries.</span>
+                      <span>• <strong className="font-extrabold text-neutral-950">Special Series:</strong> Serialized investigative features.</span>
+                      <span>• <strong className="font-extrabold text-neutral-950">Webzine:</strong> Curated editions grouped into issue packets.</span>
+                      <span>• <strong className="font-extrabold text-neutral-950">Audio &amp; Podcast:</strong> Standalone audio narrations and podcast series.</span>
+                    </div>
+                  </li>
+                  <li>
+                    <strong className="font-extrabold text-neutral-950">Author Bylines:</strong> Select the primary writer from registered columnists (<strong className="text-neutral-950 font-extrabold">Akhil U Krishnan</strong>, <strong className="text-neutral-950 font-extrabold">Amala Thomas</strong>) or click <strong className="text-[#E27A2B] font-extrabold">+ Add New Author</strong> to add a new guest writer or columnist.
+                  </li>
+                  <li>
+                    <strong className="font-extrabold text-neutral-950">Issue Packets (Webzine):</strong> Assign articles to a packet (e.g. <em className="font-serif">Packet 1, Packet 2, Monsoon Issue</em>) to bundle them together in the curated Webzine edition.
+                  </li>
+                  <li>
+                    <strong className="font-extrabold text-neutral-950">Multi-Part Special Series:</strong> For serialized investigations, enter a Series Title (e.g. <em className="font-serif">&ldquo;The Malabar Chronicles&rdquo;</em>) and Episode number. Episodes are automatically cataloged together in sequential order.
+                  </li>
+                  <li>
+                    <strong className="font-extrabold text-neutral-950">Editorial Display Flags:</strong>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 pl-4 font-normal">
+                      <span>• <strong className="font-extrabold text-neutral-950">Lead Story:</strong> Highlights the article as the prominent top centerpiece.</span>
+                      <span>• <strong className="font-extrabold text-neutral-950">Issue Cover:</strong> Features the story as the cover piece of the Webzine issue.</span>
+                      <span>• <strong className="font-extrabold text-neutral-950">Premium Story:</strong> Badges in-depth, signature editorial work.</span>
+                      <span>• <strong className="font-extrabold text-neutral-950">Longform Essay:</strong> Optimizes reading layout for extended longform essays.</span>
+                    </div>
+                  </li>
+                  <li>
+                    <strong className="font-extrabold text-neutral-950">Article Web Link:</strong> A clean web address is automatically created from your headline. You can customize the link anytime before publishing.
+                  </li>
+                  <li>
+                    <strong className="font-extrabold text-neutral-950">Topic Tags:</strong> Add comma-separated tags (e.g. <em className="font-mono text-xs">Kerala, Cinema, Ecology</em>) to help readers explore connected stories.
+                  </li>
+                </ul>
+              </div>
+
+              {/* Section 5: Drafts Library & Two-Step Deletion */}
               <div className="p-6 sm:p-7 rounded-2xl bg-neutral-50 border-2 border-neutral-200/90 space-y-3">
                 <h4 className="font-serif text-xl sm:text-2xl font-black text-neutral-950 flex items-center gap-3 text-[#0C2340]">
                   <FolderOpen className="w-6 h-6 text-[#E27A2B] shrink-0" />
-                  <span>3. Drafts, Scheduled Stories &amp; Safe Two-Step Deletion</span>
+                  <span>5. Drafts, Scheduled Stories &amp; Safe Two-Step Deletion</span>
                 </h4>
                 <p className="text-sm sm:text-base font-semibold text-neutral-800 leading-relaxed font-sans">
                   The Library modal cleanly separates stories into three distinct tabs: <strong className="font-extrabold text-neutral-950">Drafts</strong>, <strong className="font-extrabold text-blue-900">Scheduled</strong>, and <strong className="font-extrabold text-emerald-900">Published</strong> with exact creation, scheduled countdowns, and publication dates clearly displayed. Click <strong className="font-extrabold text-neutral-950">Load to Editor</strong> to resume working on any story, or <strong className="font-extrabold text-emerald-800">Publish Now</strong> to release a scheduled piece immediately.
@@ -1924,11 +2042,33 @@ export default function EditorialDeskPage() {
                 </div>
               </div>
 
-              {/* Section 4: Security & Passcode */}
+              {/* Section 6: Reader Letters & Feedback Inbox */}
+              <div className="p-6 sm:p-7 rounded-2xl bg-neutral-50 border-2 border-neutral-200/90 space-y-3">
+                <h4 className="font-serif text-xl sm:text-2xl font-black text-neutral-950 flex items-center gap-3 text-[#0C2340]">
+                  <Mail className="w-6 h-6 text-[#E27A2B] shrink-0" />
+                  <span>6. Reader Letters &amp; Feedback Inbox</span>
+                </h4>
+                <p className="text-sm sm:text-base font-semibold text-neutral-800 leading-relaxed font-sans">
+                  Readers can submit thoughts, letters, and constructive feedback directly from published articles using the &ldquo;Letter to the Editor&rdquo; feature.
+                </p>
+                <ul className="list-disc list-inside space-y-2 text-sm sm:text-base font-semibold text-neutral-800 leading-relaxed font-sans">
+                  <li>
+                    <strong className="font-extrabold text-neutral-950">Viewing Letters:</strong> Click the <strong className="font-extrabold text-neutral-950">Reader Letters &amp; Feedback Inbox</strong> tab in the desk header navigation to see all reader communications.
+                  </li>
+                  <li>
+                    <strong className="font-extrabold text-neutral-950">Inbox Filters:</strong> Easily filter between <strong className="font-extrabold text-neutral-950">All</strong> and <strong className="font-extrabold text-[#E27A2B]">Unread</strong> letters with real-time counters.
+                  </li>
+                  <li>
+                    <strong className="font-extrabold text-neutral-950">Reading &amp; Managing:</strong> Click on any letter row to expand and read the full letter, reader's name, email, and the related article. Click <strong className="font-extrabold text-neutral-950">Mark as Read / Unread</strong> to track processed mail.
+                  </li>
+                </ul>
+              </div>
+
+              {/* Section 7: Security & Passcode */}
               <div className="p-6 sm:p-7 rounded-2xl bg-neutral-50 border-2 border-neutral-200/90 space-y-3">
                 <h4 className="font-serif text-xl sm:text-2xl font-black text-neutral-950 flex items-center gap-3 text-[#0C2340]">
                   <Lock className="w-6 h-6 text-[#E27A2B] shrink-0" />
-                  <span>4. Passcode Security &amp; 1-Hour Auto Inactivity Lock</span>
+                  <span>7. Passcode Security &amp; 1-Hour Auto Inactivity Lock</span>
                 </h4>
                 <ul className="list-disc list-inside space-y-2 text-sm sm:text-base font-semibold text-neutral-800 leading-relaxed font-sans">
                   <li>

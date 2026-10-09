@@ -2,11 +2,15 @@
 
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { Podcast } from '@/lib/content';
+import type { Podcast } from '@/lib/content';
 import { useAudio } from '@/components/AudioContext';
 import { formatDate } from '@/lib/format';
 import { Play, Pause, Clock, Mic, Calendar } from 'lucide-react';
-import { fetchLivePodcastsFromSupabase, subscribeToContentUpdates } from '@/lib/liveArticles';
+import {
+  fetchLivePodcastsFromSupabase,
+  subscribeToContentUpdates,
+  getCachedLivePodcasts,
+} from '@/lib/liveArticles';
 
 interface PodcastListProps {
   podcasts: Podcast[];
@@ -14,8 +18,15 @@ interface PodcastListProps {
 
 export function PodcastList({ podcasts: initialPodcasts = [] }: PodcastListProps) {
   const { currentTrack, isPlaying, playTrack, togglePlayPause } = useAudio();
-  const [podcasts, setPodcasts] = useState<Podcast[]>(initialPodcasts);
-  const [isLoadingLive, setIsLoadingLive] = useState<boolean>(initialPodcasts.length === 0);
+  const [podcasts, setPodcasts] = useState<Podcast[]>(() => {
+    const cached = getCachedLivePodcasts();
+    return cached !== null ? cached : initialPodcasts;
+  });
+  const [isLoadingLive, setIsLoadingLive] = useState<boolean>(() => {
+    const cached = getCachedLivePodcasts();
+    if (cached !== null) return false;
+    return initialPodcasts.length === 0;
+  });
 
   useEffect(() => {
     let isMounted = true;
@@ -23,7 +34,7 @@ export function PodcastList({ podcasts: initialPodcasts = [] }: PodcastListProps
     const loadLive = async () => {
       try {
         const live = await fetchLivePodcastsFromSupabase();
-        if (isMounted && live && live.length > 0) {
+        if (isMounted) {
           setPodcasts(live);
         }
       } catch (err) {

@@ -12,8 +12,8 @@ import { SITE_CATEGORIES } from '@/lib/categories';
 import { getBookmarks } from '@/lib/readerStore';
 import { getStoredSession, UserSession } from '@/lib/clientAuth';
 
-const MyLibraryModal = dynamic(() => import('./MyLibraryModal').then((m) => m.MyLibraryModal), { ssr: false });
-const SearchModal = dynamic(() => import('./SearchModal').then((m) => m.SearchModal), { ssr: false });
+const MyLibraryModal = dynamic(() => import('./MyLibraryModal').then((m) => ({ default: m.MyLibraryModal })), { ssr: false });
+const SearchModal = dynamic(() => import('./SearchModal').then((m) => ({ default: m.SearchModal })), { ssr: false });
 
 export function Header() {
   const [isDarkMode, setIsDarkMode] = useState(false);
