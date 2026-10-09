@@ -26,10 +26,15 @@ export default function NotFound() {
       targetSlug = decodeURIComponent(articlesMatch[1]);
     } else {
       const segments = path.split('/').filter(Boolean);
-      if (segments.length >= 2) {
+      const excludedSections = ['magazine', 'podcasts', 'videos', 'series', 'latest', 'publisher', 'the-team', 'search', 'member', 'pages', 'tag'];
+      if (segments.length === 1) {
+        const seg = decodeURIComponent(segments[0]);
+        if (!excludedSections.includes(seg.toLowerCase()) && seg !== '_empty') {
+          targetSlug = seg;
+        }
+      } else if (segments.length >= 2) {
         const first = segments[0].toLowerCase();
         const last = decodeURIComponent(segments[segments.length - 1]);
-        const excludedSections = ['magazine', 'podcasts', 'videos', 'series', 'latest', 'publisher', 'the-team', 'search', 'member', 'pages', 'tag'];
         if (!excludedSections.includes(first) && last && last !== '_empty') {
           targetSlug = last;
         }

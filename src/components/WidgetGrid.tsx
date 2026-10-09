@@ -11,6 +11,7 @@ import {
   subscribeToContentUpdates,
   getCachedLiveArticles,
 } from '@/lib/liveArticles';
+import { AudioIndicator, isAudioStory } from '@/components/AudioIndicator';
 
 interface WidgetGridProps {
   articles: Article[];
@@ -135,6 +136,7 @@ export function WidgetGrid({ articles: initialArticles = [] }: WidgetGridProps) 
                 className="object-cover"
                 priority
               />
+              <AudioIndicator hasAudio={isAudioStory(leadArticle)} size="lg" />
             </div>
 
             <div className="pt-4 space-y-3">
@@ -215,6 +217,7 @@ export function WidgetGrid({ articles: initialArticles = [] }: WidgetGridProps) 
                     sizes="112px"
                     className="object-cover"
                   />
+                  <AudioIndicator hasAudio={isAudioStory(art)} size="sm" />
                 </div>
 
                 <div className="flex-1 min-w-0 space-y-1">
@@ -296,6 +299,7 @@ export function WidgetGrid({ articles: initialArticles = [] }: WidgetGridProps) 
                       sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                       className="object-cover"
                     />
+                    <AudioIndicator hasAudio={isAudioStory(art)} />
                   </div>
 
                   <div className="pt-3 space-y-1.5">

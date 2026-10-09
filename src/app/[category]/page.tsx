@@ -1,5 +1,5 @@
 import React from 'react';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { getArticlesByCategory, getAllCategories } from '@/lib/content';
 import { CategoryFeedClient } from '@/components/CategoryFeedClient';
 import type { Metadata } from 'next';
@@ -16,6 +16,15 @@ function resolveCategorySlug(slug: string): string {
   const s = slug.toLowerCase().trim();
   if (s === 'miscellaneous' || s === 'fallen mangoes') return 'fallen-mangoes';
   if (s === 'arts-culture' || s === 'art-culture' || s === 'the shade') return 'the-shade';
+  if (
+    s === 'podcast' ||
+    s === 'podcasts' ||
+    s === 'audio-and-podcast' ||
+    s === 'audio & podcast' ||
+    s === 'audio-podcast'
+  ) {
+    return 'podcasts';
+  }
   return s;
 }
 
@@ -45,10 +54,21 @@ export const revalidate = 60;
 
 export default async function CategoryPage({ params }: CategoryPageProps) {
   const resolvedCategory = resolveCategorySlug(params.category);
+
+  if (resolvedCategory === 'podcasts') {
+    redirect('/podcasts');
+  }
+
   const categories = getAllCategories();
   const catObj = categories.find((c) => c.slug === resolvedCategory);
 
   if (!catObj) {
+    // If this URL matches a published article slug, redirect to its article page
+    const { getArticleBySlug } = await import('@/lib/content');
+    const article = await getArticleBySlug(params.category);
+    if (article) {
+      redirect(`/articles/${article.slug}`);
+    }
     notFound();
   }
 

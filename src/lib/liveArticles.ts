@@ -100,23 +100,65 @@ export function getCachedLivePodcasts(): Podcast[] | null {
 export function filterCategoryArticles(all: Article[], categorySlug: string): Article[] {
   const target = (categorySlug || '').toLowerCase().trim();
 
-  if (target === 'webzine' || target === 'magazine') {
+  // 1. Audio & Podcast dedicated section
+  if (
+    target === 'podcasts' ||
+    target === 'podcast' ||
+    target === 'audio-and-podcast' ||
+    target === 'audio & podcast' ||
+    target === 'audio-podcast'
+  ) {
     return all.filter(
       (a) =>
-        a.category?.toLowerCase() === 'webzine' ||
-        Boolean(a.webzineIssue && a.webzineIssue.trim() && a.webzineIssue !== 'None') ||
-        a.tags?.some((t) => t.toLowerCase() === 'webzine')
+        Boolean(a.audioNarrationUrl) ||
+        a.category?.toLowerCase() === 'podcast' ||
+        a.category?.toLowerCase() === 'podcasts' ||
+        a.category?.toLowerCase() === 'audio-and-podcast' ||
+        a.category?.toLowerCase() === 'audio & podcast' ||
+        a.tags?.some((t) => {
+          const tl = t.toLowerCase().trim();
+          return tl === 'podcast' || tl === 'audio story' || tl === 'audio & podcast' || tl === 'audio';
+        })
     );
   }
 
+  // 2. Webzine section
+  if (target === 'webzine' || target === 'magazine') {
+    return all.filter((a) => {
+      const artCat = a.category?.toLowerCase().trim();
+      const isDedicatedPodcast =
+        artCat === 'podcast' ||
+        artCat === 'podcasts' ||
+        artCat === 'audio-and-podcast' ||
+        artCat === 'audio & podcast';
+      if (isDedicatedPodcast) return false;
+
+      return (
+        artCat === 'webzine' ||
+        Boolean(a.webzineIssue && a.webzineIssue.trim() && a.webzineIssue !== 'None') ||
+        a.tags?.some((t) => t.toLowerCase() === 'webzine')
+      );
+    });
+  }
+
+  // 3. Special Series section
   if (target === 'series' || target === 'special-series' || target === 'special series') {
-    return all.filter(
-      (a) =>
-        a.category?.toLowerCase() === 'series' ||
-        a.category?.toLowerCase() === 'special series' ||
+    return all.filter((a) => {
+      const artCat = a.category?.toLowerCase().trim();
+      const isDedicatedPodcast =
+        artCat === 'podcast' ||
+        artCat === 'podcasts' ||
+        artCat === 'audio-and-podcast' ||
+        artCat === 'audio & podcast';
+      if (isDedicatedPodcast) return false;
+
+      return (
+        artCat === 'series' ||
+        artCat === 'special series' ||
         Boolean(a.seriesTitle && a.seriesTitle.trim()) ||
         a.tags?.some((t) => t.toLowerCase() === 'series' || t.toLowerCase() === 'special series')
-    );
+      );
+    });
   }
 
   const aliasTargets =
@@ -128,6 +170,16 @@ export function filterCategoryArticles(all: Article[], categorySlug: string): Ar
 
   return all.filter((a) => {
     const artCat = a.category?.toLowerCase().trim();
+
+    // Dedicated Audio & Podcast items are isolated to their own section
+    const isDedicatedPodcast =
+      artCat === 'podcast' ||
+      artCat === 'podcasts' ||
+      artCat === 'audio-and-podcast' ||
+      artCat === 'audio & podcast' ||
+      artCat === 'audio-podcast';
+    if (isDedicatedPodcast) return false;
+
     if (artCat && aliasTargets.includes(artCat)) return true;
     if (a.tags && Array.isArray(a.tags)) {
       return a.tags.some((t) => {
@@ -173,19 +225,31 @@ export async function fetchLiveArticlesFromSupabase(
   }
 }
 
-export async function fetchLiveArticleBySlug(slug: string): Promise<Article | null> {
+export async function fetchLiveArticleBySlug(
+  slug: string,
+  includeScheduled: boolean = false
+): Promise<Article | null> {
   if (!slug) return null;
 
   // Check memory cache first
   if (memoryArticlesCache) {
     const found = memoryArticlesCache.find((a) => a.slug === slug);
-    if (found) return found;
+    if (found && (includeScheduled || (!found.isScheduled && (found as any).status !== 'draft'))) {
+      return found;
+    }
   }
 
   try {
     const raw = await fetchSupabaseArticleBySlug(slug);
     if (!raw) return null;
-    return mapSupabaseRecordToArticle(raw);
+    if (!includeScheduled && raw.status === 'draft') {
+      return null;
+    }
+    const article = mapSupabaseRecordToArticle(raw);
+    if (!includeScheduled && article.isScheduled) {
+      return null;
+    }
+    return article;
   } catch (err) {
     console.warn(`Error fetching live article by slug "${slug}":`, err);
     return null;
@@ -205,7 +269,13 @@ export async function fetchLivePodcastsFromSupabase(forceRefresh: boolean = fals
         (art) =>
           Boolean(art.audio_narration_url) ||
           art.category?.toLowerCase() === 'podcast' ||
-          art.tags?.some((t) => t.toLowerCase() === 'podcast' || t.toLowerCase() === 'audio story')
+          art.category?.toLowerCase() === 'podcasts' ||
+          art.category?.toLowerCase() === 'audio-and-podcast' ||
+          art.category?.toLowerCase() === 'audio & podcast' ||
+          art.tags?.some((t) => {
+            const tl = t.toLowerCase().trim();
+            return tl === 'podcast' || tl === 'audio story' || tl === 'audio & podcast' || tl === 'audio';
+          })
       )
       .map(mapSupabaseRecordToPodcast)
       .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
@@ -318,16 +388,19 @@ export function buildSeriesFromArticles(articles: Article[]): Series[] {
   >();
 
   for (const art of seriesArticles) {
-    const rawTitle =
-      art.seriesTitle && art.seriesTitle.trim()
-        ? art.seriesTitle.trim()
-        : art.tags?.find((t) => t.toLowerCase().includes('series')) || 'Special Series';
+    const hasCustomSeriesTitle =
+      art.seriesTitle &&
+      art.seriesTitle.trim() &&
+      art.seriesTitle.trim().toLowerCase() !== 'special series' &&
+      art.seriesTitle.trim().toLowerCase() !== 'none';
 
-    const slug =
-      rawTitle
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-+|-+$/g, '') || 'special-series';
+    const rawTitle = hasCustomSeriesTitle ? art.seriesTitle!.trim() : art.title;
+    const slug = hasCustomSeriesTitle
+      ? rawTitle
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '') || 'special-series'
+      : art.slug;
 
     if (!seriesMap.has(slug)) {
       seriesMap.set(slug, {

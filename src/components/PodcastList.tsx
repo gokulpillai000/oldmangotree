@@ -11,6 +11,7 @@ import {
   subscribeToContentUpdates,
   getCachedLivePodcasts,
 } from '@/lib/liveArticles';
+import { AudioIndicator } from '@/components/AudioIndicator';
 
 interface PodcastListProps {
   podcasts: Podcast[];
@@ -100,6 +101,7 @@ export function PodcastList({ podcasts: initialPodcasts = [] }: PodcastListProps
                   sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                   className="object-cover"
                 />
+                <AudioIndicator hasAudio={true} />
               </div>
 
               <div className="pt-3 space-y-1.5">

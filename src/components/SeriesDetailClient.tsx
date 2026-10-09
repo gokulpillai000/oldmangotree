@@ -3,45 +3,119 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import type { Series } from '@/lib/content';
 import { formatDate } from '@/lib/format';
-import { ArrowLeft, BookOpen, Calendar } from 'lucide-react';
-import { fetchLiveSeriesFromSupabase, subscribeToContentUpdates } from '@/lib/liveArticles';
+import { ArrowLeft, BookOpen, Calendar, Loader2 } from 'lucide-react';
+import {
+  fetchLiveSeriesFromSupabase,
+  fetchLiveArticleBySlug,
+  subscribeToContentUpdates,
+} from '@/lib/liveArticles';
 
 interface SeriesDetailClientProps {
-  initialSeries: Series;
+  slug: string;
+  initialSeries?: Series | null;
 }
 
-export function SeriesDetailClient({ initialSeries }: SeriesDetailClientProps) {
-  const [series, setSeries] = useState<Series>(initialSeries);
+export function SeriesDetailClient({ slug, initialSeries }: SeriesDetailClientProps) {
+  const router = useRouter();
+  const [series, setSeries] = useState<Series | null>(initialSeries || null);
+  const [isLoading, setIsLoading] = useState<boolean>(!initialSeries);
+  const [notFoundState, setNotFoundState] = useState<boolean>(false);
 
   useEffect(() => {
     let isMounted = true;
 
-    const loadLive = async () => {
+    // If initialSeries has only 1 episode, redirect immediately to the article
+    if (initialSeries && initialSeries.episodes && initialSeries.episodes.length === 1) {
+      router.replace(`/articles/${initialSeries.episodes[0].slug}`);
+      return;
+    }
+
+    const resolveContent = async () => {
       try {
+        // 1. Check if slug belongs directly to an article (e.g. newly published article)
+        const liveArticle = await fetchLiveArticleBySlug(slug);
+        if (liveArticle && isMounted) {
+          router.replace(`/articles/${liveArticle.slug}`);
+          return;
+        }
+
+        // 2. Fetch live series
         const live = await fetchLiveSeriesFromSupabase();
-        const currentClean = initialSeries.slug.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+        const currentClean = slug.toLowerCase().replace(/[^a-z0-9]+/g, '-');
         const matched = live.find(
           (s) => s.slug.toLowerCase().replace(/[^a-z0-9]+/g, '-') === currentClean
         );
-        if (isMounted && matched) {
-          setSeries(matched);
+
+        if (isMounted) {
+          if (matched) {
+            // If the series only has 1 episode, redirect directly to that article
+            if (matched.episodes && matched.episodes.length === 1) {
+              router.replace(`/articles/${matched.episodes[0].slug}`);
+              return;
+            }
+            setSeries(matched);
+            setIsLoading(false);
+          } else if (!initialSeries) {
+            setIsLoading(false);
+            setNotFoundState(true);
+          }
         }
       } catch (err) {
-        console.warn('Error refreshing live series detail:', err);
+        console.warn('Error resolving series or story:', err);
+        if (isMounted && !initialSeries) {
+          setIsLoading(false);
+          setNotFoundState(true);
+        }
       }
     };
 
+    resolveContent();
+
     const unsubscribe = subscribeToContentUpdates(() => {
-      loadLive();
+      resolveContent();
     });
 
     return () => {
       isMounted = false;
       unsubscribe();
     };
-  }, [initialSeries.slug]);
+  }, [slug, initialSeries, router]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-[50vh] flex flex-col items-center justify-center py-20 text-center space-y-4">
+        <Loader2 className="w-8 h-8 animate-spin text-[#E27A2B]" />
+        <p className="font-serif text-lg text-neutral-700 dark:text-neutral-300">
+          Loading series...
+        </p>
+      </div>
+    );
+  }
+
+  if (notFoundState || !series) {
+    return (
+      <div className="py-20 text-center space-y-4 max-w-lg mx-auto px-4">
+        <h1 className="font-serif text-2xl sm:text-3xl font-bold text-neutral-900 dark:text-neutral-100">
+          Story or Series Not Found
+        </h1>
+        <p className="text-neutral-600 dark:text-neutral-400 text-sm">
+          The series or story you are looking for may have been moved, renamed, or is not yet published.
+        </p>
+        <div className="pt-4">
+          <Link
+            href="/series"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#E27A2B] text-white font-medium text-sm hover:bg-[#d06b1f] transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Back to All Series</span>
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   const latestEpisode =
     series.episodes && series.episodes.length > 0

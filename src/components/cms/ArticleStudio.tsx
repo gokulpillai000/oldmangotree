@@ -64,7 +64,7 @@ const STANDARD_CATEGORIES = [
   'Science',
   'Interview',
   'Opinion',
-  'Podcast',
+  'Audio & Podcast',
 ];
 
 function formatFriendlyError(error: any, fallback: string = 'Operation failed'): string {
@@ -862,14 +862,20 @@ export function ArticleStudio({
     }
     setStatusMessage(null);
 
+    const isAudioCategory =
+      isPodcastMode ||
+      category.toLowerCase().includes('podcast') ||
+      category.toLowerCase().includes('audio');
+
     // Auto-include Podcast tags if audio is attached
     let finalTags = [...selectedTags];
-    if (audioUrl.trim() || isPodcastMode) {
+    if (audioUrl.trim() || isAudioCategory) {
+      if (!finalTags.includes('Audio & Podcast')) finalTags.push('Audio & Podcast');
       if (!finalTags.includes('Podcast')) finalTags.push('Podcast');
       if (!finalTags.includes('Audio Story')) finalTags.push('Audio Story');
     }
 
-    const effectiveCategory = isPodcastMode
+    const effectiveCategory = isAudioCategory
       ? 'podcast'
       : (category.trim() || 'Uncategorized').toLowerCase().replace(/\s*&\s*|\s+/g, '-');
 
@@ -1261,6 +1267,10 @@ export function ArticleStudio({
           type="button"
           onClick={() => {
             setIsPodcastMode(false);
+            if (category === 'Audio & Podcast' || category === 'Podcast') {
+              setCategory('Politics');
+              setSelectedTags(['Politics']);
+            }
           }}
           className={`flex-1 py-2 px-4 rounded text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
             !isPodcastMode
@@ -1276,8 +1286,8 @@ export function ArticleStudio({
           type="button"
           onClick={() => {
             setIsPodcastMode(true);
-            if (category !== 'Podcast') setCategory('Podcast');
-            if (!selectedTags.includes('Podcast')) setSelectedTags((prev) => [...prev, 'Podcast']);
+            setCategory('Audio & Podcast');
+            setSelectedTags(['Audio & Podcast', 'Podcast']);
           }}
           className={`flex-1 py-2 px-4 rounded text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
             isPodcastMode
@@ -2027,16 +2037,25 @@ export function ArticleStudio({
               <label className="text-xs sm:text-sm font-bold uppercase tracking-wider text-neutral-900 dark:text-neutral-100 block">
                 Article Web Address (Link)
               </label>
-              <input
-                type="text"
-                value={slug}
-                onChange={(e) => {
-                  setSlug(e.target.value);
-                  setSlugCustomized(true);
-                }}
-                placeholder="article-web-link"
-                className="w-full px-3.5 py-2 font-mono text-xs sm:text-sm bg-neutral-50 dark:bg-neutral-800 border-2 border-neutral-300 dark:border-neutral-600 text-neutral-900 dark:text-neutral-100 rounded-md focus:ring-1 focus:ring-[#E27A2B]"
-              />
+              <div className="flex items-center">
+                <span className="inline-flex items-center px-3 py-2 text-xs sm:text-sm font-mono font-bold bg-neutral-200 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 border-2 border-r-0 border-neutral-300 dark:border-neutral-600 rounded-l-md select-none">
+                  /articles/
+                </span>
+                <input
+                  type="text"
+                  value={slug}
+                  onChange={(e) => {
+                    const cleaned = e.target.value.toLowerCase().replace(/[^a-z0-9-_]/g, '');
+                    setSlug(cleaned);
+                    setSlugCustomized(true);
+                  }}
+                  placeholder="article-web-link"
+                  className="flex-1 px-3.5 py-2 font-mono text-xs sm:text-sm bg-neutral-50 dark:bg-neutral-800 border-2 border-neutral-300 dark:border-neutral-600 text-neutral-900 dark:text-neutral-100 rounded-r-md focus:ring-1 focus:ring-[#E27A2B]"
+                />
+              </div>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                Full Web Link: <span className="font-mono font-semibold text-[#E27A2B]">/articles/{slug || 'auto-generated'}</span>
+              </p>
             </div>
           </div>
 
@@ -2367,7 +2386,7 @@ export function ArticleStudio({
                             </>
                           )}
                           <span>•</span>
-                          <span className="font-mono text-xs font-semibold text-neutral-500">/{rec.slug}</span>
+                          <span className="font-mono text-xs font-semibold text-neutral-500">/articles/{rec.slug}</span>
                         </div>
                       </div>
 
@@ -2466,7 +2485,7 @@ export function ArticleStudio({
                 {title || 'Untitled Story'}
               </h4>
               <p className="text-xs font-semibold text-neutral-600 font-mono">
-                Link: /{slug || 'auto-generated'} • By: {audioSpeaker || author || 'Akhil U Krishnan'}
+                Link: /articles/{slug || 'auto-generated'} • By: {audioSpeaker || author || 'Akhil U Krishnan'}
               </p>
             </div>
 

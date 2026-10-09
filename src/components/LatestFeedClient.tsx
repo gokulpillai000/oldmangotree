@@ -11,6 +11,7 @@ import {
   subscribeToContentUpdates,
   getCachedLiveArticles,
 } from '@/lib/liveArticles';
+import { AudioIndicator, isAudioStory } from '@/components/AudioIndicator';
 
 interface LatestFeedClientProps {
   articles: Article[];
@@ -86,6 +87,7 @@ export function LatestFeedClient({ articles: initialArticles = [] }: LatestFeedC
                 sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                 className="object-cover"
               />
+              <AudioIndicator hasAudio={isAudioStory(article)} />
             </div>
 
             <div className="pt-3 space-y-1.5">

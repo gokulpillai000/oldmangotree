@@ -7,6 +7,7 @@ import type { Series } from '@/lib/content';
 import { formatDate } from '@/lib/format';
 import { Calendar } from 'lucide-react';
 import { fetchLiveSeriesFromSupabase, subscribeToContentUpdates } from '@/lib/liveArticles';
+import { AudioIndicator, isAudioStory } from '@/components/AudioIndicator';
 
 interface SeriesFeedClientProps {
   initialSeries: Series[];
@@ -60,6 +61,15 @@ export function SeriesFeedClient({ initialSeries }: SeriesFeedClientProps) {
             : null;
         const latestDate = latestEpisode?.publishedAt;
 
+        const isSingleArticle = series.episodes && series.episodes.length === 1;
+        const targetHref = isSingleArticle
+          ? `/articles/${series.episodes[0].slug}`
+          : `/series/${series.slug}`;
+        const displayTitle =
+          isSingleArticle && series.episodes[0]?.title
+            ? series.episodes[0].title
+            : series.title;
+
         return (
           <article
             key={series.slug}
@@ -69,19 +79,20 @@ export function SeriesFeedClient({ initialSeries }: SeriesFeedClientProps) {
             <div className="relative aspect-[16/10] sm:aspect-[16/9] w-full overflow-hidden bg-neutral-100 dark:bg-neutral-900">
               <Image
                 src={series.coverImage || '/images/logo-oldmangotree.jpg'}
-                alt={series.title}
+                alt={displayTitle}
                 fill
                 sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                 className="object-cover"
               />
+              <AudioIndicator hasAudio={isAudioStory(series.episodes?.[0])} />
             </div>
 
             {/* Title & Latest Episode Release Date */}
             <div className="pt-3.5 space-y-2">
-              <Link href={`/series/${series.slug}`}>
+              <Link href={targetHref}>
                 <span className="absolute inset-0 z-10" aria-hidden="true" />
                 <h2 className="font-serif text-xl sm:text-2xl lg:text-3xl font-bold text-neutral-900 dark:text-neutral-50 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors leading-tight break-words">
-                  {series.title}
+                  {displayTitle}
                 </h2>
               </Link>
 
