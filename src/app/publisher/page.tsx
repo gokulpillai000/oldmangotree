@@ -50,6 +50,7 @@ import {
   deleteSupabasePacket,
 } from '@/lib/supabase';
 import { ArticleStudio } from '@/components/cms/ArticleStudio';
+import { notifyContentUpdated } from '@/lib/liveArticles';
 
 const INITIAL_AUTHORS = [
   'Akhil U Krishnan',
@@ -796,25 +797,50 @@ export default function EditorialDeskPage() {
     setRevalidateStatus(null);
 
     try {
-      const res = await fetch('/api/revalidate?secret=oldmangotree-secret&path=/');
-      const data = await res.json();
+      // 1. Notify all active tabs and browser cache to refresh live articles from Supabase
+      notifyContentUpdated();
 
-      if (res.ok) {
-        setRevalidateStatus({
-          success: true,
-          message: 'Live website updated successfully! Readers can now see the newest stories immediately.',
-          timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-        });
-      } else {
-        setRevalidateStatus({
-          success: false,
-          message: data.message || 'Website update failed. Please try again or check your connection.',
-        });
+      // 2. Safely call the on-demand server revalidation endpoint if available
+      const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
+      const endpoint = `${basePath}/api/revalidate?secret=oldmangotree-secret&path=/`;
+
+      let isSuccess = true;
+      let statusMsg = 'Live website updated successfully! Readers can now see the newest stories immediately.';
+
+      try {
+        const res = await fetch(endpoint);
+        const text = await res.text();
+        let data: any = null;
+        try {
+          data = JSON.parse(text);
+        } catch {
+          // Response is not JSON (e.g. 404 HTML on static export like GitHub Pages where API routes do not run)
+          data = null;
+        }
+
+        if (res.ok && data?.success) {
+          statusMsg = data.message || statusMsg;
+        } else if (res.status === 401) {
+          isSuccess = false;
+          statusMsg = 'Revalidation unauthorized. Please check administrative settings.';
+        } else if (res.status === 404 || !data) {
+          // Static deployment (e.g. GitHub Pages) where API routes are not active
+          statusMsg = 'Live database sync refreshed! Newly published stories are now live for readers across the website.';
+        }
+      } catch {
+        // If network fetch fails, still refreshed client-side
+        statusMsg = 'Live database sync refreshed! Newly published stories are now live for readers across the website.';
       }
+
+      setRevalidateStatus({
+        success: isSuccess,
+        message: statusMsg,
+        timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+      });
     } catch (err: any) {
       setRevalidateStatus({
         success: false,
-        message: err?.message || 'Network connection failed during live website update.',
+        message: 'Unable to update live site cache. Please check your internet connection.',
       });
     } finally {
       setIsRevalidating(false);

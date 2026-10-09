@@ -46,6 +46,7 @@ import {
   SupabaseArticleRecord,
 } from '@/lib/supabase';
 import { compressAndUploadImage, uploadAudioFile } from '@/lib/imageUpload';
+import { notifyContentUpdated } from '@/lib/liveArticles';
 
 const STANDARD_CATEGORIES = [
   'Politics',
@@ -64,6 +65,29 @@ const STANDARD_CATEGORIES = [
   'Podcast',
   'Webzine',
 ];
+
+function formatFriendlyError(error: any, fallback: string = 'Operation failed'): string {
+  if (!error) return fallback;
+  const msg = typeof error === 'string' ? error : (error.message || '');
+  const lower = msg.toLowerCase();
+
+  if (lower.includes('unexpected token') || lower.includes('<!doctype') || lower.includes('is not valid json')) {
+    return 'Server communication error: The endpoint returned unexpected content. Please verify your connection or try again.';
+  }
+  if (lower.includes('failed to fetch') || lower.includes('network') || lower.includes('load failed') || lower.includes('timeout') || lower.includes('offline')) {
+    return 'Network connection issue: Unable to reach the database. Please check your internet connection.';
+  }
+  if (lower.includes('row-level security') || lower.includes('violates row-level security policy') || lower.includes('permission denied')) {
+    return 'Permission notice: You do not have permission to modify this entry. Please sign in to the publisher desk.';
+  }
+  if (lower.includes('unique constraint') || lower.includes('duplicate key') || lower.includes('already exists')) {
+    return 'An article with this URL slug already exists. Please choose a slightly different slug or title.';
+  }
+  if (lower.includes('database not connected') || lower.includes('supabase not configured')) {
+    return 'Database connection is not configured or currently unreachable.';
+  }
+  return msg || fallback;
+}
 
 interface ArticleStudioProps {
   authors: string[];
@@ -170,12 +194,18 @@ export function ArticleStudio({
   // 1. Auto-slug generation from title
   useEffect(() => {
     if (!slugCustomized && title.trim()) {
-      const generated = title
+      let generated = title
         .toLowerCase()
         .replace(/[^a-z0-9\s-]/g, '')
         .replace(/\s+/g, '-')
         .replace(/-+/g, '-')
+        .replace(/^-+|-+$/g, '')
         .trim();
+
+      if (!generated) {
+        // If title is non-Latin (e.g. Malayalam), create a clean readable fallback slug
+        generated = `story-${Date.now().toString(36)}`;
+      }
       setSlug(generated);
     }
   }, [title, slugCustomized]);
@@ -383,10 +413,10 @@ export function ArticleStudio({
         setStatusMessage({ text: `Audio file "${file.name}" uploaded successfully!`, type: 'success' });
         setTimeout(() => setStatusMessage(null), 4000);
       } else {
-        alert(res.error || 'Audio upload failed');
+        alert(formatFriendlyError(res.error, 'Audio upload failed'));
       }
     } catch (err: any) {
-      alert(`Audio upload error: ${err?.message || 'Error'}`);
+      alert(formatFriendlyError(err, 'Audio upload failed'));
     } finally {
       setIsUploadingAudio(false);
       if (audioInputRef.current) audioInputRef.current.value = '';
@@ -716,13 +746,14 @@ export function ArticleStudio({
         setLoadedArticleStatus('published');
         setLoadedScheduledAt(null);
       }
+      notifyContentUpdated();
       setStatusMessage({
         text: `"${article.title}" has been published live immediately!`,
         type: 'success',
       });
       setTimeout(() => setStatusMessage(null), 4000);
     } else {
-      alert(`Failed to publish article: ${res.error || 'Please try again'}`);
+      alert(`Failed to publish article: ${formatFriendlyError(res.error, 'Please try again')}`);
     }
   };
 
@@ -749,13 +780,14 @@ export function ArticleStudio({
         setLoadedArticleStatus(null);
         setLoadedScheduledAt(null);
       }
+      notifyContentUpdated();
       setStatusMessage({
         text: `Permanently deleted ${itemLabel}.`,
         type: 'success',
       });
       setTimeout(() => setStatusMessage(null), 4000);
     } else {
-      alert(`Failed to delete ${itemLabel}. Please check your connection.`);
+      alert(`Failed to delete ${itemLabel}. Please check your internet connection.`);
     }
   };
 
@@ -786,10 +818,10 @@ export function ArticleStudio({
       if (res.url) {
         setCoverImage(res.url);
       } else if (res.error) {
-        alert(`Cover upload error: ${res.error}`);
+        alert(formatFriendlyError(res.error, 'Cover upload failed'));
       }
     } catch (err: any) {
-      alert(`Cover upload failed: ${err?.message || 'Error'}`);
+      alert(formatFriendlyError(err, 'Cover upload failed'));
     } finally {
       setIsUploadingCover(false);
       if (coverInputRef.current) coverInputRef.current.value = '';
@@ -818,7 +850,8 @@ export function ArticleStudio({
       return;
     }
 
-    const finalSlug = slug.trim() || `article-${Date.now()}`;
+    const cleanSlug = (slug.trim() || `story-${Date.now().toString(36)}`).replace(/^-+|-+$/g, '');
+    const finalSlug = cleanSlug || `story-${Date.now().toString(36)}`;
     if (status === 'published') {
       setIsPublishing(true);
     } else if (status === 'draft') {
@@ -898,6 +931,7 @@ export function ArticleStudio({
         });
 
         if (status === 'published') {
+          notifyContentUpdated();
           setPublishedUrl(`/articles/${finalSlug}`);
           setStatusMessage({
             text: isPodcastMode
@@ -926,10 +960,10 @@ export function ArticleStudio({
         }
         localStorage.removeItem('omt_cms_draft_v1');
       } else {
-        setStatusMessage({ text: res.error || 'Failed to save story. Please try again.', type: 'error' });
+        setStatusMessage({ text: formatFriendlyError(res.error, 'Failed to save story. Please try again.'), type: 'error' });
       }
     } catch (err: any) {
-      setStatusMessage({ text: err?.message || 'Saving error', type: 'error' });
+      setStatusMessage({ text: formatFriendlyError(err?.message, 'An unexpected error occurred while saving.'), type: 'error' });
     } finally {
       setIsPublishing(false);
       setIsSavingDraft(false);
@@ -1126,11 +1160,11 @@ export function ArticleStudio({
           >
             {isPublishing ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin" /> {editingArticleSlug ? 'Updating...' : 'Publishing...'}
+                <Loader2 className="w-4 h-4 animate-spin" /> {editingArticleSlug && loadedArticleStatus === 'published' ? 'Updating Live...' : 'Publishing Live...'}
               </>
             ) : (
               <>
-                <Send className="w-4 h-4" /> {editingArticleSlug ? 'Update Live Article' : 'Publish to Site'}
+                <Send className="w-4 h-4" /> {editingArticleSlug && loadedArticleStatus === 'published' ? 'Update Live Article' : 'Publish to Site'}
               </>
             )}
           </button>
@@ -1173,29 +1207,44 @@ export function ArticleStudio({
         </div>
       )}
 
-      {/* Editing Uploaded Story Notification Banner */}
+      {/* Editing Draft or Live Story Notification Banner */}
       {editingArticleSlug && !isCurrentlyScheduled && (
-        <div className="p-3.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 rounded flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs animate-in fade-in">
-          <div className="flex items-center gap-2">
+        <div className={`p-3.5 border rounded flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs animate-in fade-in ${
+          loadedArticleStatus === 'published'
+            ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800'
+            : 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800'
+        }`}>
+          <div className="flex items-center gap-2.5 flex-wrap">
             <Sparkles className="w-4 h-4 text-[#E27A2B] shrink-0" />
-            <div>
-              <span className="font-bold text-amber-900 dark:text-amber-200 uppercase tracking-wide">
-                Currently Editing Uploaded Story:
-              </span>{' '}
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className={`font-bold uppercase tracking-wide ${
+                loadedArticleStatus === 'published'
+                  ? 'text-emerald-900 dark:text-emerald-200'
+                  : 'text-amber-900 dark:text-amber-200'
+              }`}>
+                {loadedArticleStatus === 'published' ? 'Editing Live Article:' : 'Editing Saved Draft (Not Published):'}
+              </span>
               <span className="font-serif font-bold text-neutral-900 dark:text-neutral-100">
                 &ldquo;{title || editingArticleSlug}&rdquo;
               </span>
-              <span className="text-neutral-500 font-mono ml-2 hidden sm:inline">
+              <span className="text-neutral-500 font-mono hidden sm:inline">
                 (/articles/{slug})
+              </span>
+              <span className={`px-2 py-0.5 rounded text-[11px] font-extrabold border ${
+                loadedArticleStatus === 'published'
+                  ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                  : 'bg-amber-100 text-amber-900 border-amber-300'
+              }`}>
+                {loadedArticleStatus === 'published' ? 'Live on Site' : 'Private Draft'}
               </span>
             </div>
           </div>
           <button
             type="button"
             onClick={handleClear}
-            className="px-3 py-1 bg-white dark:bg-neutral-800 border border-amber-300 dark:border-amber-700 hover:bg-amber-100 dark:hover:bg-neutral-700 text-amber-900 dark:text-amber-200 font-bold rounded cursor-pointer self-start sm:self-auto shrink-0"
+            className="px-3 py-1 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-900 dark:text-neutral-200 font-bold rounded cursor-pointer self-start sm:self-auto shrink-0"
           >
-            + Switch to Write New Story
+            + Write New Story
           </button>
         </div>
       )}
@@ -2323,15 +2372,15 @@ export function ArticleStudio({
                           <FolderOpen className="w-4 h-4" />
                           <span>Load</span>
                         </button>
-                        {isScheduled && (
+                        {(isScheduled || rec.status === 'draft') && (
                           <button
                             type="button"
                             onClick={() => handlePublishNow(rec.slug)}
                             className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white text-xs sm:text-sm font-extrabold uppercase tracking-wider rounded-xl transition-colors shadow-xs cursor-pointer flex items-center gap-1.5"
-                            title="Promote and publish this story live immediately"
+                            title={rec.status === 'draft' ? 'Publish this draft live to website immediately' : 'Promote and publish this story live immediately'}
                           >
                             <Send className="w-4 h-4" />
-                            <span>Publish Now</span>
+                            <span>{rec.status === 'draft' ? 'Publish Live' : 'Publish Now'}</span>
                           </button>
                         )}
                         <button

@@ -1,8 +1,73 @@
-import React from 'react';
+'use client';
+
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Home, Compass, BookOpen } from 'lucide-react';
+import { Home, Compass, BookOpen, Loader2 } from 'lucide-react';
+import { ArticleViewClient } from '@/components/ArticleViewClient';
+import { fetchLiveArticleBySlug } from '@/lib/liveArticles';
+import type { Article } from '@/lib/content';
 
 export default function NotFound() {
+  const [detectedSlug, setDetectedSlug] = useState<string | null>(null);
+  const [detectedArticle, setDetectedArticle] = useState<Article | null>(null);
+  const [isChecking, setIsChecking] = useState<boolean>(true);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      setIsChecking(false);
+      return;
+    }
+
+    const path = window.location.pathname;
+    const articlesMatch = path.match(/\/articles\/([^\/]+)/);
+    let targetSlug: string | null = null;
+
+    if (articlesMatch && articlesMatch[1] && articlesMatch[1] !== '_empty') {
+      targetSlug = decodeURIComponent(articlesMatch[1]);
+    } else {
+      const segments = path.split('/').filter(Boolean);
+      if (segments.length >= 2) {
+        const first = segments[0].toLowerCase();
+        const last = decodeURIComponent(segments[segments.length - 1]);
+        const excludedSections = ['magazine', 'podcasts', 'videos', 'series', 'latest', 'publisher', 'the-team', 'search', 'member', 'pages', 'tag'];
+        if (!excludedSections.includes(first) && last && last !== '_empty') {
+          targetSlug = last;
+        }
+      }
+    }
+
+    if (targetSlug) {
+      setDetectedSlug(targetSlug);
+      fetchLiveArticleBySlug(targetSlug)
+        .then((art) => {
+          if (art) {
+            setDetectedArticle(art);
+          }
+          setIsChecking(false);
+        })
+        .catch(() => {
+          setIsChecking(false);
+        });
+    } else {
+      setIsChecking(false);
+    }
+  }, []);
+
+  if (isChecking && detectedSlug) {
+    return (
+      <div className="min-h-[50vh] flex flex-col items-center justify-center py-20 text-center space-y-4">
+        <Loader2 className="w-8 h-8 animate-spin text-[#E27A2B]" />
+        <p className="font-serif text-lg text-neutral-700 dark:text-neutral-300">
+          Loading story...
+        </p>
+      </div>
+    );
+  }
+
+  if (detectedArticle && detectedSlug) {
+    return <ArticleViewClient slug={detectedSlug} initialArticle={detectedArticle} />;
+  }
+
   return (
     <div className="min-h-[60vh] flex flex-col items-center justify-center text-center px-4 py-16 space-y-6 max-w-2xl mx-auto">
       <div className="w-16 h-16 rounded-full bg-brand-50 dark:bg-brand-950/60 border border-brand-200 dark:border-brand-800 flex items-center justify-center text-brand-700 dark:text-brand-300 mx-auto">

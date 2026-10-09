@@ -1,20 +1,58 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { Podcast } from '@/lib/content';
 import { useAudio } from '@/components/AudioContext';
 import { formatDate } from '@/lib/format';
 import { Play, Pause, Clock, Mic, Calendar } from 'lucide-react';
+import { fetchLivePodcastsFromSupabase, subscribeToContentUpdates } from '@/lib/liveArticles';
 
 interface PodcastListProps {
   podcasts: Podcast[];
 }
 
-export function PodcastList({ podcasts }: PodcastListProps) {
+export function PodcastList({ podcasts: initialPodcasts = [] }: PodcastListProps) {
   const { currentTrack, isPlaying, playTrack, togglePlayPause } = useAudio();
+  const [podcasts, setPodcasts] = useState<Podcast[]>(initialPodcasts);
+  const [isLoadingLive, setIsLoadingLive] = useState<boolean>(initialPodcasts.length === 0);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadLive = async () => {
+      try {
+        const live = await fetchLivePodcastsFromSupabase();
+        if (isMounted && live && live.length > 0) {
+          setPodcasts(live);
+        }
+      } catch (err) {
+        console.warn('Error fetching live podcasts:', err);
+      } finally {
+        if (isMounted) setIsLoadingLive(false);
+      }
+    };
+
+    loadLive();
+
+    const unsubscribe = subscribeToContentUpdates(() => {
+      loadLive();
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
+  }, []);
 
   if (!podcasts || podcasts.length === 0) {
+    if (isLoadingLive) {
+      return (
+        <div className="py-16 text-center text-neutral-500 font-serif text-lg animate-pulse">
+          Loading podcasts...
+        </div>
+      );
+    }
     return (
       <div className="py-16 text-center text-neutral-500 font-serif text-lg">
         No podcasts published yet.
@@ -43,7 +81,7 @@ export function PodcastList({ podcasts }: PodcastListProps) {
             className="group cursor-pointer flex flex-col justify-between pb-6 border-b border-neutral-200 dark:border-neutral-800 transition-colors"
           >
             <div>
-              <div className="relative aspect-[16/10] sm:aspect-[16/9] w-full overflow-hidden bg-neutral-100 dark:bg-neutral-800">
+              <div style={{ position: 'relative' }} className="relative aspect-[16/10] sm:aspect-[16/9] w-full overflow-hidden bg-neutral-100 dark:bg-neutral-800">
                 <Image
                   src={pod.coverImage || '/images/logo-oldmangotree.jpg'}
                   alt={pod.title}

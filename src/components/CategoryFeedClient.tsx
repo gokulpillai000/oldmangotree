@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Article } from '@/lib/content';
 import { formatDate } from '@/lib/format';
 import { Lock, BookOpen, Calendar } from 'lucide-react';
+import { fetchLiveArticlesFromSupabase, subscribeToContentUpdates } from '@/lib/liveArticles';
 
 interface CategoryFeedClientProps {
   category: string;
@@ -16,20 +17,70 @@ interface CategoryFeedClientProps {
 export function CategoryFeedClient({
   category,
   subcategories,
-  articles,
+  articles: initialArticles = [],
 }: CategoryFeedClientProps) {
   const [activeSubcategory, setActiveSubcategory] = useState<string>('all');
+  const [currentArticles, setCurrentArticles] = useState<Article[]>(initialArticles);
+  const [isLoadingLive, setIsLoadingLive] = useState<boolean>(initialArticles.length === 0);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadLive = async () => {
+      try {
+        const live = await fetchLiveArticlesFromSupabase();
+        if (isMounted && live && live.length > 0) {
+          const target = category.toLowerCase().trim();
+          const aliasTargets =
+            target === 'fallen-mangoes' || target === 'miscellaneous' || target === 'fallen mangoes'
+              ? ['fallen-mangoes', 'fallen mangoes', 'miscellaneous']
+              : target === 'the-shade' || target === 'the shade' || target === 'arts-culture' || target === 'arts & culture' || target === 'art & culture'
+              ? ['the-shade', 'the shade', 'arts-culture', 'arts & culture', 'art & culture']
+              : [target];
+
+          const categoryArticles = live.filter((a) => {
+            const artCat = a.category?.toLowerCase().trim();
+            if (artCat && aliasTargets.includes(artCat)) return true;
+            if (a.tags && Array.isArray(a.tags)) {
+              return a.tags.some((t) => {
+                const cleanTag = t.toLowerCase().trim().replace(/\s*&\s*|\s+/g, '-');
+                return aliasTargets.includes(cleanTag) || aliasTargets.includes(t.toLowerCase().trim());
+              });
+            }
+            return false;
+          });
+
+          setCurrentArticles(categoryArticles);
+        }
+      } catch (err) {
+        console.warn('Error fetching live category articles:', err);
+      } finally {
+        if (isMounted) setIsLoadingLive(false);
+      }
+    };
+
+    loadLive();
+
+    const unsubscribe = subscribeToContentUpdates(() => {
+      loadLive();
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
+  }, [category]);
 
   const filteredArticles = useMemo(() => {
     if (activeSubcategory === 'all') {
-      return articles;
+      return currentArticles;
     }
 
     const selectedSub = subcategories?.find((s) => s.slug === activeSubcategory);
     const subName = selectedSub?.name.toLowerCase() || activeSubcategory.toLowerCase();
     const subSlug = activeSubcategory.toLowerCase().replace(/-/g, ' ');
 
-    return articles.filter((art) => {
+    return currentArticles.filter((art) => {
       const tags = art.tags?.map((t) => t.toLowerCase()) || [];
       return (
         tags.includes(subName) ||
@@ -39,7 +90,7 @@ export function CategoryFeedClient({
         art.excerpt.toLowerCase().includes(subSlug)
       );
     });
-  }, [activeSubcategory, articles, subcategories]);
+  }, [activeSubcategory, currentArticles, subcategories]);
 
   return (
     <div className="space-y-6">
@@ -56,10 +107,10 @@ export function CategoryFeedClient({
                 : 'text-neutral-600 dark:text-neutral-400 decoration-neutral-300 dark:decoration-neutral-700 hover:text-neutral-900 dark:hover:text-neutral-100 hover:decoration-brand-600 decoration-1'
             }`}
           >
-            All Stories ({articles.length})
+            All Stories ({currentArticles.length})
           </button>
           {subcategories.map((sub) => {
-            const count = articles.filter((art) => {
+            const count = currentArticles.filter((art) => {
               const tags = art.tags?.map((t) => t.toLowerCase()) || [];
               const subSlug = sub.slug.toLowerCase().replace(/-/g, ' ');
               return (
@@ -96,14 +147,22 @@ export function CategoryFeedClient({
 
       {/* Articles Grid */}
       {filteredArticles.length === 0 ? (
-        <div className="py-16 text-center bg-neutral-50 dark:bg-neutral-900 border border-dashed border-neutral-300 dark:border-neutral-800 space-y-2">
-          <p className="font-serif text-lg font-bold text-neutral-700 dark:text-neutral-300">
-            No articles in this section yet.
-          </p>
-          <p className="text-sm text-neutral-500">
-            Our editorial collective is curating new long-form stories and essays.
-          </p>
-        </div>
+        isLoadingLive ? (
+          <div className="py-20 text-center bg-neutral-50 dark:bg-neutral-900 border border-dashed border-neutral-300 dark:border-neutral-800 space-y-2 animate-pulse">
+            <p className="font-serif text-lg font-bold text-neutral-700 dark:text-neutral-300">
+              Loading stories...
+            </p>
+          </div>
+        ) : (
+          <div className="py-16 text-center bg-neutral-50 dark:bg-neutral-900 border border-dashed border-neutral-300 dark:border-neutral-800 space-y-2">
+            <p className="font-serif text-lg font-bold text-neutral-700 dark:text-neutral-300">
+              No articles in this section yet.
+            </p>
+            <p className="text-sm text-neutral-500">
+              Our editorial collective is curating new long-form stories and essays.
+            </p>
+          </div>
+        )
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
           {filteredArticles.map((article) => (
@@ -112,7 +171,7 @@ export function CategoryFeedClient({
               className="relative group flex flex-col justify-between pb-6 border-b border-neutral-200 dark:border-neutral-800 cursor-pointer transition-colors"
             >
               <div>
-                <div className="relative aspect-[16/10] sm:aspect-[16/9] w-full overflow-hidden bg-neutral-900">
+                <div style={{ position: 'relative' }} className="relative aspect-[16/10] sm:aspect-[16/9] w-full overflow-hidden bg-neutral-900">
                   <Image
                     src={article.coverImage || '/images/logo-oldmangotree.jpg'}
                     alt={article.title}
