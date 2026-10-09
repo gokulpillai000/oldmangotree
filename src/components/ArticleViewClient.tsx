@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Article } from '@/lib/content';
+import type { Article } from '@/lib/content';
 import { formatDate } from '@/lib/format';
 import { CommentSection } from '@/components/CommentSection';
 import { ArticleBody } from '@/components/ArticleBody';

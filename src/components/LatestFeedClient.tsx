@@ -3,18 +3,29 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Article } from '@/lib/content';
+import type { Article } from '@/lib/content';
 import { formatDate } from '@/lib/format';
 import { Clock, Calendar } from 'lucide-react';
-import { fetchLiveArticlesFromSupabase, subscribeToContentUpdates } from '@/lib/liveArticles';
+import {
+  fetchLiveArticlesFromSupabase,
+  subscribeToContentUpdates,
+  getCachedLiveArticles,
+} from '@/lib/liveArticles';
 
 interface LatestFeedClientProps {
   articles: Article[];
 }
 
 export function LatestFeedClient({ articles: initialArticles = [] }: LatestFeedClientProps) {
-  const [articles, setArticles] = useState<Article[]>(initialArticles);
-  const [isLoadingLive, setIsLoadingLive] = useState<boolean>(initialArticles.length === 0);
+  const [articles, setArticles] = useState<Article[]>(() => {
+    const cached = getCachedLiveArticles();
+    return cached !== null ? cached : initialArticles;
+  });
+  const [isLoadingLive, setIsLoadingLive] = useState<boolean>(() => {
+    const cached = getCachedLiveArticles();
+    if (cached !== null) return false;
+    return initialArticles.length === 0;
+  });
 
   useEffect(() => {
     let isMounted = true;
@@ -22,7 +33,7 @@ export function LatestFeedClient({ articles: initialArticles = [] }: LatestFeedC
     const loadLive = async () => {
       try {
         const live = await fetchLiveArticlesFromSupabase();
-        if (isMounted && live && live.length > 0) {
+        if (isMounted) {
           setArticles(live);
         }
       } catch (err) {

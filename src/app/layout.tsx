@@ -42,6 +42,8 @@ export default function RootLayout({
         <link rel="dns-prefetch" href="https://img.youtube.com" />
         <link rel="preload" href={`${basePath}/fonts/DzainTrueCopy-Regular.woff2`} as="font" type="font/woff2" crossOrigin="anonymous" />
         <link rel="preload" href={`${basePath}/fonts/DzainTrueCopy-Bold.woff2`} as="font" type="font/woff2" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <style dangerouslySetInnerHTML={{
           __html: `
             @font-face {
@@ -76,6 +78,69 @@ export default function RootLayout({
               font-family: 'DzainTrueCopy Inline';
               src: url('${basePath}/fonts/DzainTrueCopy-Inline.woff2') format('woff2');
               font-weight: 300;
+              font-style: normal;
+              font-display: swap;
+            }
+            @font-face {
+              font-family: 'Meera';
+              src: url('${basePath}/fonts/Meera-Regular.woff2') format('woff2');
+              font-weight: 400;
+              font-style: normal;
+              font-display: swap;
+            }
+            @font-face {
+              font-family: 'Rachana';
+              src: url('${basePath}/fonts/Rachana-Regular.woff2') format('woff2');
+              font-weight: 400;
+              font-style: normal;
+              font-display: swap;
+            }
+            @font-face {
+              font-family: 'Rachana';
+              src: url('${basePath}/fonts/Rachana-Bold.woff2') format('woff2');
+              font-weight: 700;
+              font-style: normal;
+              font-display: swap;
+            }
+            @font-face {
+              font-family: 'Dyuthi';
+              src: url('${basePath}/fonts/Dyuthi-Regular.woff2') format('woff2');
+              font-weight: 400;
+              font-style: normal;
+              font-display: swap;
+            }
+            @font-face {
+              font-family: 'Keraleeyam';
+              src: url('${basePath}/fonts/Keraleeyam-Regular.woff2') format('woff2');
+              font-weight: 700;
+              font-style: normal;
+              font-display: swap;
+            }
+            @font-face {
+              font-family: 'Uroob';
+              src: url('${basePath}/fonts/Uroob-Regular.woff2') format('woff2');
+              font-weight: 700;
+              font-style: normal;
+              font-display: swap;
+            }
+            @font-face {
+              font-family: 'AnjaliOldLipi';
+              src: url('${basePath}/fonts/AnjaliOldLipi-Regular.woff2') format('woff2');
+              font-weight: 400;
+              font-style: normal;
+              font-display: swap;
+            }
+            @font-face {
+              font-family: 'Karumbi';
+              src: url('${basePath}/fonts/Karumbi-Regular.woff2') format('woff2');
+              font-weight: 400;
+              font-style: normal;
+              font-display: swap;
+            }
+            @font-face {
+              font-family: 'Suruma';
+              src: url('${basePath}/fonts/Suruma.woff2') format('woff2');
+              font-weight: 400;
               font-style: normal;
               font-display: swap;
             }

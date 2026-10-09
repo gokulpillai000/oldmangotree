@@ -25,7 +25,7 @@ import {
 import { subscribeToArticleLikes } from '@/lib/supabase';
 
 const LetterToEditorModal = dynamic(
-  () => import('./LetterToEditorModal').then((m) => m.LetterToEditorModal),
+  () => import('./LetterToEditorModal').then((m) => ({ default: m.LetterToEditorModal })),
   { ssr: false }
 );
 

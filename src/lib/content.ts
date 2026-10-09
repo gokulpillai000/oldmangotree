@@ -290,9 +290,8 @@ function mapSupabaseToArticle(rec: SupabaseArticleRecord): Article {
   const wordCount = plainText ? plainText.split(' ').length : 0;
   const readTimeMinutes = Math.max(1, Math.ceil(wordCount / 200));
 
-  const isScheduled =
-    rec.status === 'scheduled' ||
-    Boolean(rec.published_at && new Date(rec.published_at).getTime() > Date.now());
+  const isFutureDate = Boolean(rec.published_at && new Date(rec.published_at).getTime() > Date.now());
+  const isScheduled = rec.status === 'draft' ? false : isFutureDate;
 
   return {
     slug: rec.slug,
@@ -305,10 +304,13 @@ function mapSupabaseToArticle(rec: SupabaseArticleRecord): Article {
     coverImage: rec.cover_image || '',
     audioNarrationUrl: rec.audio_narration_url,
     audioDurationSeconds: rec.audio_duration_seconds,
-    webzineIssue: rec.webzine_issue,
-    isLeadStory: rec.is_lead_story,
-    isCover: rec.is_cover,
-    isPremium: rec.is_premium,
+    webzineIssue: rec.webzine_issue || (rec.category?.toLowerCase() === 'webzine' ? 'Packet 1' : undefined),
+    isLeadStory: Boolean(rec.is_lead_story),
+    isCover: Boolean(rec.is_cover),
+    isPremium: Boolean(rec.is_premium),
+    isLongform: Boolean(rec.is_longform),
+    seriesTitle: rec.series_title || undefined,
+    seriesEpisode: rec.series_episode ? String(rec.series_episode) : undefined,
     tags: rec.tags || (rec.category ? [rec.category] : []),
     readTimeMinutes,
     isScheduled,
@@ -419,6 +421,26 @@ export async function getArticleBySlug(slug: string, includeScheduled: boolean =
 export async function getArticlesByCategory(categorySlug: string, includeScheduled: boolean = false): Promise<Article[]> {
   const articles = await getAllArticles(includeScheduled);
   const target = categorySlug.toLowerCase().trim();
+
+  if (target === 'webzine' || target === 'magazine') {
+    return articles.filter(
+      (a) =>
+        a.category?.toLowerCase() === 'webzine' ||
+        Boolean(a.webzineIssue && a.webzineIssue.trim() && a.webzineIssue !== 'None') ||
+        a.tags?.some((t) => t.toLowerCase() === 'webzine')
+    );
+  }
+
+  if (target === 'series' || target === 'special-series' || target === 'special series') {
+    return articles.filter(
+      (a) =>
+        a.category?.toLowerCase() === 'series' ||
+        a.category?.toLowerCase() === 'special series' ||
+        Boolean(a.seriesTitle && a.seriesTitle.trim()) ||
+        a.tags?.some((t) => t.toLowerCase() === 'series' || t.toLowerCase() === 'special series')
+    );
+  }
+
   const aliasTargets =
     target === 'fallen-mangoes' || target === 'miscellaneous' || target === 'fallen mangoes'
       ? ['fallen-mangoes', 'fallen mangoes', 'miscellaneous']
@@ -492,21 +514,116 @@ export function getLocalIssues(): IssuePacket[] {
 }
 
 export async function getAllIssues(): Promise<IssuePacket[]> {
-  if (HIDE_DUMMY_CONTENT) return [];
+  // 1. Fetch all published articles (aggregates Supabase & Blogger)
+  const allArticles = await getAllArticles(false);
+
+  // 2. Identify articles belonging to Webzine
+  const webzineArticles = allArticles.filter((a) => {
+    if (a.webzineIssue && a.webzineIssue.trim() && a.webzineIssue !== 'None') return true;
+    if (a.category?.toLowerCase() === 'webzine') return true;
+    if (a.tags?.some((t) => t.toLowerCase() === 'webzine')) return true;
+    return false;
+  });
+
+  // 3. Group by packet name / slug
+  const packetMap = new Map<
+    string,
+    {
+      packetName: string;
+      slug: string;
+      articles: Article[];
+    }
+  >();
+
+  for (const art of webzineArticles) {
+    const rawPacket =
+      art.webzineIssue && art.webzineIssue.trim() && art.webzineIssue !== 'None'
+        ? art.webzineIssue.trim()
+        : 'Packet 1';
+
+    const slug =
+      rawPacket
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '') || 'packet-1';
+
+    if (!packetMap.has(slug)) {
+      packetMap.set(slug, {
+        packetName: rawPacket,
+        slug,
+        articles: [],
+      });
+    }
+    packetMap.get(slug)!.articles.push(art);
+  }
+
+  // 4. Also fetch Blogger packets if configured
+  let bloggerPackets: IssuePacket[] = [];
   if (process.env.NEXT_PUBLIC_BLOGGER_URL) {
     try {
-      const livePackets = await fetchBloggerPackets();
-      if (livePackets.length > 0) return livePackets;
+      bloggerPackets = await fetchBloggerPackets();
     } catch (err) {
-      console.warn('Error fetching live Blogger packets, falling back to local issues:', err);
+      console.warn('Error fetching live Blogger packets:', err);
     }
   }
+
+  const liveIssues: IssuePacket[] = [];
+
+  // Build IssuePacket objects from grouped articles
+  packetMap.forEach(({ packetName, slug, articles }) => {
+    articles.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+
+    const numMatch = packetName.match(/\d+/);
+    const issueNumber = numMatch ? parseInt(numMatch[0], 10) : 1;
+
+    const featured = articles.find((a) => a.isCover || a.isLeadStory) || articles[0];
+    const coverImage =
+      featured?.coverImage ||
+      articles.find((a) => Boolean(a.coverImage))?.coverImage ||
+      '/images/logo-oldmangotree.jpg';
+    const isPremium = articles.some((a) => a.isPremium);
+
+    const title = packetName.toLowerCase().startsWith('packet')
+      ? packetName
+      : `Packet ${packetName}`;
+
+    liveIssues.push({
+      id: slug,
+      title,
+      issueNumber,
+      theme: featured?.title || `${title}: Webzine Edition`,
+      publishedAt: articles[0]?.publishedAt || new Date().toISOString(),
+      coverImage,
+      isPremium,
+      featuredArticleSlug: featured?.slug || articles[0]?.slug || '',
+      articleSlugs: articles.map((a) => a.slug),
+    });
+  });
+
+  // Merge Blogger packets (avoid duplicates by id or issueNumber)
+  for (const bp of bloggerPackets) {
+    if (!liveIssues.some((li) => li.id === bp.id || li.issueNumber === bp.issueNumber)) {
+      liveIssues.push(bp);
+    }
+  }
+
+  if (liveIssues.length > 0) {
+    return liveIssues.sort((a, b) => b.issueNumber - a.issueNumber);
+  }
+
+  if (HIDE_DUMMY_CONTENT) return [];
   return getLocalIssues();
 }
 
 export async function getIssueById(id: string): Promise<IssuePacket | null> {
   const issues = await getAllIssues();
-  return issues.find((i) => i.id === id) || null;
+  const cleanTarget = id.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  return (
+    issues.find((i) => {
+      const cleanId = i.id.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+      return cleanId === cleanTarget || i.id.toLowerCase() === id.toLowerCase();
+    }) || null
+  );
 }
 
 // -------------------------------------------------------------
@@ -692,21 +809,130 @@ export function getLocalSeries(): Series[] {
 }
 
 export async function getAllSeries(): Promise<Series[]> {
-  if (HIDE_DUMMY_CONTENT) return [];
+  // 1. Fetch all published articles (aggregates Supabase & Blogger)
+  const allArticles = await getAllArticles(false);
+
+  // 2. Identify articles belonging to Special Series
+  const seriesArticles = allArticles.filter((a) => {
+    if (a.seriesTitle && a.seriesTitle.trim()) return true;
+    if (a.category?.toLowerCase() === 'series' || a.category?.toLowerCase() === 'special series') return true;
+    if (a.tags?.some((t) => t.toLowerCase() === 'series' || t.toLowerCase() === 'special series')) return true;
+    return false;
+  });
+
+  // 3. Group by series title / slug
+  const seriesMap = new Map<
+    string,
+    {
+      title: string;
+      slug: string;
+      articles: Article[];
+    }
+  >();
+
+  for (const art of seriesArticles) {
+    const rawTitle =
+      art.seriesTitle && art.seriesTitle.trim()
+        ? art.seriesTitle.trim()
+        : art.tags?.find((t) => t.toLowerCase().includes('series')) || 'Special Series';
+
+    const slug =
+      rawTitle
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '') || 'special-series';
+
+    if (!seriesMap.has(slug)) {
+      seriesMap.set(slug, {
+        title: rawTitle,
+        slug,
+        articles: [],
+      });
+    }
+    seriesMap.get(slug)!.articles.push(art);
+  }
+
+  // 4. Fetch Blogger series if configured
+  let bloggerSeries: Series[] = [];
   if (process.env.NEXT_PUBLIC_BLOGGER_URL) {
     try {
-      const liveSeries = await fetchBloggerSeries();
-      if (liveSeries.length > 0) return liveSeries;
+      bloggerSeries = await fetchBloggerSeries();
     } catch (err) {
-      console.warn('Error fetching live Blogger series, falling back to local series:', err);
+      console.warn('Error fetching live Blogger series:', err);
     }
   }
+
+  const liveSeries: Series[] = [];
+
+  // Build Series objects from grouped articles
+  seriesMap.forEach(({ title, slug, articles }) => {
+    // Sort articles into sequential episode order: Episode 1, 2, 3...
+    articles.sort((a, b) => {
+      const epA = parseInt(a.seriesEpisode || '1', 10) || 1;
+      const epB = parseInt(b.seriesEpisode || '1', 10) || 1;
+      if (epA !== epB) return epA - epB;
+      return new Date(a.publishedAt).getTime() - new Date(b.publishedAt).getTime();
+    });
+
+    const episodes: SeriesEpisode[] = articles.map((art, idx) => ({
+      episodeNumber: parseInt(art.seriesEpisode || String(idx + 1), 10) || idx + 1,
+      title: art.title,
+      slug: art.slug,
+      publishedAt: art.publishedAt,
+      excerpt: art.excerpt,
+    }));
+
+    const coverImage =
+      articles.find((a) => Boolean(a.coverImage))?.coverImage ||
+      '/images/logo-oldmangotree.jpg';
+
+    const firstArticle = articles[0];
+    const authorName =
+      firstArticle?.authorNames ||
+      (firstArticle?.authors?.[0] ? firstArticle.authors[0] : 'Editorial Desk');
+    const authorId = firstArticle?.authors?.[0] || 'editorial-desk';
+
+    liveSeries.push({
+      title,
+      slug,
+      description: firstArticle?.excerpt || `Special investigative serialized column: ${title}`,
+      coverImage,
+      authorId,
+      authorName,
+      category: firstArticle?.category || 'Special Series',
+      totalEpisodes: episodes.length,
+      episodes,
+    });
+  });
+
+  // Merge Blogger series if not already represented
+  for (const bs of bloggerSeries) {
+    if (!liveSeries.some((ls) => ls.slug === bs.slug)) {
+      liveSeries.push(bs);
+    }
+  }
+
+  if (liveSeries.length > 0) {
+    return liveSeries.sort((a, b) => {
+      const latestA = a.episodes[a.episodes.length - 1]?.publishedAt || '';
+      const latestB = b.episodes[b.episodes.length - 1]?.publishedAt || '';
+      return new Date(latestB).getTime() - new Date(latestA).getTime();
+    });
+  }
+
+  if (HIDE_DUMMY_CONTENT) return [];
   return getLocalSeries();
 }
 
 export async function getSeriesBySlug(slug: string): Promise<Series | null> {
   const allSeries = await getAllSeries();
-  return allSeries.find((s) => s.slug === slug) || null;
+  const cleanTarget = slug.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  return (
+    allSeries.find((s) => {
+      const cleanSlug = s.slug.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+      return cleanSlug === cleanTarget || s.slug.toLowerCase() === slug.toLowerCase();
+    }) || null
+  );
 }
 
 // -------------------------------------------------------------

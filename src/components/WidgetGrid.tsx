@@ -3,10 +3,14 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Article, IssuePacket, Podcast, Series, Video } from '@/lib/content';
+import type { Article, IssuePacket, Podcast, Series, Video } from '@/lib/content';
 import { formatDate } from '@/lib/format';
 import { ArrowRight, Calendar, Clock, Sparkles, Newspaper } from 'lucide-react';
-import { fetchLiveArticlesFromSupabase, subscribeToContentUpdates } from '@/lib/liveArticles';
+import {
+  fetchLiveArticlesFromSupabase,
+  subscribeToContentUpdates,
+  getCachedLiveArticles,
+} from '@/lib/liveArticles';
 
 interface WidgetGridProps {
   articles: Article[];
@@ -28,8 +32,15 @@ const CATEGORY_TABS = [
 
 export function WidgetGrid({ articles: initialArticles = [] }: WidgetGridProps) {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [articles, setArticles] = useState<Article[]>(initialArticles);
-  const [isLoadingLive, setIsLoadingLive] = useState<boolean>(initialArticles.length === 0);
+  const [articles, setArticles] = useState<Article[]>(() => {
+    const cached = getCachedLiveArticles();
+    return cached !== null ? cached : initialArticles;
+  });
+  const [isLoadingLive, setIsLoadingLive] = useState<boolean>(() => {
+    const cached = getCachedLiveArticles();
+    if (cached !== null) return false;
+    return initialArticles.length === 0;
+  });
 
   useEffect(() => {
     let isMounted = true;
@@ -37,7 +48,7 @@ export function WidgetGrid({ articles: initialArticles = [] }: WidgetGridProps) 
     const loadLive = async () => {
       try {
         const live = await fetchLiveArticlesFromSupabase();
-        if (isMounted && live && live.length > 0) {
+        if (isMounted) {
           setArticles(live);
         }
       } catch (err) {
