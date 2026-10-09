@@ -12,6 +12,7 @@ import { SocialShareBar } from '@/components/SocialShareBar';
 import { ArticlePublisherControls } from '@/components/ArticlePublisherControls';
 import { Calendar, ArrowLeft, Tag, BookOpen, Loader2 } from 'lucide-react';
 import { fetchLiveArticleBySlug, fetchLiveArticlesFromSupabase } from '@/lib/liveArticles';
+import { AudioIndicator, isAudioStory } from '@/components/AudioIndicator';
 
 interface ArticleViewClientProps {
   slug: string;
@@ -172,6 +173,7 @@ export function ArticleViewClient({
               className="object-cover"
               priority
             />
+            <AudioIndicator hasAudio={isAudioStory(article)} size="lg" />
           </div>
         )}
 
@@ -267,6 +269,7 @@ export function ArticleViewClient({
                         sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                         className="object-cover"
                       />
+                      <AudioIndicator hasAudio={isAudioStory(rel)} />
                     </div>
 
                     <div className="pt-3 space-y-1.5">

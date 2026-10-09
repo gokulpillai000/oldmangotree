@@ -1,6 +1,6 @@
 import React from 'react';
-import { notFound } from 'next/navigation';
-import { getAllSeries, getSeriesBySlug } from '@/lib/content';
+import { redirect } from 'next/navigation';
+import { getAllSeries, getSeriesBySlug, getArticleBySlug } from '@/lib/content';
 import { SeriesDetailClient } from '@/components/SeriesDetailClient';
 
 interface SeriesPageProps {
@@ -21,11 +21,19 @@ export async function generateStaticParams() {
 }
 
 export default async function SeriesDetailPage({ params }: SeriesPageProps) {
-  const series = await getSeriesBySlug(params.slug);
+  const { slug } = params;
 
-  if (!series) {
-    notFound();
+  // 1. If an article exists with this slug, redirect to its article page directly
+  const article = await getArticleBySlug(slug);
+  if (article) {
+    redirect(`/articles/${slug}`);
   }
 
-  return <SeriesDetailClient initialSeries={series} />;
+  // 2. If a series exists with this slug and has only 1 episode, redirect to the article
+  const series = await getSeriesBySlug(slug);
+  if (series && series.episodes && series.episodes.length === 1) {
+    redirect(`/articles/${series.episodes[0].slug}`);
+  }
+
+  return <SeriesDetailClient slug={slug} initialSeries={series || null} />;
 }
