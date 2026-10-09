@@ -655,22 +655,20 @@ export function ArticleStudio({
 
   // Article classification helpers
   const isArticleScheduled = (a: SupabaseArticleRecord): boolean => {
-    if (a.status === 'scheduled') return true;
-    if (a.status !== 'draft' && a.published_at && new Date(a.published_at).getTime() > Date.now()) {
-      return true;
-    }
-    return false;
+    if (a.status === 'draft') return false;
+    // An article is only scheduled if its scheduled release time is in the future
+    return Boolean(a.published_at && new Date(a.published_at).getTime() > Date.now());
   };
 
   const isArticlePublished = (a: SupabaseArticleRecord): boolean => {
     if (a.status === 'draft') return false;
-    if (isArticleScheduled(a)) return false;
-    return a.status === 'published' || (Boolean(a.published_at) && new Date(a.published_at!).getTime() <= Date.now());
+    return !isArticleScheduled(a);
   };
 
   const isCurrentlyScheduled = Boolean(
-    loadedArticleStatus === 'scheduled' ||
-    (loadedScheduledAt && new Date(loadedScheduledAt).getTime() > Date.now())
+    loadedArticleStatus !== 'draft' &&
+    loadedScheduledAt &&
+    new Date(loadedScheduledAt).getTime() > Date.now()
   );
 
   const handleOpenScheduleModal = () => {
@@ -2203,21 +2201,21 @@ export function ArticleStudio({
               </button>
             </div>
 
-            {/* Filter Tabs & Search Bar (Drafts, Scheduled, Published - Solid Light Theme) */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-2 p-1.5 bg-neutral-100 rounded-xl border-2 border-neutral-200 flex-wrap sm:flex-nowrap">
+            {/* Filter Tabs & Search Bar (Drafts, Scheduled, Published - Compact Solid Theme) */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-1.5 p-1 bg-neutral-100 rounded-lg border border-neutral-300 flex-wrap sm:flex-nowrap">
                 <button
                   type="button"
                   onClick={() => setLibraryFilter('draft')}
-                  className={`px-4 sm:px-5 py-2.5 font-extrabold text-sm sm:text-base rounded-lg transition-all cursor-pointer flex items-center gap-2 ${
+                  className={`px-3 py-1.5 font-bold text-xs sm:text-sm rounded-md transition-all cursor-pointer flex items-center gap-1.5 ${
                     libraryFilter === 'draft'
-                      ? 'bg-[#0C2340] text-[#E27A2B] border-2 border-[#E27A2B]/50 shadow-sm'
+                      ? 'bg-[#0C2340] text-[#E27A2B] border border-[#E27A2B]/50 shadow-xs'
                       : 'text-neutral-700 hover:text-neutral-950 hover:bg-neutral-200/60'
                   }`}
                 >
-                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0"></span>
+                  <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0"></span>
                   <span>Drafts</span>
-                  <span className="px-2 py-0.5 text-xs sm:text-sm font-mono rounded-full bg-amber-500/20 text-amber-800 font-bold">
+                  <span className="px-1.5 py-0.5 text-[11px] sm:text-xs font-mono rounded-full bg-amber-500/20 text-amber-800 font-bold">
                     {savedArticles.filter((a) => a.status === 'draft').length}
                   </span>
                 </button>
@@ -2225,15 +2223,15 @@ export function ArticleStudio({
                 <button
                   type="button"
                   onClick={() => setLibraryFilter('scheduled')}
-                  className={`px-4 sm:px-5 py-2.5 font-extrabold text-sm sm:text-base rounded-lg transition-all cursor-pointer flex items-center gap-2 ${
+                  className={`px-3 py-1.5 font-bold text-xs sm:text-sm rounded-md transition-all cursor-pointer flex items-center gap-1.5 ${
                     libraryFilter === 'scheduled'
-                      ? 'bg-[#0C2340] text-[#E27A2B] border-2 border-[#E27A2B]/50 shadow-sm'
+                      ? 'bg-[#0C2340] text-[#E27A2B] border border-[#E27A2B]/50 shadow-xs'
                       : 'text-neutral-700 hover:text-neutral-950 hover:bg-neutral-200/60'
                   }`}
                 >
-                  <span className="w-2.5 h-2.5 rounded-full bg-blue-500 shrink-0"></span>
+                  <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0"></span>
                   <span>Scheduled</span>
-                  <span className="px-2 py-0.5 text-xs sm:text-sm font-mono rounded-full bg-blue-500/20 text-blue-800 font-bold">
+                  <span className="px-1.5 py-0.5 text-[11px] sm:text-xs font-mono rounded-full bg-blue-500/20 text-blue-800 font-bold">
                     {savedArticles.filter(isArticleScheduled).length}
                   </span>
                 </button>
@@ -2241,22 +2239,22 @@ export function ArticleStudio({
                 <button
                   type="button"
                   onClick={() => setLibraryFilter('published')}
-                  className={`px-4 sm:px-5 py-2.5 font-extrabold text-sm sm:text-base rounded-lg transition-all cursor-pointer flex items-center gap-2 ${
+                  className={`px-3 py-1.5 font-bold text-xs sm:text-sm rounded-md transition-all cursor-pointer flex items-center gap-1.5 ${
                     libraryFilter === 'published'
-                      ? 'bg-[#0C2340] text-[#E27A2B] border-2 border-[#E27A2B]/50 shadow-sm'
+                      ? 'bg-[#0C2340] text-[#E27A2B] border border-[#E27A2B]/50 shadow-xs'
                       : 'text-neutral-700 hover:text-neutral-950 hover:bg-neutral-200/60'
                   }`}
                 >
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
                   <span>Published</span>
-                  <span className="px-2 py-0.5 text-xs sm:text-sm font-mono rounded-full bg-emerald-500/20 text-emerald-800 font-bold">
+                  <span className="px-1.5 py-0.5 text-[11px] sm:text-xs font-mono rounded-full bg-emerald-500/20 text-emerald-800 font-bold">
                     {savedArticles.filter(isArticlePublished).length}
                   </span>
                 </button>
               </div>
 
               <div className="relative">
-                <Search className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400" />
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
                 <input
                   type="text"
                   placeholder={
@@ -2268,7 +2266,7 @@ export function ArticleStudio({
                   }
                   value={librarySearch}
                   onChange={(e) => setLibrarySearch(e.target.value)}
-                  className="pl-11 pr-4 py-2.5 text-sm sm:text-base bg-white border-2 border-neutral-300 rounded-xl w-full sm:w-72 focus:border-[#E27A2B] focus:outline-none text-neutral-950 placeholder-neutral-500 font-semibold shadow-2xs transition-all"
+                  className="pl-9 pr-3 py-1.5 text-xs sm:text-sm bg-white border border-neutral-300 rounded-lg w-full sm:w-60 focus:border-[#E27A2B] focus:outline-none text-neutral-950 placeholder-neutral-500 font-semibold shadow-2xs transition-all"
                 />
               </div>
             </div>

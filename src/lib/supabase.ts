@@ -382,6 +382,28 @@ export async function fetchSupabaseArticles(): Promise<SupabaseArticleRecord[]> 
       });
     }
 
+    if (data && data.length > 0) {
+      const nowMs = Date.now();
+      const matured = data.filter(
+        (a) => a.status === 'scheduled' && a.published_at && new Date(a.published_at).getTime() <= nowMs
+      );
+      if (matured.length > 0) {
+        const maturedSlugs = matured.map((a) => a.slug);
+        Promise.resolve(
+          client
+            .from('articles')
+            .update({ status: 'published', updated_at: nowIso })
+            .in('slug', maturedSlugs)
+        ).catch(() => {});
+
+        for (const item of data) {
+          if (maturedSlugs.includes(item.slug)) {
+            item.status = 'published';
+          }
+        }
+      }
+    }
+
     return data || [];
   } catch (err) {
     console.warn('Error fetching Supabase articles:', err);
@@ -400,6 +422,29 @@ export async function fetchSupabaseArticlesAndDrafts(): Promise<SupabaseArticleR
       .order('updated_at', { ascending: false });
 
     if (error) throw error;
+
+    if (data && data.length > 0) {
+      const nowMs = Date.now();
+      const matured = data.filter(
+        (a) => a.status === 'scheduled' && a.published_at && new Date(a.published_at).getTime() <= nowMs
+      );
+      if (matured.length > 0) {
+        const maturedSlugs = matured.map((a) => a.slug);
+        Promise.resolve(
+          client
+            .from('articles')
+            .update({ status: 'published', updated_at: new Date().toISOString() })
+            .in('slug', maturedSlugs)
+        ).catch(() => {});
+
+        for (const item of data) {
+          if (maturedSlugs.includes(item.slug)) {
+            item.status = 'published';
+          }
+        }
+      }
+    }
+
     return data || [];
   } catch (err) {
     console.warn('Error fetching articles & drafts:', err);
