@@ -492,15 +492,33 @@ export function notifyContentUpdated(): void {
 export function subscribeToContentUpdates(callback: () => void): () => void {
   if (typeof window === 'undefined') return () => {};
 
-  const handleCustomEvent = () => callback();
+  const invalidateAndCall = () => {
+    memoryArticlesCache = null;
+    memoryPodcastsCache = null;
+    memoryIssuesCache = null;
+    memorySeriesCache = null;
+    lastFetchTime = 0;
+    try {
+      sessionStorage.removeItem('omt_live_articles_v2');
+      sessionStorage.removeItem('omt_live_podcasts_v2');
+    } catch {}
+    callback();
+  };
+
+  const handleCustomEvent = () => invalidateAndCall();
   const handleStorageEvent = (e: StorageEvent) => {
     if (e.key === CACHE_STORAGE_KEY) {
-      callback();
+      invalidateAndCall();
     }
   };
 
   window.addEventListener(CONTENT_UPDATE_EVENT, handleCustomEvent);
   window.addEventListener('storage', handleStorageEvent);
+
+  // Auto-release heartbeat: checks periodically (every 30s) so scheduled articles go live automatically
+  const heartbeatTimer = setInterval(() => {
+    invalidateAndCall();
+  }, 30000);
 
   // Realtime Supabase Subscription for auto-sync across all clients
   let channel: any = null;
@@ -513,7 +531,7 @@ export function subscribeToContentUpdates(callback: () => void): () => void {
           'postgres_changes',
           { event: '*', schema: 'public', table: 'articles' },
           () => {
-            callback();
+            invalidateAndCall();
           }
         )
         .subscribe();
@@ -521,6 +539,7 @@ export function subscribeToContentUpdates(callback: () => void): () => void {
   } catch {}
 
   return () => {
+    clearInterval(heartbeatTimer);
     window.removeEventListener(CONTENT_UPDATE_EVENT, handleCustomEvent);
     window.removeEventListener('storage', handleStorageEvent);
     if (channel) {
