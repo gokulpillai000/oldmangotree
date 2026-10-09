@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Article, IssuePacket, Podcast, Series, Video } from '@/lib/content';
 import { formatDate } from '@/lib/format';
 import { ArrowRight, Calendar, Clock, Sparkles, Newspaper } from 'lucide-react';
+import { fetchLiveArticlesFromSupabase, subscribeToContentUpdates } from '@/lib/liveArticles';
 
 interface WidgetGridProps {
   articles: Article[];
@@ -25,10 +26,47 @@ const CATEGORY_TABS = [
   { slug: 'fallen-mangoes', label: 'Fallen mangoes' },
 ];
 
-export function WidgetGrid({ articles }: WidgetGridProps) {
+export function WidgetGrid({ articles: initialArticles = [] }: WidgetGridProps) {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [articles, setArticles] = useState<Article[]>(initialArticles);
+  const [isLoadingLive, setIsLoadingLive] = useState<boolean>(initialArticles.length === 0);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadLive = async () => {
+      try {
+        const live = await fetchLiveArticlesFromSupabase();
+        if (isMounted && live && live.length > 0) {
+          setArticles(live);
+        }
+      } catch (err) {
+        console.warn('Error fetching live articles in WidgetGrid:', err);
+      } finally {
+        if (isMounted) setIsLoadingLive(false);
+      }
+    };
+
+    loadLive();
+
+    const unsubscribe = subscribeToContentUpdates(() => {
+      loadLive();
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
+  }, []);
 
   if (!articles || articles.length === 0) {
+    if (isLoadingLive) {
+      return (
+        <div className="py-20 text-center text-neutral-500 font-serif text-lg animate-pulse">
+          Loading stories...
+        </div>
+      );
+    }
     return (
       <div className="py-16 text-center text-neutral-500 font-serif text-lg">
         No articles published yet.
@@ -77,7 +115,7 @@ export function WidgetGrid({ articles }: WidgetGridProps) {
         {/* Left Column: Top Latest Lead Story */}
         <div className={`relative ${highlightArticles.length > 0 ? 'lg:col-span-7 lg:border-r lg:pr-8' : 'w-full'} pb-6 border-b lg:border-b-0 border-neutral-200 dark:border-neutral-800 group flex flex-col justify-between cursor-pointer transition-colors`}>
           <div>
-            <div className="relative h-64 sm:h-80 md:h-96 w-full overflow-hidden bg-neutral-100 dark:bg-neutral-800">
+            <div style={{ position: 'relative' }} className="relative h-64 sm:h-80 md:h-96 w-full overflow-hidden bg-neutral-100 dark:bg-neutral-800">
               <Image
                 src={leadArticle.coverImage || '/images/logo-oldmangotree.jpg'}
                 alt={leadArticle.title}
@@ -158,7 +196,7 @@ export function WidgetGrid({ articles }: WidgetGridProps) {
                 key={art.slug}
                 className="relative flex items-center gap-3 sm:gap-4 pb-4 border-b border-neutral-200 dark:border-neutral-800 last:border-b-0 group cursor-pointer transition-colors"
               >
-                <div className="relative w-24 h-24 sm:w-28 sm:h-28 overflow-hidden shrink-0 bg-neutral-100 dark:bg-neutral-800">
+                <div style={{ position: 'relative' }} className="relative w-24 h-24 sm:w-28 sm:h-28 overflow-hidden shrink-0 bg-neutral-100 dark:bg-neutral-800">
                   <Image
                     src={art.coverImage || '/images/logo-oldmangotree.jpg'}
                     alt={art.title}
@@ -239,7 +277,7 @@ export function WidgetGrid({ articles }: WidgetGridProps) {
                 className="relative group flex flex-col justify-between pb-6 border-b border-neutral-200 dark:border-neutral-800 cursor-pointer transition-colors"
               >
                 <div>
-                  <div className="relative aspect-[16/10] sm:aspect-[16/9] w-full overflow-hidden bg-neutral-100 dark:bg-neutral-800">
+                  <div style={{ position: 'relative' }} className="relative aspect-[16/10] sm:aspect-[16/9] w-full overflow-hidden bg-neutral-100 dark:bg-neutral-800">
                     <Image
                       src={art.coverImage || '/images/logo-oldmangotree.jpg'}
                       alt={art.title}

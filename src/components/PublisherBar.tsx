@@ -6,15 +6,23 @@ import { usePathname } from 'next/navigation';
 import {
   PenTool,
   ArrowRight,
-  PlusCircle,
+  LogOut,
   Edit3,
   ShieldCheck,
 } from 'lucide-react';
-import { getStoredSession, UserSession } from '@/lib/clientAuth';
+import { getStoredSession, setStoredSession, UserSession } from '@/lib/clientAuth';
 
 export function PublisherBar() {
   const [session, setSession] = useState<UserSession | null>(null);
   const pathname = usePathname();
+
+  const handleExitPublisher = () => {
+    sessionStorage.removeItem('omt_editorial_auth');
+    try {
+      localStorage.removeItem('omt_editorial_last_active');
+    } catch {}
+    setStoredSession(null);
+  };
 
   useEffect(() => {
     const syncSession = () => {
@@ -103,16 +111,16 @@ export function PublisherBar() {
             </Link>
           )}
 
-          {/* New article button if on category page */}
-          {currentCategorySlug && (
-            <Link
-              href={`/publisher?category=${currentCategorySlug}&tab=editor`}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-200 font-bold text-xs transition-colors"
-            >
-              <PlusCircle className="w-3.5 h-3.5 text-[#E27A2B]" />
-              <span>+ New Story</span>
-            </Link>
-          )}
+          {/* Exit publisher view button */}
+          <button
+            type="button"
+            onClick={handleExitPublisher}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-800 hover:bg-red-950/60 border border-neutral-700 hover:border-red-800/80 text-neutral-200 hover:text-red-300 font-bold text-xs transition-colors cursor-pointer"
+            title="Exit publisher view and return to standard reader view"
+          >
+            <LogOut className="w-3.5 h-3.5 text-red-400" />
+            <span>Exit View</span>
+          </button>
 
           {/* Open Main Desk */}
           <Link

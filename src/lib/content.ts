@@ -40,6 +40,9 @@ export interface ArticleFrontmatter {
   isPremium?: boolean;
   isLeadStory?: boolean;
   isCover?: boolean;
+  isLongform?: boolean;
+  seriesTitle?: string;
+  seriesEpisode?: string;
   webzineIssue?: string;
   readTimeMinutes?: number;
   tags?: string[];

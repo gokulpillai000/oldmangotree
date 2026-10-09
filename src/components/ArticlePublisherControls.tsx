@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Edit3, ShieldCheck, PenTool } from 'lucide-react';
-import { getStoredSession, UserSession } from '@/lib/clientAuth';
+import { Edit3, ShieldCheck, PenTool, LogOut } from 'lucide-react';
+import { getStoredSession, setStoredSession, UserSession } from '@/lib/clientAuth';
 
 interface ArticlePublisherControlsProps {
   slug: string;
@@ -12,6 +12,14 @@ interface ArticlePublisherControlsProps {
 
 export function ArticlePublisherControls({ slug }: ArticlePublisherControlsProps) {
   const [session, setSession] = useState<UserSession | null>(null);
+
+  const handleExitPublisher = () => {
+    sessionStorage.removeItem('omt_editorial_auth');
+    try {
+      localStorage.removeItem('omt_editorial_last_active');
+    } catch {}
+    setStoredSession(null);
+  };
 
   useEffect(() => {
     const sync = () => {
@@ -62,6 +70,15 @@ export function ArticlePublisherControls({ slug }: ArticlePublisherControlsProps
           <PenTool className="w-3 h-3 text-[#E27A2B]" />
           <span>Desk</span>
         </Link>
+        <button
+          type="button"
+          onClick={handleExitPublisher}
+          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-red-950/60 border border-slate-700 hover:border-red-800/80 text-slate-200 hover:text-red-300 font-bold transition-colors cursor-pointer"
+          title="Exit publisher view and return to standard reader view"
+        >
+          <LogOut className="w-3 h-3 text-red-400" />
+          <span>Exit</span>
+        </button>
       </div>
     </div>
   );

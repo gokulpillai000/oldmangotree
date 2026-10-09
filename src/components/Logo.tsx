@@ -20,12 +20,16 @@ export const Logo: React.FC<LogoProps> = ({
     return (
       <div className={`inline-flex items-center gap-2 min-[360px]:gap-2.5 sm:gap-3.5 group ${className}`}>
         {/* Logo Mark with rounded corners and orange border matching hero bottom border */}
-        <div className="relative w-12 h-12 min-[360px]:w-[52px] min-[360px]:h-[52px] sm:w-16 sm:h-16 md:w-[72px] md:h-[72px] bg-[#fdf9ee] border-2 border-[#E27A2B] rounded-xl sm:rounded-2xl shadow-xs shrink-0 flex items-center justify-center p-0.5 sm:p-1 overflow-hidden">
+        <div
+          style={{ position: 'relative', width: '56px', height: '56px', maxWidth: '72px', maxHeight: '72px', overflow: 'hidden', flexShrink: 0 }}
+          className="relative w-12 h-12 min-[360px]:w-[52px] min-[360px]:h-[52px] sm:w-16 sm:h-16 md:w-[72px] md:h-[72px] bg-[#fdf9ee] border-2 border-[#E27A2B] rounded-xl sm:rounded-2xl shadow-xs shrink-0 flex items-center justify-center p-0.5 sm:p-1 overflow-hidden"
+        >
           <Image
             src={logoSrc}
             alt="oldmangotree"
-            fill
-            className="object-contain"
+            width={72}
+            height={72}
+            className="object-contain w-full h-full"
             priority
           />
         </div>
@@ -61,7 +65,10 @@ export const Logo: React.FC<LogoProps> = ({
   // Mark variant: Circular/rounded emblem showing the tree and group
   if (variant === 'mark') {
     return (
-      <div className={`relative inline-flex items-center justify-center overflow-hidden rounded-xl bg-[#fdf9ee] border border-amber-200/80 dark:border-navy-800 shadow-xs ${className}`}>
+      <div
+        style={{ position: 'relative', width: '44px', height: '44px', overflow: 'hidden', flexShrink: 0 }}
+        className={`relative inline-flex items-center justify-center overflow-hidden rounded-xl bg-[#fdf9ee] border border-amber-200/80 dark:border-navy-800 shadow-xs ${className}`}
+      >
         <Image
           src={logoSrc}
           alt="oldmangotree Emblem"
@@ -78,12 +85,16 @@ export const Logo: React.FC<LogoProps> = ({
   if (variant === 'stacked') {
     return (
       <div className={`flex flex-col items-center text-center gap-2 group ${className}`}>
-        <div className="relative w-24 h-24 sm:w-28 sm:h-28 overflow-hidden rounded-2xl bg-[#fdf9ee] border border-amber-200/60 dark:border-navy-800 shadow-sm p-1">
+        <div
+          style={{ position: 'relative', width: '96px', height: '96px', maxWidth: '112px', maxHeight: '112px', overflow: 'hidden', flexShrink: 0 }}
+          className="relative w-24 h-24 sm:w-28 sm:h-28 overflow-hidden rounded-2xl bg-[#fdf9ee] border border-amber-200/60 dark:border-navy-800 shadow-sm p-1"
+        >
           <Image
             src={logoSrc}
             alt="oldmangotree"
-            fill
-            className="object-contain p-1"
+            width={112}
+            height={112}
+            className="object-contain p-1 w-full h-full"
             priority
           />
         </div>
@@ -106,12 +117,16 @@ export const Logo: React.FC<LogoProps> = ({
   // Horizontal variant (default): Perfect for Header bar masthead / Footer
   return (
     <div className={`inline-flex items-center gap-2.5 sm:gap-3 group ${className}`}>
-      <div className="relative w-10 h-10 sm:w-11 sm:h-11 md:w-12 md:h-12 shrink-0 overflow-hidden rounded-xl bg-[#fdf9ee] border border-amber-200/80 dark:border-navy-800 shadow-xs">
+      <div
+        style={{ position: 'relative', width: '44px', height: '44px', maxWidth: '48px', maxHeight: '48px', overflow: 'hidden', flexShrink: 0 }}
+        className="relative w-10 h-10 sm:w-11 sm:h-11 md:w-12 md:h-12 shrink-0 overflow-hidden rounded-xl bg-[#fdf9ee] border border-amber-200/80 dark:border-navy-800 shadow-xs"
+      >
         <Image
           src={logoSrc}
           alt="oldmangotree Mark"
-          fill
-          className="object-contain p-0.5"
+          width={48}
+          height={48}
+          className="object-contain p-0.5 w-full h-full"
           priority
         />
       </div>
