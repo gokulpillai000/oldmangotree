@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { Search, Moon, Sun, Menu, X, Bookmark, PenTool, ShieldCheck, ArrowRight } from 'lucide-react';
@@ -28,7 +27,6 @@ export function Header() {
   const headerRef = useRef<HTMLElement>(null);
   const drawerRef = useRef<HTMLElement>(null);
   const [headerHeight, setHeaderHeight] = useState(0);
-  const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
 
   // Track scroll and resize so drawer height/position aligns smoothly
   useEffect(() => {
@@ -385,25 +383,12 @@ export function Header() {
                     key={cat.name}
                     href={cat.href}
                     onClick={() => setIsMobileMenuOpen(false)}
-                    className={`flex items-center gap-2.5 py-2.5 px-2 border-b border-gray-100 dark:border-slate-800/80 font-bold transition-colors hover:underline hover:decoration-[#E27A2B] ${
+                    className={`flex items-center py-2.5 px-2 border-b border-gray-100 dark:border-slate-800/80 font-bold transition-colors hover:underline hover:decoration-[#E27A2B] ${
                       isActive
                         ? 'text-[#E27A2B] font-extrabold underline decoration-[#E27A2B] underline-offset-4 decoration-2'
                         : 'text-slate-900 dark:text-slate-100 hover:text-[#E27A2B]'
                     }`}
                   >
-                    {cat.imageIcon ? (
-                      <span className="relative w-4 h-4 rounded-full overflow-hidden shrink-0 border border-amber-200/80 dark:border-slate-700 bg-[#fdf9ee] flex items-center justify-center">
-                        <Image
-                          src={`${basePath}${cat.imageIcon}`}
-                          alt={cat.name}
-                          width={16}
-                          height={16}
-                          className="object-cover w-full h-full"
-                        />
-                      </span>
-                    ) : (
-                      <span className="text-sm shrink-0" aria-hidden="true">{cat.symbol}</span>
-                    )}
                     <span className="truncate">{cat.name}</span>
                   </Link>
                 );
