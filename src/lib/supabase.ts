@@ -1,15 +1,23 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+function cleanEnvValue(raw?: string): string {
+  if (!raw) return '';
+  return raw
+    .trim()
+    .replace(/^[A-Z_][A-Z0-9_]*\s*=\s*/, '')
+    .replace(/^['"]+|['"]+$/g, '')
+    .trim();
+}
+
+const supabaseUrl = cleanEnvValue(process.env.NEXT_PUBLIC_SUPABASE_URL);
 const supabaseAnonKey =
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
-  '';
+  cleanEnvValue(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) ||
+  cleanEnvValue(process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY);
 
 let supabaseInstance: SupabaseClient | null = null;
 
 export function isSupabaseConfigured(): boolean {
-  return Boolean(supabaseUrl && supabaseAnonKey);
+  return Boolean(supabaseUrl && /^https?:\/\//i.test(supabaseUrl) && supabaseAnonKey);
 }
 
 export function getSupabase(): SupabaseClient | null {
