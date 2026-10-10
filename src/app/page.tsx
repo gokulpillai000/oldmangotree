@@ -1,11 +1,12 @@
 import React from 'react';
-import { getAllArticles } from '@/lib/content';
+import { getAllArticles, isAudioArticle } from '@/lib/content';
 import { WidgetGrid } from '@/components/WidgetGrid';
 
 export const revalidate = 60; // ISR for static build
 
 export default async function HomePage() {
-  const articles = await getAllArticles(false);
+  const allArticles = await getAllArticles(false);
+  const articles = allArticles.filter((a) => !isAudioArticle(a));
 
   return (
     <div className="space-y-10">

@@ -3,49 +3,7 @@
 import React, { useEffect } from 'react';
 import Link from 'next/link';
 import { Home, RefreshCw, AlertTriangle } from 'lucide-react';
-
-function resolveFriendlyErrorInfo(error?: Error & { digest?: string }): {
-  badge: string;
-  title: string;
-  description: string;
-  suggestion: string;
-} {
-  const raw = (error?.message || '').toLowerCase();
-
-  if (raw.includes('unexpected token') || raw.includes('doctype') || raw.includes('is not valid json')) {
-    return {
-      badge: 'Data Formatting Notice',
-      title: 'Content Loading Notice',
-      description: 'The server returned an unexpected response while retrieving published content.',
-      suggestion: 'The live site cache may be syncing. Please click Try Again below to reload the latest stories.',
-    };
-  }
-
-  if (raw.includes('failed to fetch') || raw.includes('network') || raw.includes('timeout') || raw.includes('offline')) {
-    return {
-      badge: 'Network Connection Notice',
-      title: 'Unable to Reach Service',
-      description: 'We could not establish a connection to load this content. Please check your internet connection.',
-      suggestion: 'Verify your network connection and click Try Again.',
-    };
-  }
-
-  if (raw.includes('chunkloaderror') || raw.includes('loading chunk')) {
-    return {
-      badge: 'Update Available',
-      title: 'New Version Available',
-      description: 'The publication has been updated with new assets and improvements.',
-      suggestion: 'Please reload or click Try Again to load the newest version.',
-    };
-  }
-
-  return {
-    badge: 'System Notification',
-    title: 'Application Error',
-    description: 'A temporary layout error occurred.',
-    suggestion: 'You can retry loading or return to the main publication.',
-  };
-}
+import { resolveFriendlyErrorInfo, reportError } from '@/lib/errorLogger';
 
 export default function GlobalError({
   error,
@@ -55,10 +13,10 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error('Root Global Error:', error);
+    reportError(error, 'global-error');
   }, [error]);
 
-  const info = resolveFriendlyErrorInfo(error);
+  const info = resolveFriendlyErrorInfo(error, true);
 
   return (
     <html lang="en">

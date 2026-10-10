@@ -153,7 +153,7 @@ export function LetterToEditorModal({
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Your full name"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-xs sm:text-sm text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-600"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-sm font-letter-sans text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-[#E27A2B]/20 focus:border-[#E27A2B]"
                 />
               </div>
               <div className="space-y-1.5">
@@ -166,7 +166,7 @@ export function LetterToEditorModal({
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="your.email@domain.com"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-xs sm:text-sm text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-600"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-sm font-letter-sans text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-[#E27A2B]/20 focus:border-[#E27A2B]"
                 />
               </div>
             </div>
@@ -180,21 +180,28 @@ export function LetterToEditorModal({
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
                 placeholder="e.g. Kozhikode, Thrissur, Dubai, Bengaluru"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-xs sm:text-sm text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-600"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-sm font-letter-sans text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-[#E27A2B]/20 focus:border-[#E27A2B]"
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">
-                Your Letter / Perspective *
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">
+                  Your Letter / Perspective *
+                </label>
+                {message.trim() && (
+                  <span className="text-[11px] font-mono text-neutral-400">
+                    {message.trim().split(/\s+/).filter(Boolean).length} words
+                  </span>
+                )}
+              </div>
               <textarea
                 required
-                rows={4}
+                rows={5}
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 placeholder="Share your critiques, agreements, or new observations on this article..."
-                className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-xs sm:text-sm text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-600 leading-relaxed font-sans"
+                className="w-full px-4 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-sm sm:text-base font-letter-sans text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-[#E27A2B]/20 focus:border-[#E27A2B] leading-[1.75] min-h-[140px] resize-y placeholder:text-neutral-400"
               />
             </div>
 
@@ -212,7 +219,7 @@ export function LetterToEditorModal({
               </button>
               <button
                 type="submit"
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-700 hover:bg-brand-600 text-white font-medium text-xs sm:text-sm shadow-sm transition-colors"
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-700 hover:bg-brand-600 text-white font-medium text-xs sm:text-sm shadow-sm transition-colors cursor-pointer"
               >
                 <Send className="w-4 h-4" />
                 <span>Send Letter</span>

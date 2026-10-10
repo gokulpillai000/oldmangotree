@@ -42,11 +42,13 @@ import { ArticlePreviewModal } from './ArticlePreviewModal';
 import {
   saveSupabaseArticle,
   fetchSupabaseArticlesAndDrafts,
+  fetchSupabaseArticleBySlug,
   deleteSupabaseArticle,
   SupabaseArticleRecord,
 } from '@/lib/supabase';
 import { compressAndUploadImage, uploadAudioFile } from '@/lib/imageUpload';
 import { notifyContentUpdated } from '@/lib/liveArticles';
+import { mapArticleToSupabaseRecord as mapArticleRecord } from '@/lib/articleHelpers';
 
 const STANDARD_CATEGORIES = [
   'Politics',
@@ -66,6 +68,32 @@ const STANDARD_CATEGORIES = [
   'Opinion',
   'Audio & Podcast',
 ];
+
+const normalizeCategory = (rawCat?: string): string => {
+  if (!rawCat || !rawCat.trim()) return '';
+  const clean = rawCat.trim().toLowerCase();
+  if (clean.includes('podcast') || clean.includes('audio')) {
+    return 'Audio & Podcast';
+  }
+  const match = STANDARD_CATEGORIES.find(
+    (c) =>
+      c.toLowerCase() === clean ||
+      c.toLowerCase().replace(/\s+/g, '-') === clean ||
+      c.toLowerCase().replace(/&/g, 'and').replace(/\s+/g, '-') === clean
+  );
+  if (match) return match;
+  return rawCat.charAt(0).toUpperCase() + rawCat.slice(1);
+};
+
+// Convert Date object to YYYY-MM-DDTHH:mm for datetime-local input
+const dateToDateTimeLocalString = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
 
 function formatFriendlyError(error: any, fallback: string = 'Operation failed'): string {
   if (!error) return fallback;
@@ -95,6 +123,8 @@ interface ArticleStudioProps {
   packets: string[];
   onAddAuthor: (name: string) => void;
   onAddPacket?: (name: string) => void;
+  initialEditSlug?: string;
+  onClearEditSlug?: () => void;
 }
 
 export function ArticleStudio({
@@ -102,6 +132,8 @@ export function ArticleStudio({
   packets,
   onAddAuthor,
   onAddPacket,
+  initialEditSlug,
+  onClearEditSlug,
 }: ArticleStudioProps) {
   // Article Content Fields
   const [title, setTitle] = useState('');
@@ -211,42 +243,240 @@ export function ArticleStudio({
     }
   }, [title, slugCustomized]);
 
-  // 2. Draft Auto-restore on mount
-  useEffect(() => {
-    try {
-      const savedDraft = localStorage.getItem('omt_cms_draft_v1');
-      if (savedDraft) {
-        const d = JSON.parse(savedDraft);
-        if (d.title) setTitle(d.title);
-        if (d.slug) setSlug(d.slug);
-        if (d.excerpt) setExcerpt(d.excerpt);
-        if (d.contentHtml) setContentHtml(d.contentHtml);
-        if (d.category) setCategory(d.category);
-        if (Array.isArray(d.tags)) setSelectedTags(d.tags);
-        if (d.author) setAuthor(d.author);
-        if (d.packet) setPacket(d.packet);
-        if (d.coverImage) setCoverImage(d.coverImage);
-        if (d.audioUrl) {
-          setAudioUrl(d.audioUrl);
-          if (d.audioDurationSeconds) setAudioDurationSeconds(d.audioDurationSeconds);
-          if (d.audioSpeaker) setAudioSpeaker(d.audioSpeaker);
-          if (d.isPodcastMode) setIsPodcastMode(true);
+  const activeLoadRequestIdRef = useRef<number>(0);
+  const isClearedByUserRef = useRef<boolean>(false);
+  const hasLoadedEditSlugRef = useRef<string | null>(null);
+
+  const populateArticleData = (rec: SupabaseArticleRecord) => {
+    isClearedByUserRef.current = false;
+    setTitle(rec.title || '');
+    setSlug(rec.slug || '');
+    setSlugCustomized(true);
+    setExcerpt(rec.excerpt || '');
+    setContentHtml(rec.content_html || '');
+
+    const resolvedCategory = normalizeCategory(rec.category);
+    setCategory(resolvedCategory);
+
+    const initialTags =
+      rec.tags && rec.tags.length > 0
+        ? rec.tags
+        : resolvedCategory
+        ? [resolvedCategory]
+        : [];
+    setSelectedTags(initialTags);
+
+    const authorName =
+      rec.author_names ||
+      (rec.authors && rec.authors[0]) ||
+      (authors && authors[0]) ||
+      'Akhil U Krishnan';
+    if (authorName && !localAuthors.includes(authorName)) {
+      setLocalAuthors((prev) => Array.from(new Set([...prev, authorName])));
+    }
+    setAuthor(authorName);
+    setAudioSpeaker(authorName);
+
+    setPacket(rec.webzine_issue || '');
+    setCoverImage(rec.cover_image || '');
+    setAudioUrl(rec.audio_narration_url || '');
+    setAudioDurationSeconds(rec.audio_duration_seconds || 0);
+
+    setLoadedArticleStatus(rec.status);
+    setLoadedScheduledAt(rec.published_at || null);
+    if (rec.published_at) {
+      setAudioPublishDate(rec.published_at.split('T')[0]);
+      try {
+        const d = new Date(rec.published_at);
+        if (!isNaN(d.getTime())) {
+          setScheduledDateTime(dateToDateTimeLocalString(d));
         }
-        if (d.isLeadStory !== undefined) setIsLeadStory(d.isLeadStory);
-        if (d.isCover !== undefined) setIsCover(d.isCover);
-        if (d.isPremium !== undefined) setIsPremium(d.isPremium);
-        if (d.isLongform !== undefined) setIsLongform(d.isLongform);
-        if (d.seriesTitle) setSeriesTitle(d.seriesTitle);
-        if (d.seriesEpisode) setSeriesEpisode(d.seriesEpisode);
-        setLastSavedTime('Draft restored from previous session');
+      } catch {}
+    }
+
+    const isPod = Boolean(
+      rec.audio_narration_url ||
+      resolvedCategory === 'Audio & Podcast' ||
+      (rec.tags && rec.tags.some((t) => t.toLowerCase().includes('podcast')))
+    );
+    setIsPodcastMode(isPod);
+
+    setIsLeadStory(Boolean(rec.is_lead_story));
+    setIsCover(Boolean(rec.is_cover));
+    setIsPremium(Boolean(rec.is_premium));
+    setIsLongform(Boolean(rec.is_longform));
+    setSeriesTitle(rec.series_title || '');
+    setSeriesEpisode(rec.series_episode ? rec.series_episode.toString() : '1');
+    setEditingArticleSlug(rec.slug);
+    setIsLibraryOpen(false);
+
+    // Force TipTap editor remount with fresh content
+    setEditorKey((prev) => prev + 1);
+  };
+
+  const loadArticleForEditing = async (slugToEdit: string) => {
+    if (!slugToEdit || isClearedByUserRef.current) return;
+    const currentReqId = ++activeLoadRequestIdRef.current;
+    setStatusMessage({
+      text: `Loading story "${slugToEdit}" into editor...`,
+      type: 'success',
+    });
+
+    try {
+      // 1. Try Supabase direct fetch
+      const supRec = await fetchSupabaseArticleBySlug(slugToEdit);
+      if (currentReqId !== activeLoadRequestIdRef.current || isClearedByUserRef.current) return;
+      if (supRec) {
+        populateArticleData(supRec);
+        const statusLabel =
+          supRec.status === 'draft'
+            ? 'Draft'
+            : supRec.status === 'scheduled' ||
+              (supRec.published_at && new Date(supRec.published_at).getTime() > Date.now())
+            ? 'Scheduled'
+            : 'Published';
+        setStatusMessage({
+          text: `Loaded "${supRec.title}" into Studio for editing (${statusLabel})`,
+          type: 'success',
+        });
+        setTimeout(() => setStatusMessage(null), 4000);
+        return;
       }
-    } catch {}
-  }, []);
+
+      // 2. Try fetching from /api/articles?slug=...
+      const res = await fetch(`/api/articles?slug=${encodeURIComponent(slugToEdit)}`);
+      if (currentReqId !== activeLoadRequestIdRef.current || isClearedByUserRef.current) return;
+      if (res.ok) {
+        const data = await res.json();
+        if (currentReqId !== activeLoadRequestIdRef.current || isClearedByUserRef.current) return;
+        if (data?.article) {
+          const rec = mapArticleRecord(data.article);
+          populateArticleData(rec);
+          setStatusMessage({
+            text: `Loaded "${data.article.title}" into Studio for editing!`,
+            type: 'success',
+          });
+          setTimeout(() => setStatusMessage(null), 4000);
+          return;
+        }
+      }
+
+      // 3. Fallback: check savedArticles if loaded
+      const inLibrary = savedArticles.find((a) => a.slug === slugToEdit);
+      if (currentReqId !== activeLoadRequestIdRef.current || isClearedByUserRef.current) return;
+      if (inLibrary) {
+        populateArticleData(inLibrary);
+        setStatusMessage({
+          text: `Loaded "${inLibrary.title}" into Studio for editing!`,
+          type: 'success',
+        });
+        setTimeout(() => setStatusMessage(null), 4000);
+        return;
+      }
+
+      setStatusMessage({
+        text: `Could not find article "${slugToEdit}" to edit. You can write a new story or load from the drafts library.`,
+        type: 'error',
+      });
+      setTimeout(() => setStatusMessage(null), 5000);
+    } catch (err: any) {
+      if (currentReqId !== activeLoadRequestIdRef.current || isClearedByUserRef.current) return;
+      console.warn('Error loading story for editing:', err);
+      setStatusMessage({
+        text: `Failed to load story: ${formatFriendlyError(err)}`,
+        type: 'error',
+      });
+    }
+  };
+
+  // 2. Draft Auto-restore or URL Edit Article Load on mount
+  useEffect(() => {
+    if (isClearedByUserRef.current) return;
+    const editSlug =
+      initialEditSlug ||
+      (typeof window !== 'undefined'
+        ? new URLSearchParams(window.location.search).get('edit')
+        : null);
+
+    if (editSlug) {
+      if (
+        hasLoadedEditSlugRef.current !== editSlug &&
+        hasLoadedEditSlugRef.current !== '__CLEARED__'
+      ) {
+        hasLoadedEditSlugRef.current = editSlug;
+        loadArticleForEditing(editSlug);
+      }
+    } else {
+      try {
+        const savedDraft = localStorage.getItem('omt_cms_draft_v1');
+        if (savedDraft) {
+          const d = JSON.parse(savedDraft);
+          const cleanContent = (d.contentHtml || '').replace(/<[^>]*>/g, '').trim();
+          // Only restore if there is genuine content saved
+          if ((d.title && d.title.trim()) || cleanContent || (d.audioUrl && d.audioUrl.trim())) {
+            if (d.title) setTitle(d.title);
+            if (d.slug) setSlug(d.slug);
+            if (d.excerpt) setExcerpt(d.excerpt);
+            if (d.contentHtml) setContentHtml(d.contentHtml);
+            if (d.category) setCategory(d.category);
+            if (Array.isArray(d.tags)) setSelectedTags(d.tags);
+            if (d.author) setAuthor(d.author);
+            if (d.packet) setPacket(d.packet);
+            if (d.coverImage) setCoverImage(d.coverImage);
+            if (d.audioUrl) {
+              setAudioUrl(d.audioUrl);
+              if (d.audioDurationSeconds) setAudioDurationSeconds(d.audioDurationSeconds);
+              if (d.audioSpeaker) setAudioSpeaker(d.audioSpeaker);
+              if (d.isPodcastMode) setIsPodcastMode(true);
+            }
+            if (d.isLeadStory !== undefined) setIsLeadStory(d.isLeadStory);
+            if (d.isCover !== undefined) setIsCover(d.isCover);
+            if (d.isPremium !== undefined) setIsPremium(d.isPremium);
+            if (d.isLongform !== undefined) setIsLongform(d.isLongform);
+            if (d.seriesTitle) setSeriesTitle(d.seriesTitle);
+            if (d.seriesEpisode) setSeriesEpisode(d.seriesEpisode);
+            setLastSavedTime('Draft restored from previous session');
+          }
+        }
+      } catch {}
+    }
+  }, [initialEditSlug]);
+
+  // Synchronize when savedArticles finishes loading if an edit slug was waiting
+  useEffect(() => {
+    if (isClearedByUserRef.current) return;
+    const editSlug =
+      initialEditSlug ||
+      (typeof window !== 'undefined'
+        ? new URLSearchParams(window.location.search).get('edit')
+        : null);
+    if (
+      editSlug &&
+      !editingArticleSlug &&
+      savedArticles.length > 0 &&
+      hasLoadedEditSlugRef.current !== editSlug &&
+      hasLoadedEditSlugRef.current !== '__CLEARED__'
+    ) {
+      const found = savedArticles.find((a) => a.slug === editSlug);
+      if (found) {
+        hasLoadedEditSlugRef.current = editSlug;
+        populateArticleData(found);
+      }
+    }
+  }, [savedArticles, editingArticleSlug, initialEditSlug]);
 
   // 3. Draft Auto-save every 15 seconds to local browser cache
   useEffect(() => {
+    if (isClearedByUserRef.current) return;
+    const cleanContent = (contentHtml || '').replace(/<[^>]*>/g, '').trim();
+    if (!title.trim() && !cleanContent && !audioUrl.trim()) {
+      return;
+    }
+
     const timer = setInterval(() => {
-      if (title.trim() || contentHtml.trim() || audioUrl.trim()) {
+      if (isClearedByUserRef.current) return;
+      const currentCleanContent = (contentHtml || '').replace(/<[^>]*>/g, '').trim();
+      if (title.trim() || currentCleanContent || audioUrl.trim()) {
         try {
           localStorage.setItem(
             'omt_cms_draft_v1',
@@ -483,43 +713,7 @@ export function ArticleStudio({
 
   const handleLoadArticleIntoStudio = (rec: SupabaseArticleRecord) => {
     if (confirm(`Load "${rec.title}" into the editor? Any unsaved changes in current editor will be replaced.`)) {
-      setTitle(rec.title || '');
-      setSlug(rec.slug || '');
-      setSlugCustomized(true);
-      setExcerpt(rec.excerpt || '');
-      setContentHtml(rec.content_html || '');
-      setCategory(rec.category ? rec.category.charAt(0).toUpperCase() + rec.category.slice(1) : 'Politics');
-      setSelectedTags(rec.tags && rec.tags.length > 0 ? rec.tags : [rec.category || 'Politics']);
-      setAuthor(rec.author_names || (rec.authors && rec.authors[0]) || authors[0]);
-      setPacket(rec.webzine_issue || '');
-      setCoverImage(rec.cover_image || '');
-      setAudioUrl(rec.audio_narration_url || '');
-      setAudioDurationSeconds(rec.audio_duration_seconds || 0);
-      setAudioSpeaker(rec.author_names || author);
-      setLoadedArticleStatus(rec.status);
-      setLoadedScheduledAt(rec.published_at || null);
-      if (rec.published_at) {
-        setAudioPublishDate(rec.published_at.split('T')[0]);
-        try {
-          const d = new Date(rec.published_at);
-          if (!isNaN(d.getTime())) {
-            setScheduledDateTime(dateToDateTimeLocalString(d));
-          }
-        } catch {}
-      }
-      if (rec.audio_narration_url || rec.category === 'podcast') {
-        setIsPodcastMode(true);
-      } else {
-        setIsPodcastMode(false);
-      }
-      setIsLeadStory(Boolean(rec.is_lead_story));
-      setIsCover(Boolean(rec.is_cover));
-      setIsPremium(Boolean(rec.is_premium));
-      setIsLongform(Boolean(rec.is_longform));
-      setSeriesTitle(rec.series_title || '');
-      setSeriesEpisode(rec.series_episode ? rec.series_episode.toString() : '1');
-      setEditingArticleSlug(rec.slug);
-      setIsLibraryOpen(false);
+      populateArticleData(rec);
       const statusLabel =
         rec.status === 'draft'
           ? 'Draft'
@@ -982,41 +1176,75 @@ export function ArticleStudio({
   };
 
   const handleClear = () => {
-    if (confirm('Start a new blank article? Make sure to save your draft first.')) {
-      setTitle('');
-      setSlug('');
-      setSlugCustomized(false);
-      setExcerpt('');
-      setContentHtml('');
-      setCategory('');
-      setSelectedTags([]);
-      setCustomTagInput('');
-      setAuthor('');
-      setPacket('');
-      setCoverImage('');
-      setAudioUrl('');
-      setAudioSpeaker('');
-      setAudioDurationSeconds(0);
-      setAudioFileName('');
-      setAudioFileSize('');
-      setIsPodcastMode(false);
-      setSeriesTitle('');
-      setSeriesEpisode('1');
-      setIsLeadStory(false);
-      setIsCover(false);
-      setIsPremium(false);
-      setIsLongform(false);
-      setEditingArticleSlug(null);
-      setLoadedArticleStatus(null);
-      setLoadedScheduledAt(null);
-      setScheduledDateTime('');
-      setAudioPublishDate(new Date().toISOString().split('T')[0]);
-      setPublishedUrl(null);
-      setStatusMessage(null);
-      setLastSavedTime(null);
-      setEditorKey((prev) => prev + 1);
-      localStorage.removeItem('omt_cms_draft_v1');
+    const confirmed = window.confirm(
+      'Are you sure you want to clear all fields?\n\nThis will reset the editor, clear all entered content, and remove the local draft.'
+    );
+    if (!confirmed) return;
+
+    // 1. Immediately cancel and abort any in-flight story loading requests
+    activeLoadRequestIdRef.current++;
+    isClearedByUserRef.current = true;
+    hasLoadedEditSlugRef.current = '__CLEARED__';
+
+    // 2. Notify parent desk to clear URL edit parameter and reset browser URL
+    onClearEditSlug?.();
+    if (typeof window !== 'undefined') {
+      try {
+        window.history.replaceState({}, '', window.location.pathname);
+      } catch {}
     }
+
+    // 3. Purge draft cache from localStorage and sessionStorage
+    try {
+      localStorage.removeItem('omt_cms_draft_v1');
+      sessionStorage.removeItem('omt_cms_draft_v1');
+    } catch {}
+
+    // 4. Reset all studio state fields to clean defaults
+    setTitle('');
+    setSlug('');
+    setSlugCustomized(false);
+    setExcerpt('');
+    setContentHtml('');
+    setCategory('');
+    setSelectedTags([]);
+    setCustomTagInput('');
+    setAuthor('');
+    setPacket('');
+    setCoverImage('');
+    setAudioUrl('');
+    setAudioSpeaker('');
+    setAudioDurationSeconds(0);
+    setAudioFileName('');
+    setAudioFileSize('');
+    setIsPodcastMode(false);
+    setSeriesTitle('');
+    setSeriesEpisode('1');
+    setIsLeadStory(false);
+    setIsCover(false);
+    setIsPremium(false);
+    setIsLongform(false);
+    setEditingArticleSlug(null);
+    setLoadedArticleStatus(null);
+    setLoadedScheduledAt(null);
+    setScheduledDateTime('');
+    setAudioPublishDate(new Date().toISOString().split('T')[0]);
+    setPublishedUrl(null);
+    setLastSavedTime(null);
+
+    // 5. Force complete editor remount with empty state
+    setEditorKey((prev) => prev + 1);
+
+    // 6. Reset DOM file inputs
+    if (coverInputRef.current) coverInputRef.current.value = '';
+    if (audioInputRef.current) audioInputRef.current.value = '';
+    if (articleFileInputRef.current) articleFileInputRef.current.value = '';
+
+    setStatusMessage({
+      text: 'Editor cleared! All fields reset to blank.',
+      type: 'success',
+    });
+    setTimeout(() => setStatusMessage(null), 3000);
   };
 
   // Filtered Library list (Memoized for optimal performance)
@@ -1057,9 +1285,19 @@ export function ArticleStudio({
             </h2>
           </div>
           {editingArticleSlug ? (
-            <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">
-              Editing uploaded story: &ldquo;{title || editingArticleSlug}&rdquo;
-            </p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+                Editing story: &ldquo;{title || editingArticleSlug}&rdquo;
+              </p>
+              <button
+                type="button"
+                onClick={handleClear}
+                className="text-xs font-bold text-neutral-500 hover:text-red-600 dark:hover:text-red-400 underline cursor-pointer"
+                title="Exit editing this story and start blank"
+              >
+                (Exit / Clear)
+              </button>
+            </div>
           ) : lastSavedTime ? (
             <p className="text-xs text-neutral-500 font-mono flex items-center gap-1">
               <Clock className="w-3 h-3 text-[#E27A2B]" /> {lastSavedTime}
@@ -1068,19 +1306,16 @@ export function ArticleStudio({
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          {/* 1. Write New+ (Icon Only) */}
+          {/* Explicit Clear Editor / New Story Button */}
           <button
             type="button"
             onClick={handleClear}
-            className={`p-2.5 border rounded-md transition-all cursor-pointer ${
-              !editingArticleSlug
-                ? 'bg-[#0C2340] text-[#E27A2B] border-[#0C2340] dark:border-[#E27A2B] shadow-xs'
-                : 'bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 border-neutral-300 dark:border-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-700'
-            }`}
-            title="Write New Article (Clears editor)"
-            aria-label="Write New Article"
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm font-bold rounded-md border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 hover:text-red-600 dark:hover:text-red-400 hover:border-red-300 dark:border-red-800 transition-all cursor-pointer shadow-2xs"
+            title="Clear all fields and reset editor to write new content"
+            aria-label="Clear all content in editor"
           >
-            <Plus className="w-5 h-5 text-[#E27A2B]" />
+            <RotateCcw className="w-4 h-4 text-neutral-500" />
+            <span>Clear All</span>
           </button>
 
           {/* 2. Saved Drafts & Uploaded Articles Library (Icon Only) */}
@@ -1266,8 +1501,8 @@ export function ArticleStudio({
           onClick={() => {
             setIsPodcastMode(false);
             if (category === 'Audio & Podcast' || category === 'Podcast') {
-              setCategory('Politics');
-              setSelectedTags(['Politics']);
+              setCategory('');
+              setSelectedTags([]);
             }
           }}
           className={`flex-1 py-2 px-4 rounded text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
@@ -1421,7 +1656,10 @@ export function ArticleStudio({
                   <input
                     type="text"
                     value={title}
-                    onChange={(e) => setTitle(e.target.value)}
+                    onChange={(e) => {
+                      isClearedByUserRef.current = false;
+                      setTitle(e.target.value);
+                    }}
                     placeholder="Podcast Episode / Audio Story Title..."
                     className="w-full px-3.5 py-2.5 text-base font-serif font-bold bg-neutral-50 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded text-neutral-900 dark:text-neutral-50 focus:ring-1 focus:ring-[#E27A2B]"
                   />
@@ -1703,7 +1941,10 @@ export function ArticleStudio({
               <input
                 type="text"
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                onChange={(e) => {
+                  isClearedByUserRef.current = false;
+                  setTitle(e.target.value);
+                }}
                 placeholder="Article Title..."
                 className="w-full px-4 py-3 text-xl sm:text-3xl font-serif font-bold bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-neutral-50 focus:outline-none focus:ring-1 focus:ring-[#E27A2B] rounded shadow-2xs placeholder:text-neutral-400"
               />
@@ -1714,9 +1955,12 @@ export function ArticleStudio({
               <textarea
                 rows={2}
                 value={excerpt}
-                onChange={(e) => setExcerpt(e.target.value)}
+                onChange={(e) => {
+                  isClearedByUserRef.current = false;
+                  setExcerpt(e.target.value);
+                }}
                 placeholder="Standfirst / Excerpt summary (Shown on homepage, search cards, and article header)..."
-                className="w-full px-4 py-2 text-sm sm:text-base font-serif bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 text-neutral-800 dark:text-neutral-200 focus:outline-none focus:ring-1 focus:ring-[#E27A2B] rounded shadow-2xs italic placeholder:text-neutral-400"
+                className="w-full px-4 py-2.5 text-sm sm:text-base font-letter-sans bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-1 focus:ring-[#E27A2B] rounded shadow-2xs not-italic placeholder:text-neutral-400 leading-relaxed"
               />
             </div>
 
@@ -1725,7 +1969,10 @@ export function ArticleStudio({
               <RichTextEditor
                 key={editorKey}
                 content={contentHtml}
-                onChange={(html) => setContentHtml(html)}
+                onChange={(html) => {
+                  isClearedByUserRef.current = false;
+                  setContentHtml(html);
+                }}
                 placeholder="Compose your story here..."
               />
             </div>

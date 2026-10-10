@@ -165,13 +165,14 @@ export function ArticleViewClient({
 
         {/* Featured Image */}
         {article.coverImage && article.coverImage.trim() !== '' && (
-          <div className="relative aspect-[16/10] sm:aspect-[16/9] w-full rounded-xl sm:rounded-2xl overflow-hidden shadow-lg">
+          <div className="relative aspect-[16/10] sm:aspect-[16/9] w-full rounded-xl sm:rounded-2xl overflow-hidden shadow-lg select-none pointer-events-none">
             <Image
               src={article.coverImage}
               alt={article.title}
               fill
-              className="object-cover"
+              className="object-cover select-none pointer-events-none"
               priority
+              draggable={false}
             />
             <AudioIndicator hasAudio={isAudioStory(article)} size="lg" />
           </div>

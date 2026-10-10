@@ -193,6 +193,22 @@
 }
 
 /* ========================================================
+   LETTER WRITING & EDITORIAL READING TYPOGRAPHY
+   High-legibility, comfortable styling for Reader Letters & Inbox
+   ======================================================== */
+.font-letter-sans {
+  font-family: 'Noto Sans Malayalam', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+.font-letter-serif {
+  font-family: 'Noto Serif Malayalam', Georgia, Cambria, 'Times New Roman', serif !important;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ========================================================
    TIPTAP / PROSEMIRROR IN-HOUSE CMS EDITOR STYLES
    Ensures text is always visible, high-contrast, and formatted
    ======================================================== */
@@ -202,9 +218,9 @@
   min-height: 420px;
   color: #171717;
   caret-color: #E27A2B !important;
-  font-family: Arial, Helvetica, sans-serif;
-  font-size: 15px;
-  line-height: 1.65;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Malayalam", Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.75;
   cursor: text;
 }
 
@@ -216,8 +232,8 @@
 .tiptap.ProseMirror p {
   color: inherit;
   margin-bottom: 0.85rem;
-  line-height: 1.65;
-  font-size: 15px;
+  line-height: 1.75;
+  font-size: 16px;
 }
 
 .dark .tiptap.ProseMirror p {
@@ -349,15 +365,26 @@ hr.read-more-break::after {
 }
 
 /* ========================================================
-   TIPTAP INTERACTABLE IMAGES: BLOCK ALIGNMENT (NO TEXT WRAP)
+   ARTICLE IMAGES: STRICTLY NON-INTERACTABLE
+   Images inside articles must not be clickable, draggable, or hover-reactive
    ======================================================== */
+.prose img,
+article img,
+.article-content img,
+.is__text img,
 .tiptap.ProseMirror img {
   display: block !important;
   clear: both !important;
   max-width: 100% !important;
   height: auto !important;
+  pointer-events: none !important;
+  cursor: default !important;
+  user-select: none !important;
+  -webkit-user-drag: none !important;
+  outline: none !important;
 }
 
+.prose img[data-align="left"],
 .tiptap.ProseMirror img[data-align="left"] {
   display: block !important;
   margin-right: auto !important;
@@ -365,6 +392,7 @@ hr.read-more-break::after {
   clear: both !important;
 }
 
+.prose img[data-align="center"],
 .tiptap.ProseMirror img[data-align="center"] {
   display: block !important;
   margin-left: auto !important;
@@ -372,11 +400,36 @@ hr.read-more-break::after {
   clear: both !important;
 }
 
+.prose img[data-align="right"],
 .tiptap.ProseMirror img[data-align="right"] {
   display: block !important;
   margin-left: auto !important;
   margin-right: 0 !important;
   clear: both !important;
+}
+
+/* Neutralize any lingering hover ring, focus ring or pointer on article images */
+.prose img:hover,
+article img:hover,
+.article-content img:hover,
+.is__text img:hover,
+.tiptap.ProseMirror img:hover {
+  outline: none !important;
+  --tw-ring-color: transparent !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+  --tw-ring-offset-shadow: 0 0 #0000 !important;
+  box-shadow: inherit !important;
+  cursor: default !important;
+}
+
+/* Prevent any anchor links wrapping images from making images clickable */
+.prose a:has(img),
+article a:has(img),
+.article-content a:has(img),
+.is__text a:has(img) {
+  pointer-events: none !important;
+  cursor: default !important;
+  text-decoration: none !important;
 }
 
 

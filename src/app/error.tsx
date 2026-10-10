@@ -3,58 +3,7 @@
 import React, { useEffect } from 'react';
 import Link from 'next/link';
 import { Home, RefreshCw, AlertCircle } from 'lucide-react';
-
-function resolveFriendlyErrorInfo(error?: Error & { digest?: string }): {
-  badge: string;
-  title: string;
-  description: string;
-  suggestion: string;
-} {
-  const raw = (error?.message || '').toLowerCase();
-
-  if (raw.includes('unexpected token') || raw.includes('doctype') || raw.includes('is not valid json')) {
-    return {
-      badge: 'Data Formatting Notice',
-      title: 'Content Loading Notice',
-      description: 'The server returned an unexpected response while retrieving published content.',
-      suggestion: 'The live site cache may be syncing. Please click Try Again below to reload the latest stories.',
-    };
-  }
-
-  if (raw.includes('failed to fetch') || raw.includes('network') || raw.includes('timeout') || raw.includes('offline')) {
-    return {
-      badge: 'Network Connection Notice',
-      title: 'Unable to Reach Service',
-      description: 'We could not establish a connection to load this content. Please check your internet connection.',
-      suggestion: 'Verify your network connection and click Try Again.',
-    };
-  }
-
-  if (raw.includes('chunkloaderror') || raw.includes('loading chunk')) {
-    return {
-      badge: 'Update Available',
-      title: 'New Version Available',
-      description: 'The publication has been updated with new assets and improvements.',
-      suggestion: 'Please reload or click Try Again to load the newest version.',
-    };
-  }
-
-  if (raw.includes('supabase') || raw.includes('database') || raw.includes('relation')) {
-    return {
-      badge: 'Database Notice',
-      title: 'Temporary Content Delay',
-      description: 'Our content database took longer than usual to respond.',
-      suggestion: 'Please click Try Again to re-fetch the latest articles.',
-    };
-  }
-
-  return {
-    badge: 'Notice • Page Load Error',
-    title: 'Something went wrong',
-    description: 'An unexpected issue occurred while rendering this page.',
-    suggestion: 'You can reload this view or navigate back to the home page.',
-  };
-}
+import { resolveFriendlyErrorInfo, reportError } from '@/lib/errorLogger';
 
 export default function ErrorBoundary({
   error,
@@ -66,10 +15,10 @@ export default function ErrorBoundary({
   const [showDetails, setShowDetails] = React.useState(false);
 
   useEffect(() => {
-    console.error('App Router Caught Error:', error);
+    reportError(error, 'error-boundary');
   }, [error]);
 
-  const info = resolveFriendlyErrorInfo(error);
+  const info = resolveFriendlyErrorInfo(error, false);
 
   return (
     <div className="min-h-[60vh] flex flex-col items-center justify-center text-center px-4 py-16 space-y-6 max-w-2xl mx-auto">

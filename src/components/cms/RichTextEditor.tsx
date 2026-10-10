@@ -43,15 +43,11 @@ import {
   Indent,
   Outdent,
   Search,
-  Trash2,
-  Crop,
-  Sliders,
 } from 'lucide-react';
 import { compressAndUploadImage, uploadVideoFile } from '@/lib/imageUpload';
-import { ImageCropperModal } from './ImageCropperModal';
 
-// Dedicated Interactable Image Extension with Width, Alignment, and Styling
-const InteractableImage = Image.extend({
+// Dedicated Article Image Extension (Strictly Non-Interactable, Static Document Image)
+const ArticleImage = Image.extend({
   addAttributes() {
     return {
       ...this.parent?.(),
@@ -91,8 +87,8 @@ const InteractableImage = Image.extend({
     return [
       'img',
       mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, {
-        class: `${alignClass} rounded shadow-md cursor-pointer transition-all hover:ring-2 hover:ring-[#E27A2B]`,
-        style: `${blockStyle} width: ${width}; max-width: 100%; height: auto;`,
+        class: `${alignClass} rounded shadow-md pointer-events-none select-none`,
+        style: `${blockStyle} width: ${width}; max-width: 100%; height: auto; pointer-events: none;`,
       }),
     ];
   },
@@ -485,16 +481,6 @@ export function RichTextEditor({
   const toolbarRef = useRef<HTMLDivElement>(null);
   const canvasContainerRef = useRef<HTMLDivElement>(null);
 
-  // Interactive Selected Image State
-  const [selectedImage, setSelectedImage] = useState<{
-    pos: number;
-    src: string;
-    alt: string;
-    width: string;
-    alignment: 'left' | 'center' | 'right';
-  } | null>(null);
-  const [showCropModal, setShowCropModal] = useState(false);
-
   // Initialize Tiptap Editor
   const editor = useEditor({
     extensions: [
@@ -520,9 +506,9 @@ export function RichTextEditor({
           rel: 'noopener noreferrer',
         },
       }),
-      InteractableImage.configure({
+      ArticleImage.configure({
         HTMLAttributes: {
-          class: 'my-6 mx-auto rounded shadow-md max-w-full h-auto',
+          class: 'my-6 mx-auto rounded shadow-md max-w-full h-auto pointer-events-none select-none',
         },
       }),
       CustomVideo,
@@ -542,21 +528,7 @@ export function RichTextEditor({
         class:
           'min-h-[500px] max-w-none focus:outline-none text-neutral-900 dark:text-neutral-100 text-[15px] leading-relaxed font-serif clearfix',
       },
-      handleClickOn: (view, pos, node, nodePos, event, direct) => {
-        if (node.type.name === 'image') {
-          setSelectedImage({
-            pos: nodePos,
-            src: node.attrs.src,
-            alt: node.attrs.alt || '',
-            width: node.attrs.width || '100%',
-            alignment: node.attrs.alignment || 'center',
-          });
-          return true;
-        } else {
-          setSelectedImage(null);
-        }
-        return false;
-      },
+      handleClickOn: () => false,
     },
     onUpdate: ({ editor }) => {
       const html = editor.getHTML();
@@ -569,68 +541,6 @@ export function RichTextEditor({
       }
     },
   });
-
-  const handleUpdateImageAlignment = (alignment: 'left' | 'center' | 'right') => {
-    if (!selectedImage || !editor) return;
-    editor
-      .chain()
-      .focus()
-      .setNodeSelection(selectedImage.pos)
-      .updateAttributes('image', { alignment })
-      .run();
-    setSelectedImage((prev) => (prev ? { ...prev, alignment } : null));
-  };
-
-  const handleUpdateImageSize = (width: string) => {
-    if (!selectedImage || !editor) return;
-    editor
-      .chain()
-      .focus()
-      .setNodeSelection(selectedImage.pos)
-      .updateAttributes('image', { width })
-      .run();
-    setSelectedImage((prev) => (prev ? { ...prev, width } : null));
-  };
-
-  const handleAdjustImageSize = (deltaPercent: number) => {
-    if (!selectedImage || !editor) return;
-    const current = parseInt(String(selectedImage.width || '100').replace(/[^0-9]/g, ''), 10) || 100;
-    const next = Math.min(100, Math.max(15, current + deltaPercent));
-    const nextWidth = `${next}%`;
-    editor
-      .chain()
-      .focus()
-      .setNodeSelection(selectedImage.pos)
-      .updateAttributes('image', { width: nextWidth })
-      .run();
-    setSelectedImage((prev) => (prev ? { ...prev, width: nextWidth } : null));
-  };
-
-  const handleDeleteSelectedImage = () => {
-    if (!selectedImage || !editor) return;
-    editor
-      .chain()
-      .focus()
-      .setNodeSelection(selectedImage.pos)
-      .deleteSelection()
-      .run();
-    setSelectedImage(null);
-  };
-
-  const handleCropComplete = (croppedDataUrl: string) => {
-    if (!selectedImage || !editor) return;
-    editor
-      .chain()
-      .focus()
-      .setNodeSelection(selectedImage.pos)
-      .updateAttributes('image', { src: croppedDataUrl })
-      .run();
-    setSelectedImage((prev) => (prev ? { ...prev, src: croppedDataUrl } : null));
-    setShowCropModal(false);
-    const html = editor.getHTML();
-    setRawHtml(html);
-    onChange(html);
-  };
 
   // Sync external content & auto-detect language
   useEffect(() => {
@@ -2156,158 +2066,6 @@ export function RichTextEditor({
           BOX 2: STANDALONE CONTENT EDITOR WRITING BOX (SPACED)
           ======================================================== */}
       <div className="bg-[#f8f9fa] dark:bg-[#0a101d] border border-[#dadce0] dark:border-neutral-800 rounded-lg shadow-sm flex flex-col overflow-hidden relative">
-        {/* Interactive Image Control Bar (appears when an image is clicked in the editor) */}
-        {selectedImage && (
-          <div className="bg-[#0C2340] text-white px-4 py-2 flex items-center justify-between gap-3 text-xs border-b border-amber-500/40 shadow-sm animate-in slide-in-from-top-2 duration-150 z-30">
-            <div className="flex items-center gap-2 shrink-0">
-              <ImageIcon className="w-4 h-4 text-[#E27A2B] shrink-0" />
-              <span className="font-bold text-amber-300 hidden sm:inline">Image Controls:</span>
-              <span className="text-[11px] text-neutral-300 font-mono truncate max-w-[120px]">
-                {selectedImage.alt || 'Selected Image'}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-1.5 flex-wrap">
-              {/* Alignment / Move */}
-              <span className="text-[10px] uppercase font-bold text-neutral-400 mr-0.5 hidden md:inline">Align:</span>
-              <div className="flex items-center bg-white/10 rounded p-0.5">
-                <button
-                  type="button"
-                  onClick={() => handleUpdateImageAlignment('left')}
-                  className={`p-1 rounded transition-colors cursor-pointer ${
-                    selectedImage.alignment === 'left' ? 'bg-[#E27A2B] text-white' : 'hover:bg-white/20 text-neutral-300'
-                  }`}
-                  title="Align Left (Block left - no text wrap)"
-                >
-                  <AlignLeft className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleUpdateImageAlignment('center')}
-                  className={`p-1 rounded transition-colors cursor-pointer ${
-                    selectedImage.alignment === 'center' ? 'bg-[#E27A2B] text-white' : 'hover:bg-white/20 text-neutral-300'
-                  }`}
-                  title="Align Center (Block center)"
-                >
-                  <AlignCenter className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleUpdateImageAlignment('right')}
-                  className={`p-1 rounded transition-colors cursor-pointer ${
-                    selectedImage.alignment === 'right' ? 'bg-[#E27A2B] text-white' : 'hover:bg-white/20 text-neutral-300'
-                  }`}
-                  title="Align Right (Block right - no text wrap)"
-                >
-                  <AlignRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-
-              <div className="h-4 w-[1px] bg-white/20 mx-1" />
-
-              {/* Crop Tool Button */}
-              <button
-                type="button"
-                onClick={() => setShowCropModal(true)}
-                className="px-2.5 py-1 bg-[#E27A2B] hover:bg-[#d46a1d] text-white rounded font-bold text-[11px] flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
-                title="Crop image (aspect ratios, zoom, canvas framing)"
-              >
-                <Crop className="w-3.5 h-3.5" />
-                <span>Crop</span>
-              </button>
-
-              <div className="h-4 w-[1px] bg-white/20 mx-1" />
-
-              {/* Manual Width Slider & Custom Input */}
-              <span className="text-[10px] uppercase font-bold text-neutral-400 mr-0.5 hidden lg:inline">Width:</span>
-              <div className="flex items-center gap-2 bg-white/10 rounded px-2 py-0.5">
-                <input
-                  type="range"
-                  min="15"
-                  max="100"
-                  step="1"
-                  value={parseInt(String(selectedImage?.width || '100').replace(/[^0-9]/g, ''), 10) || 100}
-                  onChange={(e) => handleUpdateImageSize(`${e.target.value}%`)}
-                  className="w-20 sm:w-28 accent-[#E27A2B] cursor-pointer h-1.5"
-                  title="Slide to manually resize image width (15% - 100%)"
-                />
-                <div className="flex items-center">
-                  <input
-                    type="number"
-                    min="15"
-                    max="100"
-                    value={parseInt(String(selectedImage?.width || '100').replace(/[^0-9]/g, ''), 10) || 100}
-                    onChange={(e) => {
-                      const val = Math.min(100, Math.max(15, parseInt(e.target.value, 10) || 15));
-                      handleUpdateImageSize(`${val}%`);
-                    }}
-                    className="w-11 bg-black/40 text-amber-300 font-mono text-xs text-center border border-white/20 rounded py-0.5 focus:outline-none focus:border-[#E27A2B]"
-                  />
-                  <span className="text-[10px] font-mono text-neutral-300 ml-0.5">%</span>
-                </div>
-              </div>
-
-              {/* Size Preset Buttons */}
-              <div className="hidden sm:flex items-center bg-white/10 rounded p-0.5">
-                {(['25%', '50%', '75%', '100%'] as const).map((sz) => (
-                  <button
-                    key={sz}
-                    type="button"
-                    onClick={() => handleUpdateImageSize(sz)}
-                    className={`px-2 py-0.5 text-[11px] font-mono font-bold rounded transition-colors cursor-pointer ${
-                      selectedImage.width === sz ? 'bg-[#E27A2B] text-white' : 'hover:bg-white/20 text-neutral-300'
-                    }`}
-                  >
-                    {sz === '25%' ? 'Small' : sz === '50%' ? 'Med' : sz === '75%' ? 'Large' : 'Full'}
-                  </button>
-                ))}
-              </div>
-
-              {/* Fine-tune +/- (5% steps) */}
-              <div className="flex items-center bg-white/10 rounded p-0.5">
-                <button
-                  type="button"
-                  onClick={() => handleAdjustImageSize(-5)}
-                  className="px-1.5 py-0.5 hover:bg-white/20 rounded text-neutral-200 font-bold font-mono text-xs cursor-pointer"
-                  title="Shrink width by 5%"
-                >
-                  -
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleAdjustImageSize(5)}
-                  className="px-1.5 py-0.5 hover:bg-white/20 rounded text-neutral-200 font-bold font-mono text-xs cursor-pointer"
-                  title="Expand width by 5%"
-                >
-                  +
-                </button>
-              </div>
-
-              <div className="h-4 w-[1px] bg-white/20 mx-1" />
-
-              {/* Delete Image */}
-              <button
-                type="button"
-                onClick={handleDeleteSelectedImage}
-                className="p-1 hover:bg-red-600/80 rounded text-red-300 hover:text-white transition-colors cursor-pointer"
-                title="Delete this image"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
-
-              {/* Close controls */}
-              <button
-                type="button"
-                onClick={() => setSelectedImage(null)}
-                className="p-1 hover:bg-white/20 rounded text-neutral-400 hover:text-white transition-colors cursor-pointer ml-1"
-                title="Deselect image"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </div>
-        )}
-
         {/* Bounded Document Canvas */}
         <div
           ref={canvasContainerRef}
@@ -2695,17 +2453,6 @@ export function RichTextEditor({
         </div>
       )}
 
-      {/* ========================================================
-          IMAGE CROP MODAL (CANVAS-BASED ASPECT RATIOS & FRAMING)
-          ======================================================== */}
-      {showCropModal && selectedImage && (
-        <ImageCropperModal
-          isOpen={showCropModal}
-          imageUrl={selectedImage.src}
-          onCropComplete={handleCropComplete}
-          onClose={() => setShowCropModal(false)}
-        />
-      )}
     </div>
   );
 }

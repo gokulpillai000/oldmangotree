@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
-import { getCurrentSession } from '@/lib/auth';
+import { isPublisherAuthenticated } from '@/lib/auth';
 import { getAllIssues } from '@/lib/content';
 
 export async function GET(req: NextRequest) {
@@ -20,9 +20,11 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const session = getCurrentSession(req);
-    if (!session) {
-      return NextResponse.json({ error: 'Please sign in to manage issue packets.' }, { status: 401 });
+    if (!isPublisherAuthenticated(req)) {
+      return NextResponse.json(
+        { error: 'Publisher authorization is required to manage issue packets.' },
+        { status: 403 }
+      );
     }
 
     const body = await req.json();

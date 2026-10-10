@@ -125,6 +125,18 @@ values
   ('Packet 3')
 on conflict (name) do nothing;
 
+-- 9. Application Error Telemetry & Crash Logs
+create table if not exists public.error_logs (
+  id uuid default gen_random_uuid() primary key,
+  message text not null,
+  stack text,
+  digest text,
+  context text default 'app',
+  url text,
+  user_agent text,
+  created_at timestamp with time zone default timezone('utc'::text, now())
+);
+
 -- ========================================================
 -- INDEXES FOR MAXIMUM SPEED & HIGH TRAFFIC
 -- ========================================================
@@ -137,6 +149,7 @@ create index if not exists idx_likes_slug on public.article_likes(article_slug);
 create index if not exists idx_comments_slug on public.article_comments(article_slug, created_at desc);
 create index if not exists idx_letters_created on public.letters_to_editor(created_at desc);
 create index if not exists idx_bookmarks_user on public.bookmarks(user_id, created_at desc);
+create index if not exists idx_error_logs_created on public.error_logs(created_at desc);
 
 -- ========================================================
 -- ROW LEVEL SECURITY (RLS) POLICIES
@@ -148,6 +161,7 @@ alter table public.letters_to_editor enable row level security;
 alter table public.bookmarks enable row level security;
 alter table public.authors enable row level security;
 alter table public.issue_packets enable row level security;
+alter table public.error_logs enable row level security;
 
 -- Articles: Full access for web app & editorial desk (select, insert, update, delete)
 drop policy if exists "Allow public read published articles" on public.articles;
@@ -237,6 +251,13 @@ create policy "Allow update packets" on public.issue_packets for update using (t
 
 drop policy if exists "Allow delete packets" on public.issue_packets;
 create policy "Allow delete packets" on public.issue_packets for delete using (true);
+
+-- Error Logs: Client/server telemetry can insert; editorial desk can inspect
+drop policy if exists "Allow insert error logs" on public.error_logs;
+create policy "Allow insert error logs" on public.error_logs for insert with check (true);
+
+drop policy if exists "Allow read error logs" on public.error_logs;
+create policy "Allow read error logs" on public.error_logs for select using (true);
 
 -- ========================================================
 -- STORAGE BUCKET CONFIGURATION (WebP Images, Audio, Video)

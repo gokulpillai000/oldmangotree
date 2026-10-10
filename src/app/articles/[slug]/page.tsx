@@ -21,13 +21,9 @@ export async function generateStaticParams() {
 
 export default async function ArticlePage({ params }: ArticlePageProps) {
   const { slug } = params;
-  const article = await getArticleBySlug(slug);
-
-  let relatedArticles: any[] = [];
-  if (article) {
-    const allArticles = await getAllArticles();
-    relatedArticles = getRelatedArticles(article, 3, allArticles);
-  }
+  const allArticles = await getAllArticles();
+  const article = allArticles.find((a) => a.slug === slug) || (await getArticleBySlug(slug));
+  const relatedArticles = article ? getRelatedArticles(article, 3, allArticles) : [];
 
   return (
     <ArticleViewClient

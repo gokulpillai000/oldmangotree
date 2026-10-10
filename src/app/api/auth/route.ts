@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { authenticateUser, registerUser, getCurrentSession } from '@/lib/auth';
+import {
+  authenticateUser,
+  authenticateEditorialPin,
+  registerUser,
+  getCurrentSession,
+  signSessionToken,
+} from '@/lib/auth';
 
 export async function GET(req: NextRequest) {
   const session = getCurrentSession(req);
@@ -8,8 +14,8 @@ export async function GET(req: NextRequest) {
     {
       headers: {
         'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
-        'Pragma': 'no-cache',
-        'Expires': '0',
+        Pragma: 'no-cache',
+        Expires: '0',
       },
     }
   );
@@ -18,7 +24,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { action, email, password, name } = body;
+    const { action, email, password, name, pin } = body;
 
     if (action === 'logout') {
       const response = NextResponse.json(
@@ -33,24 +39,30 @@ export async function POST(req: NextRequest) {
       return response;
     }
 
-    if (!email || !password) {
-      return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
-    }
-
     let result;
-    if (action === 'signup') {
+    if (action === 'pin_login') {
+      result = authenticateEditorialPin(pin);
+    } else if (action === 'signup') {
+      if (!email || !password) {
+        return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
+      }
       result = registerUser(email, password, name);
     } else {
+      if (!email || !password) {
+        return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
+      }
       result = authenticateUser(email, password);
     }
 
     if ('error' in result) {
-      return NextResponse.json({ error: result.error }, { status: 400 });
+      return NextResponse.json({ error: result.error }, { status: 401 });
     }
 
-    const token = Buffer.from(JSON.stringify(result)).toString('base64');
+    const token = signSessionToken(result);
+    const sessionWithToken = { ...result, token };
+
     const response = NextResponse.json(
-      { success: true, session: result, token },
+      { success: true, session: sessionWithToken, token },
       {
         headers: {
           'Cache-Control': 'no-store, no-cache, must-revalidate',
@@ -58,10 +70,10 @@ export async function POST(req: NextRequest) {
       }
     );
 
-    // Only mark secure if actually served via HTTPS
-    const isHttps = req.headers.get('x-forwarded-proto') === 'https' || req.nextUrl.protocol === 'https:';
+    const isHttps =
+      req.headers.get('x-forwarded-proto') === 'https' || req.nextUrl.protocol === 'https:';
 
-    response.cookies.set('omt_auth_session', encodeURIComponent(JSON.stringify(result)), {
+    response.cookies.set('omt_auth_session', encodeURIComponent(token), {
       httpOnly: true,
       secure: isHttps,
       sameSite: 'lax',

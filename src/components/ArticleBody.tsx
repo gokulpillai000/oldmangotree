@@ -37,7 +37,7 @@ export function ArticleBody({
       />
 
       <div
-        className={`prose dark:prose-invert max-w-none font-text is__text ${sizeClasses[fontSize]} space-y-4 overflow-hidden break-words`}
+        className={`prose dark:prose-invert max-w-none font-text is__text ${sizeClasses[fontSize]} space-y-4 overflow-hidden break-words [&_img]:pointer-events-none [&_img]:select-none [&_img]:cursor-default [&_img]:hover:ring-0 [&_a:has(img)]:pointer-events-none [&_a:has(img)]:cursor-default`}
         dangerouslySetInnerHTML={{ __html: contentHtml }}
       />
     </div>

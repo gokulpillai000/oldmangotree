@@ -54,7 +54,7 @@ export default async function StaticInfoPage({ params }: StaticPageProps) {
       </header>
 
       <div
-        className="prose prose-neutral dark:prose-invert max-w-none font-serif text-base sm:text-lg leading-relaxed space-y-4 overflow-hidden break-words"
+        className="prose prose-neutral dark:prose-invert max-w-none font-serif text-base sm:text-lg leading-relaxed space-y-4 overflow-hidden break-words [&_img]:pointer-events-none [&_img]:select-none [&_img]:cursor-default [&_img]:hover:ring-0 [&_a:has(img)]:pointer-events-none [&_a:has(img)]:cursor-default"
         dangerouslySetInnerHTML={{ __html: page.contentHtml || '' }}
       />
     </article>
