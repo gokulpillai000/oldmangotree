@@ -1,13 +1,15 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getArticleBySlug, getAllArticles } from '@/lib/content';
 import { isPublisherAuthenticated } from '@/lib/auth';
 
-export const dynamic = 'force-dynamic';
-
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const slug = searchParams.get('slug');
+    let slug: string | null = null;
+    try {
+      slug = request.nextUrl.searchParams.get('slug');
+    } catch {
+      // Static export prerendering does not provide dynamic searchParams
+    }
     const canViewDrafts = isPublisherAuthenticated(request);
 
     if (!slug) {
