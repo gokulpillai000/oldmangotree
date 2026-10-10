@@ -56,7 +56,10 @@ export function LatestFeedClient({ articles: initialArticles = [] }: LatestFeedC
     };
   }, []);
 
-  if (articles.length === 0) {
+  // Pure written stories feed (Audio & Podcast items are isolated to /podcasts)
+  const writtenArticles = articles.filter((a) => !isAudioStory(a));
+
+  if (writtenArticles.length === 0) {
     if (isLoadingLive) {
       return (
         <div className="py-16 text-center text-neutral-500 font-serif text-lg animate-pulse">
@@ -73,7 +76,7 @@ export function LatestFeedClient({ articles: initialArticles = [] }: LatestFeedC
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-      {articles.map((article) => (
+      {writtenArticles.map((article) => (
         <article
           key={article.slug}
           className="relative group flex flex-col justify-between pb-6 border-b border-neutral-200 dark:border-neutral-800 cursor-pointer transition-colors"

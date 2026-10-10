@@ -16,6 +16,23 @@ import {
   fetchSupabaseArticleBySlug,
   SupabaseArticleRecord,
 } from './supabase';
+import {
+  isAudioArticle,
+  mapSupabaseRecordToArticle,
+  mapSupabaseRecordToPodcast,
+  filterCategoryArticles,
+  buildIssuesFromArticles,
+  buildSeriesFromArticles,
+} from './articleHelpers';
+
+export {
+  isAudioArticle,
+  mapSupabaseRecordToArticle,
+  mapSupabaseRecordToPodcast,
+  filterCategoryArticles,
+  buildIssuesFromArticles,
+  buildSeriesFromArticles,
+};
 
 const contentDirectory = path.join(process.cwd(), 'content');
 
@@ -285,40 +302,6 @@ function getAuthorsMap(): Record<string, string> {
 // LIVE ARTICLES (Supabase Custom CMS + Blogger + Local Fallback)
 // -------------------------------------------------------------
 
-function mapSupabaseToArticle(rec: SupabaseArticleRecord): Article {
-  const plainText = (rec.content_html || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-  const wordCount = plainText ? plainText.split(' ').length : 0;
-  const readTimeMinutes = Math.max(1, Math.ceil(wordCount / 200));
-
-  const isFutureDate = Boolean(rec.published_at && new Date(rec.published_at).getTime() > Date.now());
-  const isScheduled = rec.status === 'draft' ? false : isFutureDate;
-
-  return {
-    slug: rec.slug,
-    title: rec.title,
-    excerpt: rec.excerpt || '',
-    category: rec.category || 'politics',
-    authors: rec.authors || ['akhil-u-krishnan'],
-    authorNames: rec.author_names || 'Akhil U Krishnan',
-    publishedAt: rec.published_at || new Date().toISOString(),
-    coverImage: rec.cover_image || '',
-    audioNarrationUrl: rec.audio_narration_url,
-    audioDurationSeconds: rec.audio_duration_seconds,
-    webzineIssue: rec.webzine_issue || (rec.category?.toLowerCase() === 'webzine' ? 'Packet 1' : undefined),
-    isLeadStory: Boolean(rec.is_lead_story),
-    isCover: Boolean(rec.is_cover),
-    isPremium: Boolean(rec.is_premium),
-    isLongform: Boolean(rec.is_longform),
-    seriesTitle: rec.series_title || undefined,
-    seriesEpisode: rec.series_episode ? String(rec.series_episode) : undefined,
-    tags: rec.tags || (rec.category ? [rec.category] : []),
-    readTimeMinutes,
-    isScheduled,
-    content: rec.content_html,
-    contentHtml: rec.content_html,
-  };
-}
-
 export async function getAllArticles(includeScheduled: boolean = false): Promise<Article[]> {
   // 1. Fetch live articles from Supabase Custom CMS
   let supabaseArticles: Article[] = [];
@@ -326,7 +309,7 @@ export async function getAllArticles(includeScheduled: boolean = false): Promise
     const rawSupabase = await fetchSupabaseArticles();
     if (rawSupabase && rawSupabase.length > 0) {
       supabaseArticles = rawSupabase
-        .map(mapSupabaseToArticle)
+        .map(mapSupabaseRecordToArticle)
         .filter((a) => (includeScheduled ? true : !a.isScheduled));
     }
   } catch (err) {
@@ -374,7 +357,7 @@ export async function getArticleBySlug(slug: string, includeScheduled: boolean =
       if (!includeScheduled && supArticle.status === 'draft') {
         return null;
       }
-      const mapped = mapSupabaseToArticle(supArticle);
+      const mapped = mapSupabaseRecordToArticle(supArticle);
       if (!includeScheduled && mapped.isScheduled) {
         return null;
       }
@@ -423,107 +406,26 @@ export async function getArticleBySlug(slug: string, includeScheduled: boolean =
 
 export async function getArticlesByCategory(categorySlug: string, includeScheduled: boolean = false): Promise<Article[]> {
   const articles = await getAllArticles(includeScheduled);
-  const target = categorySlug.toLowerCase().trim();
-
-  // 1. Audio & Podcast dedicated section
-  if (
-    target === 'podcasts' ||
-    target === 'podcast' ||
-    target === 'audio-and-podcast' ||
-    target === 'audio & podcast' ||
-    target === 'audio-podcast'
-  ) {
-    return articles.filter(
-      (a) =>
-        Boolean(a.audioNarrationUrl) ||
-        a.category?.toLowerCase() === 'podcast' ||
-        a.category?.toLowerCase() === 'podcasts' ||
-        a.category?.toLowerCase() === 'audio-and-podcast' ||
-        a.category?.toLowerCase() === 'audio & podcast' ||
-        a.tags?.some((t) => {
-          const tl = t.toLowerCase().trim();
-          return tl === 'podcast' || tl === 'audio story' || tl === 'audio & podcast' || tl === 'audio';
-        })
-    );
-  }
-
-  // 2. Webzine section
-  if (target === 'webzine' || target === 'magazine') {
-    return articles.filter((a) => {
-      const artCat = a.category?.toLowerCase().trim();
-      const isDedicatedPodcast =
-        artCat === 'podcast' ||
-        artCat === 'podcasts' ||
-        artCat === 'audio-and-podcast' ||
-        artCat === 'audio & podcast';
-      if (isDedicatedPodcast) return false;
-
-      return (
-        artCat === 'webzine' ||
-        Boolean(a.webzineIssue && a.webzineIssue.trim() && a.webzineIssue !== 'None') ||
-        a.tags?.some((t) => t.toLowerCase() === 'webzine')
-      );
-    });
-  }
-
-  // 3. Special Series section
-  if (target === 'series' || target === 'special-series' || target === 'special series') {
-    return articles.filter((a) => {
-      const artCat = a.category?.toLowerCase().trim();
-      const isDedicatedPodcast =
-        artCat === 'podcast' ||
-        artCat === 'podcasts' ||
-        artCat === 'audio-and-podcast' ||
-        artCat === 'audio & podcast';
-      if (isDedicatedPodcast) return false;
-
-      return (
-        artCat === 'series' ||
-        artCat === 'special series' ||
-        Boolean(a.seriesTitle && a.seriesTitle.trim()) ||
-        a.tags?.some((t) => t.toLowerCase() === 'series' || t.toLowerCase() === 'special series')
-      );
-    });
-  }
-
-  const aliasTargets =
-    target === 'fallen-mangoes' || target === 'miscellaneous' || target === 'fallen mangoes'
-      ? ['fallen-mangoes', 'fallen mangoes', 'miscellaneous']
-      : target === 'the-shade' || target === 'the shade' || target === 'arts-culture' || target === 'arts & culture' || target === 'art & culture'
-      ? ['the-shade', 'the shade', 'arts-culture', 'arts & culture', 'art & culture']
-      : [target];
-
-  return articles.filter((a) => {
-    const artCat = a.category?.toLowerCase().trim();
-
-    // Dedicated Audio & Podcast items are isolated to their own section
-    const isDedicatedPodcast =
-      artCat === 'podcast' ||
-      artCat === 'podcasts' ||
-      artCat === 'audio-and-podcast' ||
-      artCat === 'audio & podcast' ||
-      artCat === 'audio-podcast';
-    if (isDedicatedPodcast) return false;
-
-    if (artCat && aliasTargets.includes(artCat)) return true;
-    if (a.tags && Array.isArray(a.tags)) {
-      return a.tags.some((t) => {
-        const cleanTag = t.toLowerCase().trim().replace(/\s*&\s*|\s+/g, '-');
-        return aliasTargets.includes(cleanTag) || aliasTargets.includes(t.toLowerCase().trim());
-      });
-    }
-    return false;
-  });
+  return filterCategoryArticles(articles, categorySlug);
 }
 
 export async function getArticlesByTag(tag: string, includeScheduled: boolean = false): Promise<Article[]> {
   const articles = await getAllArticles(includeScheduled);
   const cleanTag = tag.toLowerCase().trim();
-  return articles.filter((a) => a.tags?.some((t) => t.toLowerCase() === cleanTag));
+  const isAudioTag = ['podcast', 'podcasts', 'audio & podcast', 'audio story', 'audio'].includes(cleanTag);
+  return articles.filter((a) => {
+    const isAudio = isAudioArticle(a);
+    if (!isAudioTag && isAudio) return false;
+    if (isAudioTag && !isAudio) return false;
+    return a.tags?.some((t) => t.toLowerCase().trim() === cleanTag);
+  });
 }
 
 export function getRelatedArticles(article: Article, limit: number = 3, pool?: Article[]): Article[] {
-  const allArticles = (pool || getLocalArticles(false)).filter((a) => a.slug !== article.slug);
+  const isCurrentAudio = isAudioArticle(article);
+  const allArticles = (pool || getLocalArticles(false))
+    .filter((a) => a.slug !== article.slug)
+    .filter((a) => (isCurrentAudio ? isAudioArticle(a) : !isAudioArticle(a)));
 
   // Prioritize articles from the same webzine issue packet
   const sameIssue = article.webzineIssue
@@ -569,50 +471,9 @@ export function getLocalIssues(): IssuePacket[] {
 }
 
 export async function getAllIssues(): Promise<IssuePacket[]> {
-  // 1. Fetch all published articles (aggregates Supabase & Blogger)
   const allArticles = await getAllArticles(false);
+  const liveIssues = buildIssuesFromArticles(allArticles);
 
-  // 2. Identify articles belonging to Webzine
-  const webzineArticles = allArticles.filter((a) => {
-    if (a.webzineIssue && a.webzineIssue.trim() && a.webzineIssue !== 'None') return true;
-    if (a.category?.toLowerCase() === 'webzine') return true;
-    if (a.tags?.some((t) => t.toLowerCase() === 'webzine')) return true;
-    return false;
-  });
-
-  // 3. Group by packet name / slug
-  const packetMap = new Map<
-    string,
-    {
-      packetName: string;
-      slug: string;
-      articles: Article[];
-    }
-  >();
-
-  for (const art of webzineArticles) {
-    const rawPacket =
-      art.webzineIssue && art.webzineIssue.trim() && art.webzineIssue !== 'None'
-        ? art.webzineIssue.trim()
-        : 'Packet 1';
-
-    const slug =
-      rawPacket
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-+|-+$/g, '') || 'packet-1';
-
-    if (!packetMap.has(slug)) {
-      packetMap.set(slug, {
-        packetName: rawPacket,
-        slug,
-        articles: [],
-      });
-    }
-    packetMap.get(slug)!.articles.push(art);
-  }
-
-  // 4. Also fetch Blogger packets if configured
   let bloggerPackets: IssuePacket[] = [];
   if (process.env.NEXT_PUBLIC_BLOGGER_URL) {
     try {
@@ -622,40 +483,6 @@ export async function getAllIssues(): Promise<IssuePacket[]> {
     }
   }
 
-  const liveIssues: IssuePacket[] = [];
-
-  // Build IssuePacket objects from grouped articles
-  packetMap.forEach(({ packetName, slug, articles }) => {
-    articles.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
-
-    const numMatch = packetName.match(/\d+/);
-    const issueNumber = numMatch ? parseInt(numMatch[0], 10) : 1;
-
-    const featured = articles.find((a) => a.isCover || a.isLeadStory) || articles[0];
-    const coverImage =
-      featured?.coverImage ||
-      articles.find((a) => Boolean(a.coverImage))?.coverImage ||
-      '/images/logo-oldmangotree.jpg';
-    const isPremium = articles.some((a) => a.isPremium);
-
-    const title = packetName.toLowerCase().startsWith('packet')
-      ? packetName
-      : `Packet ${packetName}`;
-
-    liveIssues.push({
-      id: slug,
-      title,
-      issueNumber,
-      theme: featured?.title || `${title}: Webzine Edition`,
-      publishedAt: articles[0]?.publishedAt || new Date().toISOString(),
-      coverImage,
-      isPremium,
-      featuredArticleSlug: featured?.slug || articles[0]?.slug || '',
-      articleSlugs: articles.map((a) => a.slug),
-    });
-  });
-
-  // Merge Blogger packets (avoid duplicates by id or issueNumber)
   for (const bp of bloggerPackets) {
     if (!liveIssues.some((li) => li.id === bp.id || li.issueNumber === bp.issueNumber)) {
       liveIssues.push(bp);
@@ -785,29 +612,8 @@ export async function getAllPodcasts(): Promise<Podcast[]> {
   try {
     const supaArticles = await fetchSupabaseArticles();
     const supaPodcasts = supaArticles
-      .filter(
-        (art) =>
-          Boolean(art.audio_narration_url) ||
-          art.category?.toLowerCase() === 'podcast' ||
-          art.category?.toLowerCase() === 'podcasts' ||
-          art.category?.toLowerCase() === 'audio-and-podcast' ||
-          art.category?.toLowerCase() === 'audio & podcast' ||
-          art.tags?.some((t) => {
-            const tl = t.toLowerCase().trim();
-            return tl === 'podcast' || tl === 'audio story' || tl === 'audio & podcast' || tl === 'audio';
-          })
-      )
-      .map((art) => ({
-        id: art.slug,
-        title: art.title,
-        slug: art.slug,
-        excerpt: art.excerpt || '',
-        publishedAt: art.published_at || new Date().toISOString(),
-        audioUrl: art.audio_narration_url || '',
-        durationSeconds: art.audio_duration_seconds || 300,
-        speaker: art.author_names || (art.authors && art.authors[0]) || 'Akhil U Krishnan',
-        coverImage: art.cover_image || '/images/default-podcast.jpg',
-      }));
+      .filter((art) => isAudioArticle(art))
+      .map(mapSupabaseRecordToPodcast);
     list.push(...supaPodcasts);
   } catch (err) {
     console.warn('Error fetching Supabase podcasts:', err);
@@ -870,53 +676,9 @@ export function getLocalSeries(): Series[] {
 }
 
 export async function getAllSeries(): Promise<Series[]> {
-  // 1. Fetch all published articles (aggregates Supabase & Blogger)
   const allArticles = await getAllArticles(false);
+  const liveSeries = buildSeriesFromArticles(allArticles);
 
-  // 2. Identify articles belonging to Special Series
-  const seriesArticles = allArticles.filter((a) => {
-    if (a.seriesTitle && a.seriesTitle.trim()) return true;
-    if (a.category?.toLowerCase() === 'series' || a.category?.toLowerCase() === 'special series') return true;
-    if (a.tags?.some((t) => t.toLowerCase() === 'series' || t.toLowerCase() === 'special series')) return true;
-    return false;
-  });
-
-  // 3. Group by series title / slug
-  const seriesMap = new Map<
-    string,
-    {
-      title: string;
-      slug: string;
-      articles: Article[];
-    }
-  >();
-
-  for (const art of seriesArticles) {
-    const hasCustomSeriesTitle =
-      art.seriesTitle &&
-      art.seriesTitle.trim() &&
-      art.seriesTitle.trim().toLowerCase() !== 'special series' &&
-      art.seriesTitle.trim().toLowerCase() !== 'none';
-
-    const rawTitle = hasCustomSeriesTitle ? art.seriesTitle!.trim() : art.title;
-    const slug = hasCustomSeriesTitle
-      ? rawTitle
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, '-')
-          .replace(/^-+|-+$/g, '') || 'special-series'
-      : art.slug;
-
-    if (!seriesMap.has(slug)) {
-      seriesMap.set(slug, {
-        title: rawTitle,
-        slug,
-        articles: [],
-      });
-    }
-    seriesMap.get(slug)!.articles.push(art);
-  }
-
-  // 4. Fetch Blogger series if configured
   let bloggerSeries: Series[] = [];
   if (process.env.NEXT_PUBLIC_BLOGGER_URL) {
     try {
@@ -926,50 +688,6 @@ export async function getAllSeries(): Promise<Series[]> {
     }
   }
 
-  const liveSeries: Series[] = [];
-
-  // Build Series objects from grouped articles
-  seriesMap.forEach(({ title, slug, articles }) => {
-    // Sort articles into sequential episode order: Episode 1, 2, 3...
-    articles.sort((a, b) => {
-      const epA = parseInt(a.seriesEpisode || '1', 10) || 1;
-      const epB = parseInt(b.seriesEpisode || '1', 10) || 1;
-      if (epA !== epB) return epA - epB;
-      return new Date(a.publishedAt).getTime() - new Date(b.publishedAt).getTime();
-    });
-
-    const episodes: SeriesEpisode[] = articles.map((art, idx) => ({
-      episodeNumber: parseInt(art.seriesEpisode || String(idx + 1), 10) || idx + 1,
-      title: art.title,
-      slug: art.slug,
-      publishedAt: art.publishedAt,
-      excerpt: art.excerpt,
-    }));
-
-    const coverImage =
-      articles.find((a) => Boolean(a.coverImage))?.coverImage ||
-      '/images/logo-oldmangotree.jpg';
-
-    const firstArticle = articles[0];
-    const authorName =
-      firstArticle?.authorNames ||
-      (firstArticle?.authors?.[0] ? firstArticle.authors[0] : 'Editorial Desk');
-    const authorId = firstArticle?.authors?.[0] || 'editorial-desk';
-
-    liveSeries.push({
-      title,
-      slug,
-      description: firstArticle?.excerpt || `Special investigative serialized column: ${title}`,
-      coverImage,
-      authorId,
-      authorName,
-      category: firstArticle?.category || 'Special Series',
-      totalEpisodes: episodes.length,
-      episodes,
-    });
-  });
-
-  // Merge Blogger series if not already represented
   for (const bs of bloggerSeries) {
     if (!liveSeries.some((ls) => ls.slug === bs.slug)) {
       liveSeries.push(bs);

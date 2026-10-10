@@ -1,18 +1,19 @@
 import React from 'react';
 import Link from 'next/link';
-import { getAllArticles, getAllCategories } from '@/lib/content';
+import { getAllArticles, getAllCategories, isAudioArticle } from '@/lib/content';
 import { Newspaper } from 'lucide-react';
 import { LatestFeedClient } from '@/components/LatestFeedClient';
 
 export const metadata = {
   title: 'Latest Stories — oldmangotree',
-  description: 'Chronological feed of all latest investigative journalism, podcasts, and essays.',
+  description: 'Chronological feed of all latest investigative journalism and essays.',
 };
 
 export const revalidate = 60;
 
 export default async function LatestPage() {
-  const articles = await getAllArticles(false);
+  const allArticles = await getAllArticles(false);
+  const articles = allArticles.filter((a) => !isAudioArticle(a));
   const categories = getAllCategories();
 
   return (

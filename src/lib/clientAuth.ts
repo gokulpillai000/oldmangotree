@@ -7,102 +7,38 @@ export interface UserSession {
   name: string;
   role: 'publisher' | 'reader';
   authenticatedAt: string;
+  token?: string;
 }
 
-// Pre-seeded accounts for static hosting (e.g. GitHub Pages without Node backend)
-export const STATIC_AUTH_ACCOUNTS: Record<string, { name: string; passwordHash: string; role: 'publisher' | 'reader' }> = {
-  'akhil@oldmangotree.media': {
-    name: 'Akhil U Krishnan',
-    passwordHash: 'editor123',
-    role: 'publisher',
-  },
-  'amala@oldmangotree.media': {
-    name: 'Amala Thomas',
-    passwordHash: 'publisher123',
-    role: 'publisher',
-  },
-  'gokulpillai000@gmail.com': {
-    name: 'Akhil U Krishnan',
-    passwordHash: 'editorial123',
-    role: 'publisher',
-  },
-  'editor@oldmangotree.media': {
-    name: 'Akhil U Krishnan',
-    passwordHash: 'editor123',
-    role: 'publisher',
-  },
-  'editorial@oldmangotree.com': {
-    name: 'Akhil U Krishnan',
-    passwordHash: 'editorial123',
-    role: 'publisher',
-  },
-  'admin@oldmangotree.media': {
-    name: 'Amala Thomas',
-    passwordHash: 'admin123',
-    role: 'publisher',
-  },
-  // Readers / Subscribers
-  'reader@oldmangotree.media': {
-    name: 'Ananya Nair',
-    passwordHash: 'reader123',
-    role: 'reader',
-  },
-  'subscriber@oldmangotree.media': {
-    name: 'Rahul Menon',
-    passwordHash: 'subscriber123',
-    role: 'reader',
-  },
-};
+// Salted SHA-256 digest used only as an offline/static-export fallback when /api/auth is not running
+const DEFAULT_EDITORIAL_PIN_SHA256 =
+  process.env.NEXT_PUBLIC_EDITORIAL_PIN_HASH ||
+  '4afc8e194930dad59ad3e7d1eb2f7b46fc0da68166df75e16a1e4a8abb60abe1';
 
-export function clientAuthenticate(
-  email: string,
-  pass: string,
-  name?: string,
-  requestedRole: 'publisher' | 'reader' = 'reader'
-): UserSession | { error: string } {
-  const cleanEmail = email.toLowerCase().trim();
-  if (!cleanEmail || !cleanEmail.includes('@')) {
-    return { error: 'Please enter a valid email address.' };
+export async function hashPinClient(pin: string): Promise<string> {
+  const clean = pin.trim();
+  if (typeof window !== 'undefined' && window.crypto?.subtle) {
+    const data = new TextEncoder().encode(`omt_pin_v1:${clean}`);
+    const hashBuffer = await window.crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(hashBuffer))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
   }
-  if (!pass || pass.length < 3) {
-    return { error: 'Password must be at least 3 characters long.' };
-  }
+  return '';
+}
 
-  const account = STATIC_AUTH_ACCOUNTS[cleanEmail];
-  if (account) {
-    const isMatch =
-      account.passwordHash === pass ||
-      account.passwordHash.toLowerCase() === pass.toLowerCase();
-    if (!isMatch) {
-      if (cleanEmail === 'gokulpillai000@gmail.com' && (pass === 'editor123' || pass === 'gokul123')) {
-        // match
-      } else {
-        return { error: 'Incorrect password for this account.' };
-      }
+export async function verifyPinWithClientHash(pin: string): Promise<boolean> {
+  const digest = await hashPinClient(pin);
+  if (!digest) return false;
+
+  try {
+    const customHash = localStorage.getItem('omt_editorial_passcode_hash');
+    if (customHash && digest === customHash) {
+      return true;
     }
-    return {
-      email: cleanEmail,
-      name: account.name,
-      role: account.role,
-      authenticatedAt: new Date().toISOString(),
-    };
-  }
+  } catch {}
 
-  const isStaffDomain =
-    cleanEmail.endsWith('@oldmangotree.media') ||
-    cleanEmail.endsWith('@oldmangotree.com') ||
-    cleanEmail === 'gokulpillai000@gmail.com';
-  const role: 'publisher' | 'reader' =
-    isStaffDomain || requestedRole === 'publisher' ? 'publisher' : 'reader';
-
-  const displayName = name && name.trim() ? name.trim() : cleanEmail.split('@')[0];
-  const capitalizedName = displayName.charAt(0).toUpperCase() + displayName.slice(1);
-  return {
-    email: cleanEmail,
-    name: capitalizedName,
-    role,
-    authenticatedAt: new Date().toISOString(),
-  };
+  return digest === DEFAULT_EDITORIAL_PIN_SHA256;
 }
 
 export function getStoredSession(): UserSession | null {
@@ -128,22 +64,16 @@ export function setStoredSession(session: UserSession | null) {
     } else {
       localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
     }
-    // Dispatch custom event for cross-component sync
     window.dispatchEvent(new Event('omt-auth-changed'));
   } catch {}
 }
 
 export function getAuthHeaders(): HeadersInit {
   const session = getStoredSession();
-  if (session) {
-    try {
-      const base64Token = btoa(unescape(encodeURIComponent(JSON.stringify(session))));
-      return {
-        'Authorization': `Bearer ${base64Token}`,
-      };
-    } catch {
-      return {};
-    }
+  if (session?.token) {
+    return {
+      Authorization: `Bearer ${session.token}`,
+    };
   }
   return {};
 }

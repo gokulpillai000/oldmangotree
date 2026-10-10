@@ -282,8 +282,8 @@ export function MyLibraryModal({ isOpen, onClose }: MyLibraryModalProps) {
                         </span>
                         <span>{new Date(letter.submittedAt).toLocaleDateString()}</span>
                       </div>
-                      <p className="text-sm sm:text-base text-neutral-800 dark:text-neutral-200 leading-relaxed font-sans italic">
-                        &ldquo;{letter.message}&rdquo;
+                      <p className="text-sm sm:text-base text-neutral-900 dark:text-neutral-100 leading-relaxed font-letter-sans not-italic whitespace-pre-wrap">
+                        {letter.message}
                       </p>
                       <div className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 font-medium">
                         Sent by: {letter.name} ({letter.location || 'Reader'})

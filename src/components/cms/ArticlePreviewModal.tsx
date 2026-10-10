@@ -82,7 +82,7 @@ export function ArticlePreviewModal({
           <header className="space-y-4 sm:space-y-6">
             <div className="flex flex-wrap items-center gap-3">
               <span className="text-xs sm:text-sm font-bold uppercase tracking-wider text-brand-600 dark:text-brand-400 underline decoration-brand-600 dark:decoration-brand-400 underline-offset-4 decoration-2">
-                {category || 'Politics'}
+                {category || 'Uncategorized'}
               </span>
               {packet && packet !== 'None' && (
                 <span className="text-xs sm:text-sm font-semibold uppercase tracking-wider text-neutral-600 dark:text-neutral-400 underline decoration-neutral-300 dark:decoration-neutral-700 underline-offset-4 decoration-1">
@@ -104,11 +104,12 @@ export function ArticlePreviewModal({
 
           {/* Featured Image (Rendered right above byline) */}
           {coverImage && (
-            <div className="relative aspect-[16/10] sm:aspect-[16/9] w-full rounded-xl sm:rounded-2xl overflow-hidden shadow-lg border border-neutral-200 dark:border-neutral-800">
+            <div className="relative aspect-[16/10] sm:aspect-[16/9] w-full rounded-xl sm:rounded-2xl overflow-hidden shadow-lg border border-neutral-200 dark:border-neutral-800 select-none pointer-events-none">
               <img
                 src={coverImage}
                 alt={title}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover select-none pointer-events-none"
+                draggable={false}
               />
             </div>
           )}
@@ -143,7 +144,7 @@ export function ArticlePreviewModal({
 
           {/* Article Body Content (Exact reader prose styling) */}
           <div
-            className="prose dark:prose-invert max-w-none font-text is__text text-lg sm:text-xl leading-relaxed mt-6"
+            className="prose dark:prose-invert max-w-none font-text is__text text-lg sm:text-xl leading-relaxed mt-6 [&_img]:pointer-events-none [&_img]:select-none [&_img]:cursor-default [&_img]:hover:ring-0 [&_a:has(img)]:pointer-events-none [&_a:has(img)]:cursor-default"
             dangerouslySetInnerHTML={{
               __html:
                 contentHtml ||

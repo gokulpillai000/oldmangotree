@@ -1,47 +1,47 @@
 {
   "akhil@oldmangotree.media": {
     "name": "Akhil U Krishnan",
-    "passwordHash": "editor123",
+    "passwordHash": "scrypt:omt_salt_akhil:b745b73f2576142c267ad9d2cf5bc064b413004c4e596f7bf289f307e4900a64",
     "role": "publisher"
   },
   "amala@oldmangotree.media": {
     "name": "Amala Thomas",
-    "passwordHash": "publisher123",
+    "passwordHash": "scrypt:omt_salt_amala:f9d8f60f4428c7e112c04a1504482081623cd81fd3de705631d22be9f1d9a9fd",
     "role": "publisher"
   },
   "gokulpillai000@gmail.com": {
     "name": "Akhil U Krishnan",
-    "passwordHash": "editorial123",
+    "passwordHash": "scrypt:omt_salt_desk:f788611582538e14c5849c38127146ae29782a9ff0f9a946009bc9f78d7aec4f",
     "role": "publisher"
   },
   "editor@oldmangotree.media": {
     "name": "Akhil U Krishnan",
-    "passwordHash": "editor123",
+    "passwordHash": "scrypt:omt_salt_akhil:b745b73f2576142c267ad9d2cf5bc064b413004c4e596f7bf289f307e4900a64",
     "role": "publisher"
   },
   "editorial@oldmangotree.com": {
     "name": "Akhil U Krishnan",
-    "passwordHash": "editorial123",
+    "passwordHash": "scrypt:omt_salt_desk:f788611582538e14c5849c38127146ae29782a9ff0f9a946009bc9f78d7aec4f",
     "role": "publisher"
   },
   "admin@oldmangotree.media": {
     "name": "Amala Thomas",
-    "passwordHash": "admin123",
+    "passwordHash": "scrypt:omt_salt_admin:f6bce67b4fa0b0d907d0cee951c46162f1d121c5dfd803773feb5a981a3740eb",
     "role": "publisher"
   },
   "reader@oldmangotree.media": {
     "name": "Reader",
-    "passwordHash": "reader123",
+    "passwordHash": "scrypt:omt_salt_reader:3924f1e8d465641d06c06882e39a122a63be979cc33402d86b73e0aa54920ab2",
     "role": "reader"
   },
   "subscriber@oldmangotree.media": {
     "name": "Rahul Menon",
-    "passwordHash": "subscriber123",
+    "passwordHash": "scrypt:omt_salt_sub:d76c6ab600b9413638516d1f3ccf9097a3a51d5a4b86408bd211b3d39f112d58",
     "role": "reader"
   },
   "nahas@gmail.com": {
     "name": "Nahas",
-    "passwordHash": "nahas123",
+    "passwordHash": "scrypt:omt_salt_nahas:bac2ea3801d1254fbe13dd93d9ff70f25b782ec3bc022f8898a87dea6220356a",
     "role": "reader"
   }
 }

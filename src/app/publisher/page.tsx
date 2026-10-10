@@ -40,7 +40,13 @@ import {
   Eye,
   ShieldCheck,
 } from 'lucide-react';
-import { getStoredSession, setStoredSession } from '@/lib/clientAuth';
+import {
+  getStoredSession,
+  setStoredSession,
+  getAuthHeaders,
+  hashPinClient,
+  verifyPinWithClientHash,
+} from '@/lib/clientAuth';
 import {
   fetchLettersToEditor,
   markLetterAsRead,
@@ -114,6 +120,21 @@ export default function EditorialDeskPage() {
 
   // Navigation Tab State
   const [activePublisherTab, setActivePublisherTab] = useState<'studio' | 'letters'>('studio');
+  const [urlEditSlug, setUrlEditSlug] = useState<string | null>(null);
+
+  // Synchronize URL edit query parameter on initial mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const editParam = params.get('edit');
+        if (editParam) {
+          setUrlEditSlug(editParam);
+          setActivePublisherTab('studio');
+        }
+      } catch {}
+    }
+  }, []);
 
   // Info Guide Modal State
   const [showInfoModal, setShowInfoModal] = useState(false);
@@ -129,7 +150,7 @@ export default function EditorialDeskPage() {
   const [newPacketInput, setNewPacketInput] = useState('');
   const [packetToDelete, setPacketToDelete] = useState<string | null>(null);
 
-  // Synchronize persisted author and packet pools on initial mount
+  // Synchronize persisted author and packet pools from localStorage on mount
   useEffect(() => {
     try {
       const savedAuthors = localStorage.getItem('omt_editor_authors_v2');
@@ -139,7 +160,10 @@ export default function EditorialDeskPage() {
           const combined = Array.from(new Set([...INITIAL_AUTHORS, ...parsed]));
           setAuthors(combined);
         }
+      } else {
+        localStorage.setItem('omt_editor_authors_v2', JSON.stringify(INITIAL_AUTHORS));
       }
+
       const savedPackets = localStorage.getItem('omt_editor_packets_v1');
       if (savedPackets) {
         const parsed = JSON.parse(savedPackets);
@@ -147,69 +171,10 @@ export default function EditorialDeskPage() {
           const combined = Array.from(new Set([...INITIAL_PACKETS, ...parsed]));
           setPackets(combined);
         }
+      } else {
+        localStorage.setItem('omt_editor_packets_v1', JSON.stringify(INITIAL_PACKETS));
       }
     } catch {}
-
-    // Also scan articles & drafts from Supabase to auto-discover any contributor names
-    fetchSupabaseArticlesAndDrafts()
-      .then((records) => {
-        if (records && records.length > 0) {
-          const found = new Set<string>();
-          records.forEach((r) => {
-            if (typeof r?.author_names === 'string') {
-              r.author_names.split(/[,&]/).forEach((n) => {
-                const trimmed = n.trim();
-                if (trimmed) found.add(trimmed);
-              });
-            }
-            if (Array.isArray(r?.authors)) {
-              r.authors.forEach((a) => {
-                if (typeof a === 'string') {
-                  const trimmed = a.trim();
-                  if (trimmed) found.add(trimmed);
-                }
-              });
-            }
-          });
-          if (found.size > 0) {
-            setAuthors((prev) => {
-              const combined = Array.from(new Set([...prev, ...Array.from(found)]));
-              try {
-                localStorage.setItem('omt_editor_authors_v2', JSON.stringify(combined));
-              } catch {}
-              return combined;
-            });
-          }
-        }
-      })
-    // Fetch live author & packet pools from Supabase
-    fetchSupabaseAuthors()
-      .then((dbAuthors) => {
-        if (dbAuthors && dbAuthors.length > 0) {
-          setAuthors((prev) => {
-            const combined = Array.from(new Set([...prev, ...dbAuthors]));
-            try {
-              localStorage.setItem('omt_editor_authors_v2', JSON.stringify(combined));
-            } catch {}
-            return combined;
-          });
-        }
-      })
-      .catch(() => {});
-
-    fetchSupabasePackets()
-      .then((dbPackets) => {
-        if (dbPackets && dbPackets.length > 0) {
-          setPackets((prev) => {
-            const combined = Array.from(new Set([...prev, ...dbPackets]));
-            try {
-              localStorage.setItem('omt_editor_packets_v1', JSON.stringify(combined));
-            } catch {}
-            return combined;
-          });
-        }
-      })
-      .catch(() => {});
   }, []);
 
   const handleAddAuthor = (name: string) => {
@@ -274,9 +239,10 @@ export default function EditorialDeskPage() {
   // Reader Letters State
   const [readerLetters, setReaderLetters] = useState<ReaderLetter[]>([]);
   const [loadingLetters, setLoadingLetters] = useState(false);
-  const [expandedLetterId, setExpandedLetterId] = useState<string | null>(null);
-  const [lettersFilter, setLettersFilter] = useState<'all' | 'unread' | 'featured'>('all');
+  const [selectedLetterId, setSelectedLetterId] = useState<string | null>(null);
+  const [lettersFilter, setLettersFilter] = useState<'all' | 'unread'>('all');
   const [lettersSearch, setLettersSearch] = useState('');
+  const [checkedLetterIds, setCheckedLetterIds] = useState<string[]>([]);
 
   const loadLettersFromSource = async () => {
     setLoadingLetters(true);
@@ -301,14 +267,73 @@ export default function EditorialDeskPage() {
     setLoadingLetters(false);
   };
 
-  // Helper to fetch current configured passcode (defaults to 'omt2026')
-  const getCurrentPasscode = () => {
-    try {
-      return localStorage.getItem('omt_editorial_passcode') || 'omt2026';
-    } catch {
-      return 'omt2026';
-    }
-  };
+  // Fetch private editorial data (letters, drafts, contributor & packet pools) ONLY when authenticated
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    loadLettersFromSource();
+
+    fetchSupabaseArticlesAndDrafts()
+      .then((records) => {
+        if (records && records.length > 0) {
+          const found = new Set<string>();
+          records.forEach((r) => {
+            if (typeof r?.author_names === 'string') {
+              r.author_names.split(/[,&]/).forEach((n) => {
+                const trimmed = n.trim();
+                if (trimmed) found.add(trimmed);
+              });
+            }
+            if (Array.isArray(r?.authors)) {
+              r.authors.forEach((a) => {
+                if (typeof a === 'string') {
+                  const trimmed = a.trim();
+                  if (trimmed) found.add(trimmed);
+                }
+              });
+            }
+          });
+          if (found.size > 0) {
+            setAuthors((prev) => {
+              const combined = Array.from(new Set([...prev, ...Array.from(found)]));
+              try {
+                localStorage.setItem('omt_editor_authors_v2', JSON.stringify(combined));
+              } catch {}
+              return combined;
+            });
+          }
+        }
+      })
+      .catch(() => {});
+
+    fetchSupabaseAuthors()
+      .then((dbAuthors) => {
+        if (dbAuthors && dbAuthors.length > 0) {
+          setAuthors((prev) => {
+            const combined = Array.from(new Set([...prev, ...dbAuthors]));
+            try {
+              localStorage.setItem('omt_editor_authors_v2', JSON.stringify(combined));
+            } catch {}
+            return combined;
+          });
+        }
+      })
+      .catch(() => {});
+
+    fetchSupabasePackets()
+      .then((dbPackets) => {
+        if (dbPackets && dbPackets.length > 0) {
+          setPackets((prev) => {
+            const combined = Array.from(new Set([...prev, ...dbPackets]));
+            try {
+              localStorage.setItem('omt_editor_packets_v1', JSON.stringify(combined));
+            } catch {}
+            return combined;
+          });
+        }
+      })
+      .catch(() => {});
+  }, [isAuthenticated]);
 
   // Check and synchronize publisher session (with 1-hour inactivity check)
   useEffect(() => {
@@ -348,34 +373,6 @@ export default function EditorialDeskPage() {
     syncAuth();
     window.addEventListener('omt-auth-changed', syncAuth);
     window.addEventListener('storage', syncAuth);
-
-    // Initial load of letters from Supabase
-    loadLettersFromSource();
-
-    // Load custom dynamic authors and packets from localStorage
-    try {
-      const rawAuthors = localStorage.getItem('omt_editor_authors_v2');
-      if (rawAuthors) {
-        const parsed = JSON.parse(rawAuthors);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setAuthors(parsed);
-        }
-      } else {
-        setAuthors(INITIAL_AUTHORS);
-        localStorage.setItem('omt_editor_authors_v2', JSON.stringify(INITIAL_AUTHORS));
-      }
-
-      const rawPackets = localStorage.getItem('omt_editor_packets_v2');
-      if (rawPackets) {
-        const parsed = JSON.parse(rawPackets);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setPackets(parsed);
-        }
-      } else {
-        setPackets(INITIAL_PACKETS);
-        localStorage.setItem('omt_editor_packets_v2', JSON.stringify(INITIAL_PACKETS));
-      }
-    } catch {}
 
     return () => {
       window.removeEventListener('omt-auth-changed', syncAuth);
@@ -427,27 +424,54 @@ export default function EditorialDeskPage() {
     };
   }, [isAuthenticated]);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const currentPass = getCurrentPasscode();
     const trimmed = pinInput.trim();
-    if (
-      trimmed === currentPass ||
-      trimmed === 'omt2026' ||
-      trimmed === 'admin' ||
-      trimmed === 'editorial'
-    ) {
+    if (!trimmed) {
+      setPinError('Please enter your editorial PIN.');
+      return;
+    }
+
+    let authenticatedSession: any = null;
+    const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
+
+    // 1. Verify against server-side /api/auth when available
+    try {
+      const res = await fetch(`${basePath}/api/auth`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'pin_login', pin: trimmed }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.session) {
+          authenticatedSession = data.session;
+        }
+      }
+    } catch {
+      // Static export or offline fallback
+    }
+
+    // 2. Fallback to SHA-256 digest check (supports custom local passcode hash or static hosting)
+    if (!authenticatedSession) {
+      const isHashValid = await verifyPinWithClientHash(trimmed);
+      if (isHashValid) {
+        authenticatedSession = {
+          name: 'Akhil U Krishnan',
+          email: 'akhil@oldmangotree.media',
+          role: 'publisher' as const,
+          authenticatedAt: new Date().toISOString(),
+        };
+      }
+    }
+
+    if (authenticatedSession) {
       setIsAuthenticated(true);
       sessionStorage.setItem('omt_editorial_auth', 'true');
       try {
         localStorage.setItem('omt_editorial_last_active', Date.now().toString());
       } catch {}
-      setStoredSession({
-        name: 'Akhil U Krishnan',
-        email: 'akhil@oldmangotree.media',
-        role: 'publisher',
-        authenticatedAt: new Date().toISOString(),
-      });
+      setStoredSession(authenticatedSession);
       window.dispatchEvent(new Event('omt-auth-changed'));
       setPinError('');
     } else {
@@ -455,7 +479,7 @@ export default function EditorialDeskPage() {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setIsAuthenticated(false);
     setPinInput('');
     setPinError('');
@@ -465,23 +489,27 @@ export default function EditorialDeskPage() {
     } catch {}
     setStoredSession(null);
     window.dispatchEvent(new Event('omt-auth-changed'));
+    try {
+      const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
+      await fetch(`${basePath}/api/auth`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'logout' }),
+      });
+    } catch {}
   };
 
-  const handleChangePasscode = (e: React.FormEvent) => {
+  const handleChangePasscode = async (e: React.FormEvent) => {
     e.preventDefault();
     setPasscodeModalError('');
     setPasscodeModalSuccess('');
 
-    const activePass = getCurrentPasscode();
     const trimmedCurrent = currentPassInput.trim();
     const trimmedNew = newPassInput.trim();
     const trimmedConfirm = confirmPassInput.trim();
 
-    if (
-      trimmedCurrent !== activePass &&
-      trimmedCurrent !== 'omt2026' &&
-      trimmedCurrent !== 'admin'
-    ) {
+    const isCurrentValid = await verifyPinWithClientHash(trimmedCurrent);
+    if (!isCurrentValid) {
       setPasscodeModalError('Current passcode is incorrect.');
       return;
     }
@@ -497,7 +525,11 @@ export default function EditorialDeskPage() {
     }
 
     try {
-      localStorage.setItem('omt_editorial_passcode', trimmedNew);
+      const newHash = await hashPinClient(trimmedNew);
+      if (newHash) {
+        localStorage.setItem('omt_editorial_passcode_hash', newHash);
+      }
+      localStorage.removeItem('omt_editorial_passcode');
       setPasscodeModalSuccess('Passcode updated successfully! Use this new passcode for future logins.');
       setCurrentPassInput('');
       setNewPassInput('');
@@ -515,53 +547,29 @@ export default function EditorialDeskPage() {
     const clean = cred.toLowerCase().trim();
     if (!clean) return { valid: false, authorName: '', email: '' };
 
-    if (
-      clean === 'amala@oldmangotree.media' ||
-      clean === 'admin@oldmangotree.media' ||
-      clean === 'publisher123'
-    ) {
+    if (clean === 'amala@oldmangotree.media' || clean === 'admin@oldmangotree.media') {
       return { valid: true, authorName: 'Amala Thomas', email: 'amala@oldmangotree.media' };
     }
 
     if (
       clean === 'akhil@oldmangotree.media' ||
-      clean === 'gokulpillai000@gmail.com' ||
       clean === 'editor@oldmangotree.media' ||
-      clean === 'editorial@oldmangotree.com' ||
-      clean === 'editor123'
+      clean === 'editorial@oldmangotree.com'
     ) {
-      return { valid: true, authorName: 'Akhil U Krishnan', email: clean.includes('@') ? clean : 'akhil@oldmangotree.media' };
-    }
-
-    if (
-      clean === 'omt-recovery-2026' ||
-      clean === 'omt2026' ||
-      clean === 'editorial-master' ||
-      clean === 'admin'
-    ) {
-      return { valid: true, authorName: 'Akhil U Krishnan', email: 'editor@oldmangotree.media' };
-    }
-
-    if (clean.endsWith('@oldmangotree.media') || clean.endsWith('@oldmangotree.com')) {
-      const isAmala = clean.includes('amala');
-      return {
-        valid: true,
-        authorName: isAmala ? 'Amala Thomas' : 'Akhil U Krishnan',
-        email: clean,
-      };
+      return { valid: true, authorName: 'Akhil U Krishnan', email: clean };
     }
 
     return { valid: false, authorName: '', email: '' };
   };
 
-  const handleResetForgottenPasscode = (e: React.FormEvent) => {
+  const handleResetForgottenPasscode = async (e: React.FormEvent) => {
     e.preventDefault();
     setForgotError('');
     setForgotSuccess('');
 
     const verification = verifyRecoveryCredential(recoveryCredential);
     if (!verification.valid) {
-      setForgotError('Invalid editor email or recovery key. Please check your credentials.');
+      setForgotError('Invalid registered editor email. Please check your credentials.');
       return;
     }
 
@@ -579,9 +587,12 @@ export default function EditorialDeskPage() {
     }
 
     try {
-      localStorage.setItem('omt_editorial_passcode', trimmedNew);
+      const newHash = await hashPinClient(trimmedNew);
+      if (newHash) {
+        localStorage.setItem('omt_editorial_passcode_hash', newHash);
+      }
+      localStorage.removeItem('omt_editorial_passcode');
       localStorage.setItem('omt_editorial_last_active', Date.now().toString());
-      setPinInput(trimmedNew);
       setForgotSuccess('Passcode successfully reset! Logging you into the Newsroom...');
 
       setTimeout(() => {
@@ -612,15 +623,15 @@ export default function EditorialDeskPage() {
 
     const verification = verifyRecoveryCredential(recoveryCredential);
     if (!verification.valid) {
-      setForgotError('Please enter your registered editor email or recovery key first to authorize restore.');
+      setForgotError('Please enter your registered editor email first to authorize restore.');
       return;
     }
 
     try {
-      localStorage.setItem('omt_editorial_passcode', 'omt2026');
+      localStorage.removeItem('omt_editorial_passcode_hash');
+      localStorage.removeItem('omt_editorial_passcode');
       localStorage.setItem('omt_editorial_last_active', Date.now().toString());
-      setPinInput('omt2026');
-      setForgotSuccess('Passcode restored to default (omt2026)! Logging you into the Newsroom...');
+      setForgotSuccess('Passcode restored to default! Logging you into the Newsroom...');
 
       setTimeout(() => {
         setIsAuthenticated(true);
@@ -688,7 +699,7 @@ export default function EditorialDeskPage() {
             {/* Editor Recovery Credential */}
             <div className="space-y-2">
               <label className="block text-sm sm:text-base font-bold uppercase tracking-wider text-neutral-900">
-                Registered Editor Email or Recovery Key
+                Registered Editor Email
               </label>
               <input
                 type="text"
@@ -766,9 +777,9 @@ export default function EditorialDeskPage() {
                 type="button"
                 onClick={handleRestoreDefaultPasscode}
                 className="w-full sm:w-auto px-4 py-2.5 text-xs sm:text-sm font-bold text-neutral-700 hover:text-neutral-950 hover:bg-neutral-100 rounded-xl border-2 border-neutral-300 transition-colors cursor-pointer"
-                title="Restore default passcode (omt2026)"
+                title="Restore default passcode"
               >
-                Restore Default (omt2026)
+                Restore Default Passcode
               </button>
 
               <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
@@ -806,21 +817,23 @@ export default function EditorialDeskPage() {
       // 1. Notify all active tabs and browser cache to refresh live articles from Supabase
       notifyContentUpdated();
 
-      // 2. Safely call the on-demand server revalidation endpoint if available
+      // 2. Safely call the on-demand server revalidation endpoint using authenticated session headers
       const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
-      const endpoint = `${basePath}/api/revalidate?secret=oldmangotree-secret&path=/`;
+      const endpoint = `${basePath}/api/revalidate?path=/`;
 
       let isSuccess = true;
       let statusMsg = 'Live website updated successfully! Readers can now see the newest stories immediately.';
 
       try {
-        const res = await fetch(endpoint);
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: getAuthHeaders(),
+        });
         const text = await res.text();
         let data: any = null;
         try {
           data = JSON.parse(text);
         } catch {
-          // Response is not JSON (e.g. 404 HTML on static export like GitHub Pages where API routes do not run)
           data = null;
         }
 
@@ -828,13 +841,11 @@ export default function EditorialDeskPage() {
           statusMsg = data.message || statusMsg;
         } else if (res.status === 401) {
           isSuccess = false;
-          statusMsg = 'Revalidation unauthorized. Please check administrative settings.';
+          statusMsg = 'Revalidation unauthorized. Please sign in again to refresh server cache.';
         } else if (res.status === 404 || !data) {
-          // Static deployment (e.g. GitHub Pages) where API routes are not active
           statusMsg = 'Live database sync refreshed! Newly published stories are now live for readers across the website.';
         }
       } catch {
-        // If network fetch fails, still refreshed client-side
         statusMsg = 'Live database sync refreshed! Newly published stories are now live for readers across the website.';
       }
 
@@ -862,31 +873,65 @@ export default function EditorialDeskPage() {
     await markLetterAsRead(id, nextRead);
   };
 
-  const handleToggleLetterFeatured = async (id: string, currentFeatured: boolean) => {
-    const nextFeatured = !currentFeatured;
-    setReaderLetters((prev) =>
-      prev.map((l) => (l.id === id ? { ...l, is_featured: nextFeatured } : l))
-    );
-    await toggleLetterFeatured(id, nextFeatured);
-  };
-
   const handleDeleteLetter = async (id: string) => {
     if (confirm('Permanently delete this reader letter from the inbox?')) {
       setReaderLetters((prev) => prev.filter((l) => l.id !== id));
+      setCheckedLetterIds((prev) => prev.filter((item) => item !== id));
+      if (selectedLetterId === id) {
+        setSelectedLetterId(null);
+      }
       await deleteLetterToEditor(id);
+    }
+  };
+
+  const handleToggleCheckLetter = (id: string) => {
+    setCheckedLetterIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleToggleSelectAll = () => {
+    if (filteredLetters.length === 0) return;
+    const allFilteredIds = filteredLetters.map((l) => l.id);
+    const areAllSelected = allFilteredIds.every((id) => checkedLetterIds.includes(id));
+    if (areAllSelected) {
+      setCheckedLetterIds((prev) => prev.filter((id) => !allFilteredIds.includes(id)));
+    } else {
+      setCheckedLetterIds((prev) => Array.from(new Set([...prev, ...allFilteredIds])));
+    }
+  };
+
+  const handleBulkMarkAsRead = async () => {
+    if (checkedLetterIds.length === 0) return;
+    const ids = [...checkedLetterIds];
+    setReaderLetters((prev) =>
+      prev.map((l) => (ids.includes(l.id) ? { ...l, is_read: true } : l))
+    );
+    await Promise.all(ids.map((id) => markLetterAsRead(id, true)));
+    setCheckedLetterIds([]);
+  };
+
+  const handleBulkDelete = async () => {
+    if (checkedLetterIds.length === 0) return;
+    if (confirm(`Permanently delete ${checkedLetterIds.length} selected letter(s)?`)) {
+      const ids = [...checkedLetterIds];
+      setReaderLetters((prev) => prev.filter((l) => !ids.includes(l.id)));
+      if (selectedLetterId && ids.includes(selectedLetterId)) {
+        setSelectedLetterId(null);
+      }
+      setCheckedLetterIds([]);
+      await Promise.all(ids.map((id) => deleteLetterToEditor(id)));
     }
   };
 
   // Reader Letters Counts & Filtered List
   const totalLettersCount = readerLetters.length;
   const unreadLettersCount = readerLetters.filter((l) => !l.is_read).length;
-  const featuredLettersCount = readerLetters.filter((l) => l.is_featured).length;
 
   const filteredLetters = useMemo(() => {
     return readerLetters.filter((letter) => {
       // 1. Filter by status
       if (lettersFilter === 'unread' && letter.is_read) return false;
-      if (lettersFilter === 'featured' && !letter.is_featured) return false;
 
       // 2. Search query filter
       if (lettersSearch.trim()) {
@@ -901,6 +946,19 @@ export default function EditorialDeskPage() {
       return true;
     });
   }, [readerLetters, lettersFilter, lettersSearch]);
+
+  const activeLetter = useMemo(() => {
+    if (!filteredLetters.length) return null;
+    if (selectedLetterId) {
+      const found = filteredLetters.find((l) => l.id === selectedLetterId);
+      if (found) return found;
+    }
+    return filteredLetters[0] || null;
+  }, [filteredLetters, selectedLetterId]);
+
+  const isAllSelected =
+    filteredLetters.length > 0 &&
+    filteredLetters.every((l) => checkedLetterIds.includes(l.id));
 
   // 0. Initial Session Check (Prevents PIN screen from flashing on refresh)
   if (isCheckingAuth) {
@@ -954,7 +1012,7 @@ export default function EditorialDeskPage() {
               type="password"
               value={pinInput}
               onChange={(e) => setPinInput(e.target.value)}
-              placeholder="Enter PIN (default: omt2026)"
+              placeholder="Enter Editorial PIN"
               className="w-full px-4 py-3 bg-neutral-50 dark:bg-neutral-900 border-2 border-neutral-300 dark:border-neutral-700 text-base font-mono font-bold text-neutral-900 dark:text-neutral-100 focus:outline-none focus:border-[#E27A2B] rounded-xl"
               autoFocus
             />
@@ -990,7 +1048,16 @@ export default function EditorialDeskPage() {
     );
   }
 
-  // 2. Authenticated Editorial Desk
+  const handleClearEditSlug = () => {
+    setUrlEditSlug(null);
+    if (typeof window !== 'undefined' && window.location.search.includes('edit=')) {
+      try {
+        window.history.replaceState({}, '', window.location.pathname);
+      } catch {}
+    }
+  };
+
+  // Mode 1: Article Studio (Custom CMS Editor)
   return (
     <div className="space-y-8 py-2 sm:py-4">
       {/* Top Banner & Header */}
@@ -1148,6 +1215,8 @@ export default function EditorialDeskPage() {
         <ArticleStudio
           authors={authors}
           packets={packets}
+          initialEditSlug={urlEditSlug || undefined}
+          onClearEditSlug={handleClearEditSlug}
           onAddAuthor={handleAddAuthor}
           onAddPacket={(pkt) => {
             handleAddPacket(pkt);
@@ -1155,286 +1224,337 @@ export default function EditorialDeskPage() {
         />
       )}
 
-      {/* Mode 2: Reader Letters & Feedback Inbox (Single-Line Compact Accordion UI) */}
+      {/* Mode 2: Reader Letters & Feedback Inbox (Clean Minimal UI with Scrolldown & Selection Checkboxes) */}
       {activePublisherTab === 'letters' && (
-        <section className="space-y-4 animate-in fade-in duration-150">
-          {/* Inbox Filter & Refresh Controls Bar */}
-          <div className="p-3 sm:p-4 bg-paper-card dark:bg-paper-cardDark border border-neutral-200 dark:border-neutral-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xs">
-            {/* Filter Pills: All, Unread */}
-            <div className="flex items-center gap-2">
+        <section className="space-y-4 animate-in fade-in duration-150 max-w-7xl mx-auto">
+          {/* Minimal Controls Bar */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-neutral-200/70 dark:border-neutral-800/80">
+            {/* Filter Pills: All & Unread (Featured removed) */}
+            <div className="inline-flex items-center gap-1 p-1 bg-neutral-100 dark:bg-neutral-900 rounded-lg text-xs font-medium">
               <button
                 type="button"
-                onClick={() => setLettersFilter('all')}
-                className={`px-3.5 py-1.5 text-xs font-bold transition-all cursor-pointer rounded-xs ${
+                onClick={() => {
+                  setLettersFilter('all');
+                  setSelectedLetterId(null);
+                }}
+                className={`px-3 py-1.5 rounded-md transition-all cursor-pointer ${
                   lettersFilter === 'all'
-                    ? 'bg-[#0C2340] text-white dark:bg-[#E27A2B] shadow-xs'
-                    : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700'
+                    ? 'bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-50 shadow-2xs font-semibold'
+                    : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200'
                 }`}
               >
-                All ({totalLettersCount})
+                All <span className="opacity-60 ml-0.5 font-normal">({totalLettersCount})</span>
               </button>
               <button
                 type="button"
-                onClick={() => setLettersFilter('unread')}
-                className={`px-3.5 py-1.5 text-xs font-bold transition-all cursor-pointer rounded-xs flex items-center gap-1.5 ${
+                onClick={() => {
+                  setLettersFilter('unread');
+                  setSelectedLetterId(null);
+                }}
+                className={`px-3 py-1.5 rounded-md transition-all cursor-pointer flex items-center gap-1.5 ${
                   lettersFilter === 'unread'
-                    ? 'bg-[#E27A2B] text-white shadow-xs'
-                    : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700'
+                    ? 'bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-50 shadow-2xs font-semibold'
+                    : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200'
                 }`}
               >
                 <span>Unread</span>
-                <span
-                  className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
-                    lettersFilter === 'unread'
-                      ? 'bg-white/20 text-white'
-                      : 'bg-[#E27A2B]/15 text-[#E27A2B]'
-                  }`}
-                >
-                  {unreadLettersCount}
-                </span>
+                {unreadLettersCount > 0 && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#E27A2B]" />
+                )}
+                <span className="opacity-60 font-normal">({unreadLettersCount})</span>
               </button>
             </div>
 
-            {/* Search and Refresh */}
+            {/* Search Input & Refresh Button */}
             <div className="flex items-center gap-2">
-              <div className="relative flex-1 sm:flex-initial">
-                <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400" />
+              <div className="relative flex-1 sm:w-64">
+                <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" />
                 <input
                   type="text"
-                  placeholder="Search sender, article, letter..."
+                  placeholder="Search letters or sender..."
                   value={lettersSearch}
-                  onChange={(e) => setLettersSearch(e.target.value)}
-                  className="pl-8 pr-3 py-1.5 text-xs bg-neutral-50 dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100 focus:outline-none focus:border-[#E27A2B] rounded-xs w-full sm:w-60"
+                  onChange={(e) => {
+                    setLettersSearch(e.target.value);
+                    setSelectedLetterId(null);
+                  }}
+                  className="w-full pl-8 pr-7 py-1.5 text-xs bg-neutral-100/70 dark:bg-neutral-900 border border-transparent focus:border-neutral-300 dark:focus:border-neutral-700 text-neutral-900 dark:text-neutral-100 focus:outline-none focus:bg-white dark:focus:bg-neutral-950 rounded-lg transition-colors placeholder:text-neutral-400"
                 />
+                {lettersSearch && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLettersSearch('');
+                      setSelectedLetterId(null);
+                    }}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
               </div>
 
               <button
                 type="button"
                 onClick={loadLettersFromSource}
                 disabled={loadingLetters}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#0C2340] dark:bg-neutral-800 hover:bg-[#1a3a60] dark:hover:bg-neutral-700 text-white text-xs font-semibold rounded-xs transition-colors cursor-pointer disabled:opacity-50 shrink-0"
+                className="p-2 text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors cursor-pointer disabled:opacity-40 shrink-0"
                 title="Refresh letters list"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${loadingLetters ? 'animate-spin' : ''}`} />
-                <span>Refresh</span>
               </button>
             </div>
           </div>
 
-          {/* Single-Line Letters List */}
-          <div className="bg-paper-card dark:bg-paper-cardDark border border-neutral-200 dark:border-neutral-800 shadow-sm overflow-hidden">
-            {filteredLetters.length === 0 ? (
-              <div className="py-12 text-center text-neutral-500 text-sm space-y-2">
-                <MessageSquare className="w-10 h-10 mx-auto text-neutral-400/60" />
-                <p className="font-semibold text-neutral-700 dark:text-neutral-300">
-                  {lettersSearch ? 'No letters match your search query.' : 'No reader letters found.'}
-                </p>
-                <p className="text-xs text-neutral-500 max-w-sm mx-auto">
-                  When readers click &quot;Letter to Editor&quot; on any published story, their letters will appear here in this single-line inbox.
-                </p>
+          {/* Empty State */}
+          {filteredLetters.length === 0 ? (
+            <div className="py-20 text-center space-y-3 bg-white dark:bg-neutral-900/40 rounded-xl border border-dashed border-neutral-200 dark:border-neutral-800">
+              <div className="w-10 h-10 mx-auto rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center text-neutral-400">
+                <Mail className="w-5 h-5" />
               </div>
-            ) : (
-              <div className="divide-y divide-neutral-200 dark:divide-neutral-800">
-                {filteredLetters.map((letter) => {
-                  const id = letter.id;
-                  const isExpanded = expandedLetterId === id;
-                  const sender = letter.sender_name || 'Anonymous Reader';
-                  const email = letter.sender_email || '';
-                  const title = letter.article_title || 'General Webzine Feedback';
-                  const body = letter.letter_body || '';
-                  const dateStr = letter.created_at;
-                  const isRead = Boolean(letter.is_read);
-                  const isFeatured = Boolean(letter.is_featured);
+              <p className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">
+                {lettersSearch ? 'No letters match your search query' : 'No reader letters found'}
+              </p>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 max-w-sm mx-auto">
+                When readers submit responses on published articles, their letters will appear in this inbox.
+              </p>
+            </div>
+          ) : (
+            /* Split Master-Detail Layout */
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+              {/* Left Column: Letter List with Select Checkboxes & Scrolldown */}
+              <div className={`lg:col-span-5 xl:col-span-4 space-y-2.5 ${selectedLetterId ? 'hidden lg:block' : 'block'}`}>
+                {/* Select All & Bulk Actions Toolbar */}
+                <div className="flex items-center justify-between px-3 py-2 bg-white dark:bg-neutral-900 rounded-lg border border-neutral-200/80 dark:border-neutral-800/80 text-xs">
+                  <label className="flex items-center gap-2 cursor-pointer select-none text-neutral-600 dark:text-neutral-400 font-medium">
+                    <input
+                      type="checkbox"
+                      checked={isAllSelected}
+                      onChange={handleToggleSelectAll}
+                      className="w-4 h-4 rounded border-neutral-300 dark:border-neutral-700 text-[#E27A2B] focus:ring-[#E27A2B] cursor-pointer"
+                    />
+                    <span>
+                      {checkedLetterIds.length > 0
+                        ? `${checkedLetterIds.length} selected`
+                        : 'Select all'}
+                    </span>
+                  </label>
 
-                  return (
-                    <div
-                      key={id}
-                      className={`transition-colors ${
-                        !isRead
-                          ? 'bg-amber-50/40 dark:bg-amber-950/20'
-                          : 'hover:bg-neutral-50/80 dark:hover:bg-neutral-800/40'
-                      }`}
-                    >
-                      {/* Single Line Header Row */}
-                      <div
-                        onClick={() => setExpandedLetterId(isExpanded ? null : id)}
-                        className="px-3 sm:px-4 py-3 flex items-center gap-3 cursor-pointer select-none text-xs"
+                  {/* Bulk Actions (visible when items are selected) */}
+                  {checkedLetterIds.length > 0 && (
+                    <div className="flex items-center gap-1.5 animate-in fade-in duration-100">
+                      <button
+                        type="button"
+                        onClick={handleBulkMarkAsRead}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 text-xs font-medium transition-colors cursor-pointer"
+                        title="Mark selected as read"
                       >
-                        {/* Status Dot */}
-                        <div className="shrink-0 flex items-center gap-1.5">
-                          <span
-                            className={`w-2 h-2 rounded-full ${
-                              !isRead ? 'bg-[#E27A2B] ring-2 ring-[#E27A2B]/20' : 'bg-neutral-300 dark:bg-neutral-600'
-                            }`}
-                            title={!isRead ? 'Unread message' : 'Read'}
+                        <CheckCheck className="w-3.5 h-3.5 text-emerald-500" />
+                        <span>Mark read</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleBulkDelete}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-red-50 dark:bg-red-950/40 hover:bg-red-100 text-red-600 dark:text-red-400 text-xs font-medium transition-colors cursor-pointer"
+                        title="Delete selected letters"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Delete</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Scrollable Letter Cards Container */}
+                <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200/80 dark:border-neutral-800/80 divide-y divide-neutral-100 dark:divide-neutral-800/60 overflow-hidden shadow-2xs max-h-[calc(100vh-270px)] sm:max-h-[600px] overflow-y-auto">
+                  {filteredLetters.map((letter) => {
+                    const isSelected = activeLetter?.id === letter.id;
+                    const isUnread = !letter.is_read;
+                    const isChecked = checkedLetterIds.includes(letter.id);
+                    const sender = letter.sender_name || 'Anonymous Reader';
+                    const title = letter.article_title || 'General Webzine';
+                    const body = letter.letter_body || '';
+
+                    return (
+                      <div
+                        key={letter.id}
+                        onClick={() => {
+                          setSelectedLetterId(letter.id);
+                          if (isUnread) {
+                            handleToggleLetterRead(letter.id, false);
+                          }
+                        }}
+                        className={`p-3.5 sm:p-4 cursor-pointer transition-all text-left relative flex items-start gap-3 ${
+                          isSelected
+                            ? 'bg-neutral-50 dark:bg-neutral-800/70 border-l-3 border-[#E27A2B]'
+                            : 'hover:bg-neutral-50/60 dark:hover:bg-neutral-800/30'
+                        }`}
+                      >
+                        {/* Custom Select Checkbox */}
+                        <div
+                          className="pt-0.5 shrink-0"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => handleToggleCheckLetter(letter.id)}
+                            className="w-4 h-4 rounded border-neutral-300 dark:border-neutral-700 text-[#E27A2B] focus:ring-[#E27A2B] cursor-pointer"
                           />
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleToggleLetterFeatured(id, isFeatured);
-                            }}
-                            className={`p-1 rounded-xs transition-colors ${
-                              isFeatured
-                                ? 'text-amber-500 hover:text-amber-600'
-                                : 'text-neutral-300 dark:text-neutral-600 hover:text-amber-400'
-                            }`}
-                            title={isFeatured ? 'Featured in Webzine (Click to unfeature)' : 'Mark as Featured in Webzine'}
-                          >
-                            <Star className={`w-3.5 h-3.5 ${isFeatured ? 'fill-current' : ''}`} />
-                          </button>
                         </div>
 
-                        {/* Sender Name */}
-                        <div className="font-semibold text-neutral-900 dark:text-neutral-100 min-w-[110px] max-w-[150px] truncate shrink-0">
-                          {sender}
-                        </div>
+                        {/* Letter Card Details */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2 mb-1">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              {isUnread && (
+                                <span className="w-2 h-2 rounded-full bg-[#E27A2B] shrink-0" title="Unread letter" />
+                              )}
+                              <span className={`text-xs sm:text-sm truncate ${isUnread ? 'font-bold text-neutral-950 dark:text-neutral-50' : 'font-medium text-neutral-700 dark:text-neutral-300'}`}>
+                                {sender}
+                              </span>
+                            </div>
+                            <span className="text-[11px] text-neutral-400 font-mono shrink-0">
+                              {letter.created_at
+                                ? new Date(letter.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+                                : 'Recent'}
+                            </span>
+                          </div>
 
-                        {/* Sender Email (hidden on small screens) */}
-                        <div className="text-neutral-400 font-mono text-[11px] min-w-[130px] max-w-[180px] truncate hidden md:inline shrink-0">
-                          {email ? `<${email}>` : ''}
-                        </div>
+                          {/* Article Reference Tag */}
+                          <p className="text-[11px] font-semibold text-[#E27A2B] truncate mb-1">
+                            Re: {title}
+                          </p>
 
-                        {/* Article Title Tag */}
-                        <div className="shrink-0 max-w-[140px] sm:max-w-[200px] truncate">
-                          <span className="px-2 py-0.5 bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 font-medium text-[10px] rounded-xs truncate inline-block max-w-full">
-                            {title}
-                          </span>
+                          {/* Snippet */}
+                          <p className="text-xs text-neutral-500 dark:text-neutral-400 line-clamp-2 leading-relaxed font-letter-sans">
+                            {body.replace(/\n+/g, ' ')}
+                          </p>
                         </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
 
-                        {/* Message Preview (Truncated to single line) */}
-                        <div className="flex-1 min-w-0 text-neutral-600 dark:text-neutral-400 font-serif italic truncate">
-                          &ldquo;{body.replace(/\n+/g, ' ')}&rdquo;
-                        </div>
+              {/* Right Column: Clean Reading Canvas */}
+              <div className={`lg:col-span-7 xl:col-span-8 ${selectedLetterId ? 'block' : 'hidden lg:block'}`}>
+                {activeLetter ? (
+                  <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200/80 dark:border-neutral-800/80 p-5 sm:p-7 shadow-2xs space-y-5">
+                    {/* Mobile Back Button */}
+                    <div className="lg:hidden pb-3 border-b border-neutral-100 dark:border-neutral-800">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedLetterId(null)}
+                        className="flex items-center gap-1.5 text-xs font-semibold text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 cursor-pointer"
+                      >
+                        <ArrowLeft className="w-4 h-4" />
+                        <span>Back to letters list</span>
+                      </button>
+                    </div>
 
-                        {/* Date */}
-                        <div className="text-neutral-400 font-mono text-[11px] shrink-0 whitespace-nowrap hidden sm:inline">
-                          {dateStr
-                            ? new Date(dateStr).toLocaleDateString(undefined, {
-                                month: 'short',
-                                day: 'numeric',
-                              })
-                            : 'Recent'}
-                        </div>
-
-                        {/* Expand / Collapse Chevron */}
-                        <div className="text-neutral-400 shrink-0">
-                          {isExpanded ? (
-                            <ChevronUp className="w-4 h-4 text-[#E27A2B]" />
-                          ) : (
-                            <ChevronDown className="w-4 h-4" />
+                    {/* Metadata & Actions Header Bar */}
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 pb-4 border-b border-neutral-100 dark:border-neutral-800">
+                      <div className="space-y-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="font-serif text-lg sm:text-xl font-bold text-neutral-950 dark:text-neutral-50">
+                            {activeLetter.sender_name || 'Anonymous Reader'}
+                          </h3>
+                          {activeLetter.location && (
+                            <span className="text-xs text-neutral-500 font-normal">
+                              ({activeLetter.location})
+                            </span>
                           )}
+                        </div>
+                        <div className="flex items-center gap-3 text-xs text-neutral-400 flex-wrap">
+                          {activeLetter.sender_email && (
+                            <a
+                              href={`mailto:${activeLetter.sender_email}`}
+                              className="hover:text-[#E27A2B] transition-colors font-mono"
+                            >
+                              {activeLetter.sender_email}
+                            </a>
+                          )}
+                          {activeLetter.sender_email && <span>•</span>}
+                          <span>
+                            {activeLetter.created_at
+                              ? new Date(activeLetter.created_at).toLocaleString(undefined, {
+                                  dateStyle: 'medium',
+                                  timeStyle: 'short',
+                                })
+                              : 'Recent'}
+                          </span>
                         </div>
                       </div>
 
-                      {/* Expanded Letter Details Panel */}
-                      {isExpanded && (
-                        <div className="px-4 sm:px-6 py-4 bg-white dark:bg-neutral-900 border-t border-neutral-200 dark:border-neutral-800 space-y-4 animate-in fade-in duration-100">
-                          {/* Metadata Bar */}
-                          <div className="flex flex-wrap items-center justify-between gap-3 text-xs border-b border-neutral-100 dark:border-neutral-800 pb-3">
-                            <div className="space-y-1">
-                              <p className="font-bold text-neutral-900 dark:text-neutral-100 text-sm">
-                                {sender} {letter.location && <span className="font-normal text-neutral-500">from {letter.location}</span>}
-                              </p>
-                              <div className="flex items-center gap-2 text-neutral-500">
-                                <span>Email:</span>
-                                <a
-                                  href={`mailto:${email}?subject=Re: Letter to Editor on ${encodeURIComponent(title)}`}
-                                  className="text-[#E27A2B] hover:underline font-mono"
-                                >
-                                  {email}
-                                </a>
-                              </div>
-                              <p className="text-neutral-500">
-                                Article:{' '}
-                                <span className="font-semibold text-neutral-800 dark:text-neutral-200">
-                                  {title}
-                                </span>
-                              </p>
-                            </div>
+                      {/* Minimal Action Buttons */}
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {/* Reply via Email */}
+                        {activeLetter.sender_email && (
+                          <a
+                            href={`mailto:${activeLetter.sender_email}?subject=Re: Letter on ${encodeURIComponent(activeLetter.article_title || 'oldmangotree')}`}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-neutral-100 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 hover:bg-[#0C2340] hover:text-white dark:hover:bg-[#E27A2B] dark:hover:text-white transition-colors"
+                            title="Reply via email"
+                          >
+                            <Send className="w-3 h-3 text-[#E27A2B]" />
+                            <span>Reply</span>
+                          </a>
+                        )}
 
-                            <div className="text-right space-y-1">
-                              <span className="text-xs text-neutral-400 font-mono block">
-                                {dateStr ? new Date(dateStr).toLocaleString() : 'Recent'}
-                              </span>
-                              {isFeatured && (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 text-[10px] font-bold uppercase border border-amber-300 dark:border-amber-800 rounded-xs">
-                                  <Star className="w-3 h-3 fill-current" /> Featured in Webzine
-                                </span>
-                              )}
-                            </div>
-                          </div>
+                        {/* Read / Unread Toggle */}
+                        <button
+                          type="button"
+                          onClick={() => handleToggleLetterRead(activeLetter.id, Boolean(activeLetter.is_read))}
+                          className={`p-2 rounded-lg text-xs transition-colors cursor-pointer ${
+                            activeLetter.is_read
+                              ? 'text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800'
+                              : 'text-[#E27A2B] bg-orange-50 dark:bg-orange-950/40 hover:bg-orange-100 dark:hover:bg-orange-900/40'
+                          }`}
+                          title={activeLetter.is_read ? 'Mark as unread' : 'Mark as read'}
+                        >
+                          {activeLetter.is_read ? (
+                            <Check className="w-4 h-4" />
+                          ) : (
+                            <CheckCheck className="w-4 h-4" />
+                          )}
+                        </button>
 
-                          {/* Full Letter Body */}
-                          <div className="p-4 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 font-serif text-sm sm:text-base leading-relaxed text-neutral-800 dark:text-neutral-200 whitespace-pre-wrap italic">
-                            &ldquo;{body}&rdquo;
-                          </div>
-
-                          {/* Action Buttons Toolbar */}
-                          <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-                            <div className="flex items-center gap-2">
-                              {/* Reply via Email */}
-                              <a
-                                href={`mailto:${email}?subject=Re: Letter to Editor on ${encodeURIComponent(title)}`}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#0C2340] hover:bg-[#123157] text-white text-xs font-bold rounded-xs transition-colors"
-                              >
-                                <Send className="w-3.5 h-3.5 text-[#E27A2B]" />
-                                <span>Reply via Email</span>
-                              </a>
-
-                              {/* Toggle Read / Unread */}
-                              <button
-                                type="button"
-                                onClick={() => handleToggleLetterRead(id, isRead)}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 border border-neutral-300 dark:border-neutral-700 text-xs font-medium rounded-xs transition-colors cursor-pointer"
-                              >
-                                {isRead ? (
-                                  <>
-                                    <Check className="w-3.5 h-3.5 text-neutral-400" />
-                                    <span>Mark as Unread</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <CheckCheck className="w-3.5 h-3.5 text-emerald-500" />
-                                    <span>Mark as Read</span>
-                                  </>
-                                )}
-                              </button>
-
-                              {/* Toggle Feature */}
-                              <button
-                                type="button"
-                                onClick={() => handleToggleLetterFeatured(id, isFeatured)}
-                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xs border transition-colors cursor-pointer ${
-                                  isFeatured
-                                    ? 'bg-amber-500 text-white border-amber-600'
-                                    : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 border-neutral-300 dark:border-neutral-700 hover:text-[#E27A2B]'
-                                }`}
-                              >
-                                <Star className={`w-3.5 h-3.5 ${isFeatured ? 'fill-current' : ''}`} />
-                                <span>{isFeatured ? 'Featured ★' : 'Feature in Webzine'}</span>
-                              </button>
-                            </div>
-
-                            {/* Delete Letter */}
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteLetter(id)}
-                              className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-xs transition-colors cursor-pointer"
-                              title="Delete letter"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                              <span>Delete</span>
-                            </button>
-                          </div>
-                        </div>
-                      )}
+                        {/* Delete */}
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteLetter(activeLetter.id)}
+                          className="p-2 rounded-lg text-neutral-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer"
+                          title="Delete letter"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
-                  );
-                })}
+
+                    {/* Article Context Pill */}
+                    {activeLetter.article_title && (
+                      <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-neutral-50 dark:bg-neutral-800/60 rounded-lg text-xs font-medium text-neutral-600 dark:text-neutral-300 border border-neutral-200/50 dark:border-neutral-700/50">
+                        <span className="text-neutral-400 font-semibold">Article:</span>
+                        <span className="font-semibold text-neutral-900 dark:text-neutral-100">
+                          {activeLetter.article_title}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Letter Body - Distraction-free clean typography */}
+                    <div className="font-letter-sans text-[15px] sm:text-base leading-[1.85] text-neutral-800 dark:text-neutral-200 whitespace-pre-wrap select-text font-normal pt-1">
+                      {activeLetter.letter_body}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="h-full min-h-[400px] flex flex-col items-center justify-center text-center p-8 bg-neutral-50/50 dark:bg-neutral-900/20 rounded-xl border border-dashed border-neutral-200 dark:border-neutral-800 text-neutral-400 space-y-2">
+                    <Mail className="w-8 h-8 opacity-40" />
+                    <p className="text-xs">Select a letter from the list to read</p>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </section>
       )}
 
@@ -1835,7 +1955,7 @@ export default function EditorialDeskPage() {
                       Passcode Management
                     </strong>
                     <p className="text-sm sm:text-base font-semibold text-neutral-800 leading-relaxed font-sans">
-                      Click the <strong className="text-neutral-950 font-extrabold">Passcode</strong> button at any time to set a new custom PIN for newsroom security. The initial default passcode is <code className="px-1.5 py-0.5 bg-neutral-100 rounded font-mono text-xs font-bold text-[#E27A2B]">omt2026</code>.
+                      Click the <strong className="text-neutral-950 font-extrabold">Passcode</strong> button at any time to set a new custom PIN for newsroom security.
                     </p>
                   </div>
 
@@ -2082,7 +2202,7 @@ export default function EditorialDeskPage() {
                   </li>
                   {SHOW_FORGOT_PASSCODE && (
                     <li>
-                      <strong className="font-extrabold text-neutral-950">Forgot Passcode:</strong> If you ever forget your passcode, click <strong className="font-extrabold text-neutral-950">Forgot Passcode?</strong> on the login screen or in the passcode modal. Enter your registered editor email (<code className="text-sm font-bold bg-neutral-200/70 px-1.5 py-0.5 rounded">akhil@oldmangotree.media</code> or <code className="text-sm font-bold bg-neutral-200/70 px-1.5 py-0.5 rounded">amala@oldmangotree.media</code>) to immediately set a new PIN or restore the default access (<code className="text-sm font-bold bg-neutral-200/70 px-1.5 py-0.5 rounded">omt2026</code>).
+                      <strong className="font-extrabold text-neutral-950">Forgot Passcode:</strong> If you ever forget your passcode, click <strong className="font-extrabold text-neutral-950">Forgot Passcode?</strong> on the login screen or in the passcode modal. Enter your registered editor email (<code className="text-sm font-bold bg-neutral-200/70 px-1.5 py-0.5 rounded">akhil@oldmangotree.media</code> or <code className="text-sm font-bold bg-neutral-200/70 px-1.5 py-0.5 rounded">amala@oldmangotree.media</code>) to immediately set a new PIN or restore default access.
                     </li>
                   )}
                 </ul>

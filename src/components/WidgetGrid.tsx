@@ -71,7 +71,10 @@ export function WidgetGrid({ articles: initialArticles = [] }: WidgetGridProps) 
     };
   }, []);
 
-  if (!articles || articles.length === 0) {
+  // Pure latest items sorted chronologically - exclude Audio & Podcast items (Audio belongs to /podcasts)
+  const writtenArticles = articles.filter((a) => !isAudioStory(a));
+
+  if (!writtenArticles || writtenArticles.length === 0) {
     if (isLoadingLive) {
       return (
         <div className="py-20 text-center text-neutral-500 font-serif text-lg animate-pulse">
@@ -87,15 +90,15 @@ export function WidgetGrid({ articles: initialArticles = [] }: WidgetGridProps) 
   }
 
   // Pure latest items sorted chronologically
-  const leadArticle = articles[0];
-  const highlightArticles = articles.slice(1, 4);
-  const remainingArticles = articles.slice(4);
+  const leadArticle = writtenArticles[0];
+  const highlightArticles = writtenArticles.slice(1, 4);
+  const remainingArticles = writtenArticles.slice(4);
 
   // Dynamic category filter on the latest stories feed
   const displayArticles =
     selectedCategory === 'all'
       ? remainingArticles
-      : articles.filter((a) => {
+      : writtenArticles.filter((a) => {
           const cat = a.category?.toLowerCase() || '';
           if (selectedCategory === 'the-shade') {
             return (

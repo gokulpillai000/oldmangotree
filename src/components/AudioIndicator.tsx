@@ -2,39 +2,9 @@
 
 import React from 'react';
 import { Headphones } from 'lucide-react';
+import { isAudioStory } from '@/lib/articleHelpers';
 
-export function isAudioStory(article?: {
-  audioNarrationUrl?: string;
-  category?: string;
-  tags?: string[];
-  [key: string]: any;
-} | null | any): boolean {
-  if (!article) return false;
-  if (Boolean(article.audioNarrationUrl && article.audioNarrationUrl.trim())) return true;
-  const cat = (article.category || '').toLowerCase().trim();
-  if (
-    cat === 'podcast' ||
-    cat === 'podcasts' ||
-    cat === 'audio-and-podcast' ||
-    cat === 'audio & podcast' ||
-    cat === 'audio-podcast'
-  ) {
-    return true;
-  }
-  if (article.tags && Array.isArray(article.tags)) {
-    return article.tags.some((t: string) => {
-      const tl = t.toLowerCase().trim();
-      return (
-        tl === 'podcast' ||
-        tl === 'audio story' ||
-        tl === 'audio & podcast' ||
-        tl === 'audio narration' ||
-        tl === 'audio'
-      );
-    });
-  }
-  return false;
-}
+export { isAudioStory };
 
 interface AudioIndicatorProps {
   hasAudio?: boolean;

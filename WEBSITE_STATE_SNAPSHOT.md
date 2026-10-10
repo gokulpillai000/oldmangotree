@@ -169,11 +169,9 @@ Route (app)                                                      Size     First 
 - **Bearer Token Authorization:** Outgoing requests transmit `Authorization: Bearer <base64-token>` alongside credentials.
 - **Event Bus:** Custom `omt-auth-changed` event dispatches across windows/components for synchronized state changes.
 - **Pre-Seeded Editorial Credentials (`src/lib/auth.ts`):**
-  - `gokulpillai000@gmail.com` / `editorial123` (Gokul Krishnan)
-  - `editor@oldmangotree.media` / `editor123` (Kamalram Sajeev)
-  - `editorial@oldmangotree.com` / `editorial123` (Editorial Desk)
-  - `manila@oldmangotree.media` / `publisher123` (Manila C. Mohan)
-  - `admin@oldmangotree.media` / `admin123` (Publisher Admin)
+  - `akhil@oldmangotree.media` — Akhil U Krishnan (Salted `scrypt` hash / `EDITORIAL_ADMIN_PASSWORD`)
+  - `amala@oldmangotree.media` — Amala Thomas (Salted `scrypt` hash / `EDITORIAL_ADMIN_PASSWORD`)
+  - `editorial@oldmangotree.com` — Editorial Desk (Salted `scrypt` hash / `EDITORIAL_DESK_PIN`)
 
 ### 4.4 Publishing Pipeline & Google Apps Script Bridge
 - **Web-Based Editorial Desk (`/publisher`):**

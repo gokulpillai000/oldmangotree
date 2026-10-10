@@ -27,79 +27,6 @@ export function getSupabase(): SupabaseClient | null {
   return supabaseInstance;
 }
 
-// ----------------- Auth Helpers -----------------
-
-export async function getCurrentUser() {
-  const client = getSupabase();
-  if (!client) return null;
-  try {
-    const { data: { session } } = await client.auth.getSession();
-    return session?.user || null;
-  } catch {
-    return null;
-  }
-}
-
-// ----------------- Bookmarks Sync -----------------
-
-export async function fetchRemoteBookmarks(userId: string) {
-  const client = getSupabase();
-  if (!client) return [];
-  try {
-    const { data, error } = await client
-      .from('bookmarks')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
-    if (error) throw error;
-    return data || [];
-  } catch (err) {
-    console.warn('Error fetching Supabase bookmarks:', err);
-    return [];
-  }
-}
-
-export async function saveRemoteBookmark(userId: string, article: {
-  slug: string;
-  title: string;
-  category?: string;
-  coverImage?: string;
-  authorNames?: string;
-}) {
-  const client = getSupabase();
-  if (!client) return false;
-  try {
-    const { error } = await client.from('bookmarks').upsert({
-      user_id: userId,
-      slug: article.slug,
-      title: article.title,
-      category: article.category || 'politics',
-      cover_image: article.coverImage || '',
-      author_names: article.authorNames || '',
-    });
-    return !error;
-  } catch (err) {
-    console.warn('Error saving bookmark to Supabase:', err);
-    return false;
-  }
-}
-
-export async function removeRemoteBookmark(userId: string, slug: string) {
-  const client = getSupabase();
-  if (!client) return false;
-  try {
-    const { error } = await client
-      .from('bookmarks')
-      .delete()
-      .eq('user_id', userId)
-      .eq('slug', slug);
-    return !error;
-  } catch (err) {
-    console.warn('Error deleting bookmark from Supabase:', err);
-    return false;
-  }
-}
-
 // ----------------- Global Likes -----------------
 
 export async function fetchArticleLikes(slug: string, clientId?: string): Promise<{ count: number; hasLiked: boolean }> {
@@ -351,6 +278,29 @@ export interface SupabaseArticleRecord {
   created_at?: string;
 }
 
+function promoteMaturedScheduledArticles(client: SupabaseClient, data: SupabaseArticleRecord[] | null) {
+  if (!data || data.length === 0) return;
+  const nowMs = Date.now();
+  const matured = data.filter(
+    (a) => a.status === 'scheduled' && a.published_at && new Date(a.published_at).getTime() <= nowMs
+  );
+  if (matured.length > 0) {
+    const maturedSlugs = matured.map((a) => a.slug);
+    Promise.resolve(
+      client
+        .from('articles')
+        .update({ status: 'published', updated_at: new Date().toISOString() })
+        .in('slug', maturedSlugs)
+    ).catch(() => {});
+
+    for (const item of data) {
+      if (maturedSlugs.includes(item.slug)) {
+        item.status = 'published';
+      }
+    }
+  }
+}
+
 export async function fetchSupabaseArticles(): Promise<SupabaseArticleRecord[]> {
   const client = getSupabase();
   if (!client) return [];
@@ -382,28 +332,7 @@ export async function fetchSupabaseArticles(): Promise<SupabaseArticleRecord[]> 
       });
     }
 
-    if (data && data.length > 0) {
-      const nowMs = Date.now();
-      const matured = data.filter(
-        (a) => a.status === 'scheduled' && a.published_at && new Date(a.published_at).getTime() <= nowMs
-      );
-      if (matured.length > 0) {
-        const maturedSlugs = matured.map((a) => a.slug);
-        Promise.resolve(
-          client
-            .from('articles')
-            .update({ status: 'published', updated_at: nowIso })
-            .in('slug', maturedSlugs)
-        ).catch(() => {});
-
-        for (const item of data) {
-          if (maturedSlugs.includes(item.slug)) {
-            item.status = 'published';
-          }
-        }
-      }
-    }
-
+    promoteMaturedScheduledArticles(client, data);
     return data || [];
   } catch (err) {
     console.warn('Error fetching Supabase articles:', err);
@@ -423,28 +352,7 @@ export async function fetchSupabaseArticlesAndDrafts(): Promise<SupabaseArticleR
 
     if (error) throw error;
 
-    if (data && data.length > 0) {
-      const nowMs = Date.now();
-      const matured = data.filter(
-        (a) => a.status === 'scheduled' && a.published_at && new Date(a.published_at).getTime() <= nowMs
-      );
-      if (matured.length > 0) {
-        const maturedSlugs = matured.map((a) => a.slug);
-        Promise.resolve(
-          client
-            .from('articles')
-            .update({ status: 'published', updated_at: new Date().toISOString() })
-            .in('slug', maturedSlugs)
-        ).catch(() => {});
-
-        for (const item of data) {
-          if (maturedSlugs.includes(item.slug)) {
-            item.status = 'published';
-          }
-        }
-      }
-    }
-
+    promoteMaturedScheduledArticles(client, data);
     return data || [];
   } catch (err) {
     console.warn('Error fetching articles & drafts:', err);
@@ -514,7 +422,7 @@ export async function saveSupabaseArticle(article: SupabaseArticleRecord): Promi
       title: article.title,
       excerpt: article.excerpt || '',
       content_html: article.content_html,
-      category: article.category || 'politics',
+      category: article.category || '',
       authors: article.authors?.length ? article.authors : ['akhil-u-krishnan'],
       author_names: article.author_names || 'Akhil U Krishnan',
       cover_image: article.cover_image || null,
@@ -527,7 +435,7 @@ export async function saveSupabaseArticle(article: SupabaseArticleRecord): Promi
       is_longform: Boolean(article.is_longform),
       series_title: article.series_title || null,
       series_episode: article.series_episode || null,
-      tags: article.tags?.length ? article.tags : (article.category ? [article.category] : ['politics']),
+      tags: article.tags?.length ? article.tags : (article.category ? [article.category] : []),
       status: article.status || 'published',
       published_at: article.published_at || new Date().toISOString(),
       updated_at: new Date().toISOString(),
