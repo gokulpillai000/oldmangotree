@@ -130,19 +130,25 @@ export function WidgetGrid({ articles: initialArticles = [] }: WidgetGridProps) 
         {/* Left Column: Top Latest Lead Story */}
         <div className={`relative ${highlightArticles.length > 0 ? 'lg:col-span-7 lg:border-r lg:pr-8' : 'w-full'} pb-6 border-b lg:border-b-0 border-neutral-200 dark:border-neutral-800 group flex flex-col justify-between cursor-pointer transition-colors`}>
           <div>
-            <div style={{ position: 'relative' }} className="relative h-64 sm:h-80 md:h-96 w-full overflow-hidden bg-neutral-100 dark:bg-neutral-800">
-              <Image
-                src={leadArticle.coverImage || '/images/logo-oldmangotree.jpg'}
-                alt={leadArticle.title}
-                fill
-                sizes="(max-width: 1024px) 100vw, 60vw"
-                className="object-cover"
-                priority
-              />
-              <AudioIndicator hasAudio={isAudioStory(leadArticle)} size="lg" />
-            </div>
+            {leadArticle.coverImage && leadArticle.coverImage.trim() !== '' ? (
+              <div style={{ position: 'relative' }} className="relative h-64 sm:h-80 md:h-96 w-full overflow-hidden bg-neutral-100 dark:bg-neutral-800">
+                <Image
+                  src={leadArticle.coverImage}
+                  alt={leadArticle.title}
+                  fill
+                  sizes="(max-width: 1024px) 100vw, 60vw"
+                  className="object-cover"
+                  priority
+                />
+                <AudioIndicator hasAudio={isAudioStory(leadArticle)} size="lg" />
+              </div>
+            ) : isAudioStory(leadArticle) ? (
+              <div className="pb-3">
+                <AudioIndicator hasAudio={true} size="lg" />
+              </div>
+            ) : null}
 
-            <div className="pt-4 space-y-3">
+            <div className={`${leadArticle.coverImage && leadArticle.coverImage.trim() !== '' ? 'pt-4' : 'pt-1'} space-y-3`}>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <Link
                   href={`/${leadArticle.category.toLowerCase()}`}
@@ -178,7 +184,7 @@ export function WidgetGrid({ articles: initialArticles = [] }: WidgetGridProps) 
                 </h2>
               </Link>
 
-              <p className="text-neutral-800 dark:text-neutral-200 text-base sm:text-lg lg:text-xl line-clamp-3 leading-relaxed">
+              <p className={`text-neutral-800 dark:text-neutral-200 text-base sm:text-lg lg:text-xl leading-relaxed ${leadArticle.coverImage && leadArticle.coverImage.trim() !== '' ? 'line-clamp-3' : 'line-clamp-6'}`}>
                 {leadArticle.excerpt}
               </p>
             </div>
@@ -212,16 +218,22 @@ export function WidgetGrid({ articles: initialArticles = [] }: WidgetGridProps) 
                 key={art.slug}
                 className="relative flex items-center gap-3 sm:gap-4 pb-4 border-b border-neutral-200 dark:border-neutral-800 last:border-b-0 group cursor-pointer transition-colors"
               >
-                <div style={{ position: 'relative' }} className="relative w-24 h-24 sm:w-28 sm:h-28 overflow-hidden shrink-0 bg-neutral-100 dark:bg-neutral-800">
-                  <Image
-                    src={art.coverImage || '/images/logo-oldmangotree.jpg'}
-                    alt={art.title}
-                    fill
-                    sizes="112px"
-                    className="object-cover"
-                  />
-                  <AudioIndicator hasAudio={isAudioStory(art)} size="sm" />
-                </div>
+                {art.coverImage && art.coverImage.trim() !== '' ? (
+                  <div style={{ position: 'relative' }} className="relative w-24 h-24 sm:w-28 sm:h-28 overflow-hidden shrink-0 bg-neutral-100 dark:bg-neutral-800">
+                    <Image
+                      src={art.coverImage}
+                      alt={art.title}
+                      fill
+                      sizes="112px"
+                      className="object-cover"
+                    />
+                    <AudioIndicator hasAudio={isAudioStory(art)} size="sm" />
+                  </div>
+                ) : isAudioStory(art) ? (
+                  <div className="shrink-0 pt-1">
+                    <AudioIndicator hasAudio={true} size="sm" />
+                  </div>
+                ) : null}
 
                 <div className="flex-1 min-w-0 space-y-1">
                   <Link
@@ -294,18 +306,24 @@ export function WidgetGrid({ articles: initialArticles = [] }: WidgetGridProps) 
                 className="relative group flex flex-col justify-between pb-6 border-b border-neutral-200 dark:border-neutral-800 cursor-pointer transition-colors"
               >
                 <div>
-                  <div style={{ position: 'relative' }} className="relative aspect-[16/10] sm:aspect-[16/9] w-full overflow-hidden bg-neutral-100 dark:bg-neutral-800">
-                    <Image
-                      src={art.coverImage || '/images/logo-oldmangotree.jpg'}
-                      alt={art.title}
-                      fill
-                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                      className="object-cover"
-                    />
-                    <AudioIndicator hasAudio={isAudioStory(art)} />
-                  </div>
+                  {art.coverImage && art.coverImage.trim() !== '' ? (
+                    <div style={{ position: 'relative' }} className="relative aspect-[16/10] sm:aspect-[16/9] w-full overflow-hidden bg-neutral-100 dark:bg-neutral-800">
+                      <Image
+                        src={art.coverImage}
+                        alt={art.title}
+                        fill
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                        className="object-cover"
+                      />
+                      <AudioIndicator hasAudio={isAudioStory(art)} />
+                    </div>
+                  ) : isAudioStory(art) ? (
+                    <div className="flex items-center gap-2 mb-2">
+                      <AudioIndicator hasAudio={true} />
+                    </div>
+                  ) : null}
 
-                  <div className="pt-3 space-y-1.5">
+                  <div className={`${art.coverImage && art.coverImage.trim() !== '' ? 'pt-3' : 'pt-1'} space-y-1.5`}>
                     <Link
                       href={`/${art.category.toLowerCase()}`}
                       className="relative z-20 inline-block text-xs sm:text-sm font-bold uppercase tracking-wider text-brand-600 dark:text-brand-400 underline decoration-brand-600 dark:decoration-brand-400 underline-offset-2 decoration-1 hover:decoration-2"

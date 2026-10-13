@@ -111,48 +111,54 @@ export function MagazinePacketClient({
         </div>
 
         <div className="space-y-6">
-          {articles.map((article, index) => (
-            <div
-              key={article.slug}
-              className="group relative pb-6 border-b border-neutral-200 dark:border-neutral-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 sm:gap-6 cursor-pointer transition-colors"
-            >
-              <div className="flex items-start gap-4 sm:gap-6 min-w-0">
-                <span className="font-serif text-3xl sm:text-4xl font-bold text-neutral-300 dark:text-neutral-700 group-hover:text-brand-600 transition-colors shrink-0">
-                  {String(index + 1).padStart(2, '0')}
-                </span>
-                <div className="space-y-1.5 min-w-0 flex-1">
-                  <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-[#E27A2B] uppercase">
-                    <span className="underline decoration-[#E27A2B] underline-offset-2 decoration-1">
-                      {article.category}
-                    </span>
-                  </div>
-                  <Link href={`/articles/${article.slug}`}>
-                    <span className="absolute inset-0 z-10" aria-hidden="true" />
-                    <h3 className="font-serif text-lg sm:text-2xl font-bold text-neutral-900 dark:text-neutral-50 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors leading-snug break-words">
-                      {article.title}
-                    </h3>
-                  </Link>
-                  <p className="text-sm sm:text-base text-neutral-800 dark:text-neutral-200 line-clamp-2 leading-relaxed break-words">
-                    {article.excerpt}
-                  </p>
-                  <div className="flex items-center gap-3 text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 pt-1.5 font-sans">
-                    <span className="font-serif font-bold text-sm sm:text-base text-neutral-900 dark:text-neutral-100 truncate">
-                      {article.authorNames || (article.authors?.[0] ? article.authors[0] : 'Akhil U Krishnan')}
-                    </span>
-                    <span>•</span>
-                    <span className="shrink-0 font-medium flex items-center gap-1.5">
-                      <Calendar className="w-3.5 h-3.5 text-neutral-400" />
-                      {formatDate(article.publishedAt)}
-                    </span>
+          {articles.length === 0 ? (
+            <div className="py-12 text-center text-neutral-500 dark:text-neutral-400 font-serif italic border border-dashed border-neutral-300 dark:border-neutral-800 rounded-lg p-6">
+              Articles for this edition are currently being curated by the editorial desk. Check back soon.
+            </div>
+          ) : (
+            articles.map((article, index) => (
+              <div
+                key={article.slug}
+                className="group relative pb-6 border-b border-neutral-200 dark:border-neutral-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 sm:gap-6 cursor-pointer transition-colors"
+              >
+                <div className="flex items-start gap-4 sm:gap-6 min-w-0">
+                  <span className="font-serif text-3xl sm:text-4xl font-bold text-neutral-300 dark:text-neutral-700 group-hover:text-brand-600 transition-colors shrink-0">
+                    {String(index + 1).padStart(2, '0')}
+                  </span>
+                  <div className="space-y-1.5 min-w-0 flex-1">
+                    <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-[#E27A2B] uppercase">
+                      <span className="underline decoration-[#E27A2B] underline-offset-2 decoration-1">
+                        {article.category}
+                      </span>
+                    </div>
+                    <Link href={`/articles/${article.slug}`}>
+                      <span className="absolute inset-0 z-10" aria-hidden="true" />
+                      <h3 className="font-serif text-lg sm:text-2xl font-bold text-neutral-900 dark:text-neutral-50 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors leading-snug break-words">
+                        {article.title}
+                      </h3>
+                    </Link>
+                    <p className="text-sm sm:text-base text-neutral-800 dark:text-neutral-200 line-clamp-2 leading-relaxed break-words">
+                      {article.excerpt}
+                    </p>
+                    <div className="flex items-center gap-3 text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 pt-1.5 font-sans">
+                      <span className="font-serif font-bold text-sm sm:text-base text-neutral-900 dark:text-neutral-100 truncate">
+                        {article.authorNames || (article.authors?.[0] ? article.authors[0] : 'Akhil U Krishnan')}
+                      </span>
+                      <span>•</span>
+                      <span className="shrink-0 font-medium flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5 text-neutral-400" />
+                        {formatDate(article.publishedAt)}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <span className="w-full md:w-auto shrink-0 flex items-center justify-center gap-1.5 text-xs sm:text-sm font-bold text-[#E27A2B] group-hover:underline transition-colors">
-                Read Article <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              </span>
-            </div>
-          ))}
+                <span className="w-full md:w-auto shrink-0 flex items-center justify-center gap-1.5 text-xs sm:text-sm font-bold text-[#E27A2B] group-hover:underline transition-colors">
+                  Read Article <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                </span>
+              </div>
+            ))
+          )}
         </div>
       </section>
     </div>

@@ -4,13 +4,28 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Home, Compass, BookOpen, Loader2 } from 'lucide-react';
 import { ArticleViewClient } from '@/components/ArticleViewClient';
-import { fetchLiveArticleBySlug } from '@/lib/liveArticles';
-import type { Article } from '@/lib/content';
+import { MagazinePacketClient } from '@/components/MagazinePacketClient';
+import { SeriesDetailClient } from '@/components/SeriesDetailClient';
+import {
+  fetchLiveArticleBySlug,
+  fetchLiveArticlesFromSupabase,
+  buildIssuesFromArticles,
+  buildSeriesFromArticles,
+} from '@/lib/liveArticles';
+import type { Article, IssuePacket, Series } from '@/lib/content';
 
 export default function NotFound() {
   const [detectedSlug, setDetectedSlug] = useState<string | null>(null);
   const [detectedArticle, setDetectedArticle] = useState<Article | null>(null);
+
+  const [detectedIssue, setDetectedIssue] = useState<IssuePacket | null>(null);
+  const [detectedIssueArticles, setDetectedIssueArticles] = useState<Article[]>([]);
+
+  const [detectedSeriesSlug, setDetectedSeriesSlug] = useState<string | null>(null);
+  const [detectedSeries, setDetectedSeries] = useState<Series | null>(null);
+
   const [isChecking, setIsChecking] = useState<boolean>(true);
+  const [loadingLabel, setLoadingLabel] = useState<string>('Loading story...');
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -19,6 +34,93 @@ export default function NotFound() {
     }
 
     const path = window.location.pathname;
+
+    // 1. Check for Magazine Packet URLs (/magazine/:packet)
+    const magazineMatch = path.match(/\/magazine\/([^\/]+)/);
+    if (magazineMatch && magazineMatch[1] && magazineMatch[1] !== '_empty') {
+      const rawPacket = decodeURIComponent(magazineMatch[1]);
+      const cleanTarget = rawPacket.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+      setLoadingLabel('Loading webzine issue...');
+
+      fetchLiveArticlesFromSupabase()
+        .then((liveArticles) => {
+          const liveIssues = buildIssuesFromArticles(liveArticles);
+          const matched = liveIssues.find((i) => {
+            const cleanId = i.id.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+            return (
+              cleanId === cleanTarget ||
+              i.id.toLowerCase() === rawPacket.toLowerCase() ||
+              i.title.toLowerCase() === rawPacket.toLowerCase()
+            );
+          });
+
+          if (matched) {
+            setDetectedIssue(matched);
+            const matchedArticles = liveArticles.filter((a) => matched.articleSlugs.includes(a.slug));
+            setDetectedIssueArticles(matchedArticles);
+          } else if (cleanTarget) {
+            const numMatch = cleanTarget.match(/\d+/);
+            const issueNumber = numMatch ? parseInt(numMatch[0], 10) : 1;
+            const formattedTitle = rawPacket
+              .replace(/[-_]+/g, ' ')
+              .trim()
+              .replace(/\b\w/g, (char) => char.toUpperCase());
+            const title = formattedTitle.toLowerCase().startsWith('packet')
+              ? formattedTitle
+              : `Packet ${formattedTitle}`;
+            const matchingArticles = liveArticles.filter((art) => {
+              const artIssue = (art.webzineIssue || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+              return artIssue === cleanTarget || (art.webzineIssue || '').toLowerCase() === rawPacket.toLowerCase();
+            });
+            setDetectedIssue({
+              id: cleanTarget,
+              title: title || `Packet ${cleanTarget}`,
+              issueNumber,
+              theme: matchingArticles[0]?.title || `${title}: Webzine Edition`,
+              publishedAt: matchingArticles[0]?.publishedAt || new Date().toISOString(),
+              coverImage: matchingArticles[0]?.coverImage || '/images/logo-oldmangotree.jpg',
+              isPremium: matchingArticles.some((a) => a.isPremium),
+              featuredArticleSlug: matchingArticles[0]?.slug || '',
+              articleSlugs: matchingArticles.map((a) => a.slug),
+            });
+            setDetectedIssueArticles(matchingArticles);
+          }
+          setIsChecking(false);
+        })
+        .catch(() => {
+          setIsChecking(false);
+        });
+      return;
+    }
+
+    // 2. Check for Series URLs (/series/:slug)
+    const seriesMatch = path.match(/\/series\/([^\/]+)/);
+    if (seriesMatch && seriesMatch[1] && seriesMatch[1] !== '_empty') {
+      const rawSeriesSlug = decodeURIComponent(seriesMatch[1]);
+      const cleanSeriesTarget = rawSeriesSlug.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+      setLoadingLabel('Loading special series...');
+      setDetectedSeriesSlug(cleanSeriesTarget);
+
+      fetchLiveArticlesFromSupabase()
+        .then((liveArticles) => {
+          const liveSeriesList = buildSeriesFromArticles(liveArticles);
+          const matched = liveSeriesList.find((s) => {
+            const cleanId = s.slug.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+            return cleanId === cleanSeriesTarget || s.slug.toLowerCase() === rawSeriesSlug.toLowerCase();
+          });
+
+          if (matched) {
+            setDetectedSeries(matched);
+          }
+          setIsChecking(false);
+        })
+        .catch(() => {
+          setIsChecking(false);
+        });
+      return;
+    }
+
+    // 3. Check for Articles (/articles/:slug or /:category/:slug)
     const articlesMatch = path.match(/\/articles\/([^\/]+)/);
     let targetSlug: string | null = null;
 
@@ -43,6 +145,7 @@ export default function NotFound() {
 
     if (targetSlug) {
       setDetectedSlug(targetSlug);
+      setLoadingLabel('Loading story...');
       fetchLiveArticleBySlug(targetSlug)
         .then((art) => {
           if (art) {
@@ -58,14 +161,32 @@ export default function NotFound() {
     }
   }, []);
 
-  if (isChecking && detectedSlug) {
+  if (isChecking && (detectedSlug || detectedIssue || detectedSeriesSlug)) {
     return (
       <div className="min-h-[50vh] flex flex-col items-center justify-center py-20 text-center space-y-4">
         <Loader2 className="w-8 h-8 animate-spin text-[#E27A2B]" />
         <p className="font-serif text-lg text-neutral-700 dark:text-neutral-300">
-          Loading story...
+          {loadingLabel}
         </p>
       </div>
+    );
+  }
+
+  if (detectedIssue) {
+    return (
+      <MagazinePacketClient
+        initialIssue={detectedIssue}
+        initialArticles={detectedIssueArticles}
+      />
+    );
+  }
+
+  if (detectedSeriesSlug) {
+    return (
+      <SeriesDetailClient
+        slug={detectedSeriesSlug}
+        initialSeries={detectedSeries}
+      />
     );
   }
 
