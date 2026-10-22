@@ -10,6 +10,7 @@ import {
   fetchLivePodcastsFromSupabase,
   subscribeToContentUpdates,
   getCachedLivePodcasts,
+  filterDeletedArticles,
 } from '@/lib/liveArticles';
 import { AudioIndicator } from '@/components/AudioIndicator';
 
@@ -19,18 +20,17 @@ interface PodcastListProps {
 
 export function PodcastList({ podcasts: initialPodcasts = [] }: PodcastListProps) {
   const { currentTrack, isPlaying, playTrack, togglePlayPause } = useAudio();
-  const [podcasts, setPodcasts] = useState<Podcast[]>(() => {
-    const cached = getCachedLivePodcasts();
-    return cached !== null ? cached : initialPodcasts;
-  });
-  const [isLoadingLive, setIsLoadingLive] = useState<boolean>(() => {
-    const cached = getCachedLivePodcasts();
-    if (cached !== null) return false;
-    return initialPodcasts.length === 0;
-  });
+  const [podcasts, setPodcasts] = useState<Podcast[]>(initialPodcasts);
+  const [isLoadingLive, setIsLoadingLive] = useState<boolean>(() => initialPodcasts.length === 0);
 
   useEffect(() => {
     let isMounted = true;
+
+    // Immediately sanitize initial podcasts if any deletions are registered locally
+    const clean = filterDeletedArticles(initialPodcasts);
+    if (clean.length !== initialPodcasts.length) {
+      setPodcasts(clean);
+    }
 
     const loadLive = async () => {
       try {
@@ -81,6 +81,8 @@ export function PodcastList({ podcasts: initialPodcasts = [] }: PodcastListProps
         return (
           <div
             key={pod.id}
+            data-podcast-slug={pod.slug}
+            data-article-slug={pod.slug}
             onClick={() =>
               isCurrent
                 ? togglePlayPause()

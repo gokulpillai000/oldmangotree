@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { Search, X, Calendar, ArrowRight, BookOpen } from 'lucide-react';
 import { formatDate } from '@/lib/format';
+import { filterDeletedArticles } from '@/lib/articleHelpers';
 
 interface SearchArticle {
   slug: string;
@@ -39,7 +40,7 @@ export function SearchModal({ isOpen, onClose, initialQuery = '' }: SearchModalP
           .then((res) => res.json())
           .then((data) => {
             if (data?.articles) {
-              setArticles(data.articles);
+              setArticles(filterDeletedArticles(data.articles));
             }
           })
           .catch(() => {})

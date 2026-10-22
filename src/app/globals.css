@@ -369,7 +369,7 @@ hr.read-more-break::after {
    Images inside articles must not be clickable, draggable, or hover-reactive
    ======================================================== */
 .prose img,
-article img,
+.article-body img,
 .article-content img,
 .is__text img,
 .tiptap.ProseMirror img {

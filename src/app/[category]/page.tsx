@@ -42,7 +42,16 @@ export function generateMetadata({ params }: CategoryPageProps): Metadata {
   const categories = getAllCategories();
   const resolvedSlug = resolveCategorySlug(params.category);
   const catObj = categories.find((c) => c.slug === resolvedSlug);
-  if (!catObj) return { title: 'Category Not Found' };
+  if (!catObj) {
+    const formattedName = resolvedSlug
+      .replace(/[-_]+/g, ' ')
+      .trim()
+      .replace(/\b\w/g, (char) => char.toUpperCase());
+    return {
+      title: `${formattedName} — oldmangotree`,
+      description: `Articles and stories published in the ${formattedName} section.`,
+    };
+  }
 
   return {
     title: `${catObj.name} — oldmangotree`,
@@ -60,7 +69,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
   }
 
   const categories = getAllCategories();
-  const catObj = categories.find((c) => c.slug === resolvedCategory);
+  let catObj = categories.find((c) => c.slug === resolvedCategory);
 
   if (!catObj) {
     // If this URL matches a published article slug, redirect to its article page
@@ -69,6 +78,27 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
     if (article) {
       redirect(`/articles/${article.slug}`);
     }
+
+    const catArticles = await getArticlesByCategory(resolvedCategory);
+    if (catArticles.length > 0) {
+      const formattedName = resolvedCategory
+        .replace(/[-_]+/g, ' ')
+        .trim()
+        .replace(/\b\w/g, (char) => char.toUpperCase());
+
+      catObj = {
+        name: formattedName,
+        slug: resolvedCategory,
+        description: `Articles and stories published in the ${formattedName} section.`,
+        color: '#E27A2B',
+        subcategories: [],
+      };
+    } else {
+      notFound();
+    }
+  }
+
+  if (!catObj) {
     notFound();
   }
 

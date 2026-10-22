@@ -14,15 +14,24 @@ export async function GET(request: NextRequest) {
 
     if (!slug) {
       const articles = await getAllArticles(canViewDrafts);
-      return NextResponse.json({ articles });
+      return NextResponse.json(
+        { articles },
+        { headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' } }
+      );
     }
 
     const article = await getArticleBySlug(slug, canViewDrafts);
     if (!article) {
-      return NextResponse.json({ error: `Article "${slug}" not found` }, { status: 404 });
+      return NextResponse.json(
+        { error: `Article "${slug}" not found` },
+        { status: 404, headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' } }
+      );
     }
 
-    return NextResponse.json({ article });
+    return NextResponse.json(
+      { article },
+      { headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' } }
+    );
   } catch (error: any) {
     console.error('Error in /api/articles GET:', error);
     return NextResponse.json(

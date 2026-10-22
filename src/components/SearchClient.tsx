@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { performSearch, SearchableArticle, SearchResult } from '@/lib/search';
 import { formatDate } from '@/lib/format';
 import { Search, Calendar } from 'lucide-react';
+import { filterDeletedArticles } from '@/lib/articleHelpers';
 
 interface SearchClientProps {
   initialArticles: SearchableArticle[];
@@ -15,10 +16,11 @@ export function SearchClient({ initialArticles }: SearchClientProps) {
   const [results, setResults] = useState<SearchResult[]>([]);
 
   useEffect(() => {
+    const cleanArticles = filterDeletedArticles(initialArticles);
     if (query.trim() === '') {
       setResults([]);
     } else {
-      const res = performSearch(initialArticles, query);
+      const res = performSearch(cleanArticles, query);
       setResults(res);
     }
   }, [query, initialArticles]);
@@ -79,7 +81,7 @@ export function SearchClient({ initialArticles }: SearchClientProps) {
               </span>
             </div>
 
-            <Link href={`/${res.category.toLowerCase()}/${res.slug}`}>
+            <Link href={`/articles/${res.slug}`}>
               <span className="absolute inset-0 z-10" aria-hidden="true" />
               <h2 className="font-serif text-lg sm:text-2xl font-bold text-neutral-900 dark:text-neutral-50 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors leading-snug break-words">
                 {res.title}

@@ -47,7 +47,8 @@ import {
   SupabaseArticleRecord,
 } from '@/lib/supabase';
 import { compressAndUploadImage, uploadAudioFile } from '@/lib/imageUpload';
-import { notifyContentUpdated } from '@/lib/liveArticles';
+import { notifyContentUpdated, recordDeletedSlug, removeDeletedSlug } from '@/lib/liveArticles';
+import { getAuthHeaders } from '@/lib/clientAuth';
 import { mapArticleToSupabaseRecord as mapArticleRecord } from '@/lib/articleHelpers';
 
 const STANDARD_CATEGORIES = [
@@ -912,6 +913,16 @@ export function ArticleStudio({
     await handleSaveToDatabase('scheduled', targetDate.toISOString());
   };
 
+  const triggerBackgroundRevalidation = () => {
+    try {
+      const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
+      fetch(`${basePath}/api/revalidate?path=/`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+      }).catch(() => {});
+    } catch {}
+  };
+
   const handlePublishNow = async (targetSlug: string) => {
     const article = savedArticles.find((a) => a.slug === targetSlug);
     if (!article) return;
@@ -939,7 +950,9 @@ export function ArticleStudio({
         setLoadedArticleStatus('published');
         setLoadedScheduledAt(null);
       }
+      removeDeletedSlug(article.slug);
       notifyContentUpdated();
+      triggerBackgroundRevalidation();
       setStatusMessage({
         text: `"${article.title}" has been published live immediately!`,
         type: 'success',
@@ -967,6 +980,7 @@ export function ArticleStudio({
 
     const ok = await deleteSupabaseArticle(delSlug);
     if (ok) {
+      recordDeletedSlug(delSlug);
       setSavedArticles((prev) => prev.filter((a) => a.slug !== delSlug));
       if (editingArticleSlug === delSlug) {
         setEditingArticleSlug(null);
@@ -974,6 +988,7 @@ export function ArticleStudio({
         setLoadedScheduledAt(null);
       }
       notifyContentUpdated();
+      triggerBackgroundRevalidation();
       setStatusMessage({
         text: `Permanently deleted ${itemLabel}.`,
         type: 'success',
@@ -1135,7 +1150,9 @@ export function ArticleStudio({
         });
 
         if (status === 'published') {
+          removeDeletedSlug(finalSlug);
           notifyContentUpdated();
+          triggerBackgroundRevalidation();
           setPublishedUrl(`/articles/${finalSlug}`);
           setStatusMessage({
             text: isPodcastMode

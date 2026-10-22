@@ -385,3 +385,115 @@ export function buildSeriesFromArticles(articles: Article[]): Series[] {
     return new Date(latestB).getTime() - new Date(latestA).getTime();
   });
 }
+
+// -------------------------------------------------------------
+// DELETED SLUGS MANAGEMENT & FLICKER PREVENTION
+// -------------------------------------------------------------
+
+const DELETED_SLUGS_STORAGE_KEY = 'omt_deleted_slugs_v1';
+const MAX_DELETED_SLUG_AGE_MS = 14 * 24 * 60 * 60 * 1000; // 14 days retention
+
+interface DeletedSlugRecord {
+  slug: string;
+  deletedAt: number;
+}
+
+/**
+ * Returns a Set of lowercase slugs that have been deleted in this browser.
+ */
+export function getDeletedSlugs(): Set<string> {
+  if (typeof window === 'undefined') return new Set();
+  try {
+    const raw = localStorage.getItem(DELETED_SLUGS_STORAGE_KEY);
+    if (!raw) return new Set();
+    const parsed: (string | DeletedSlugRecord)[] = JSON.parse(raw);
+    const set = new Set<string>();
+    const now = Date.now();
+    const valid: DeletedSlugRecord[] = [];
+
+    for (const item of parsed) {
+      if (typeof item === 'string') {
+        const clean = item.trim().toLowerCase();
+        if (clean) {
+          set.add(clean);
+          valid.push({ slug: clean, deletedAt: now });
+        }
+      } else if (item && item.slug) {
+        const clean = item.slug.trim().toLowerCase();
+        if (clean && (!item.deletedAt || now - item.deletedAt < MAX_DELETED_SLUG_AGE_MS)) {
+          set.add(clean);
+          valid.push({ slug: clean, deletedAt: item.deletedAt || now });
+        }
+      }
+    }
+
+    if (valid.length !== parsed.length) {
+      localStorage.setItem(DELETED_SLUGS_STORAGE_KEY, JSON.stringify(valid));
+    }
+    return set;
+  } catch {
+    return new Set();
+  }
+}
+
+/**
+ * Records a slug as deleted and immediately injects a CSS rule to hide its cards.
+ */
+export function recordDeletedSlug(slug: string): void {
+  if (typeof window === 'undefined' || !slug) return;
+  try {
+    const cleanSlug = slug.trim().toLowerCase();
+    if (!cleanSlug) return;
+
+    const raw = localStorage.getItem(DELETED_SLUGS_STORAGE_KEY);
+    const parsed: DeletedSlugRecord[] = raw ? JSON.parse(raw) : [];
+    const filtered = parsed.filter(
+      (item) => (typeof item === 'string' ? item : item.slug).toLowerCase() !== cleanSlug
+    );
+    filtered.push({ slug: cleanSlug, deletedAt: Date.now() });
+    localStorage.setItem(DELETED_SLUGS_STORAGE_KEY, JSON.stringify(filtered));
+
+    // Dynamically inject/extend CSS hiding rule immediately for instant zero-frame hiding
+    const styleId = 'omt-deleted-content-guard';
+    let style = document.getElementById(styleId) as HTMLStyleElement | null;
+    if (!style) {
+      style = document.createElement('style');
+      style.id = styleId;
+      document.head.appendChild(style);
+    }
+    const rule = `[data-article-slug="${cleanSlug}"], [data-podcast-slug="${cleanSlug}"] { display: none !important; }`;
+    if (!style.textContent?.includes(cleanSlug)) {
+      style.textContent = (style.textContent || '') + '\n' + rule;
+    }
+  } catch {}
+}
+
+/**
+ * Removes a slug from the deleted list (e.g. when republished or created anew).
+ */
+export function removeDeletedSlug(slug: string): void {
+  if (typeof window === 'undefined' || !slug) return;
+  try {
+    const cleanSlug = slug.trim().toLowerCase();
+    if (!cleanSlug) return;
+    const raw = localStorage.getItem(DELETED_SLUGS_STORAGE_KEY);
+    if (!raw) return;
+    const parsed: DeletedSlugRecord[] = JSON.parse(raw);
+    const filtered = parsed.filter(
+      (item) => (typeof item === 'string' ? item : item.slug).toLowerCase() !== cleanSlug
+    );
+    localStorage.setItem(DELETED_SLUGS_STORAGE_KEY, JSON.stringify(filtered));
+  } catch {}
+}
+
+/**
+ * Filters out any items whose slug has been recorded as deleted.
+ */
+export function filterDeletedArticles<T extends { slug: string }>(items: T[]): T[] {
+  if (!items || items.length === 0) return items || [];
+  if (typeof window === 'undefined') return items;
+  const deleted = getDeletedSlugs();
+  if (deleted.size === 0) return items;
+  return items.filter((item) => item && item.slug && !deleted.has(item.slug.trim().toLowerCase()));
+}
+

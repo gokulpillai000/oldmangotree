@@ -6,14 +6,20 @@ import Image from 'next/image';
 import type { IssuePacket } from '@/lib/content';
 import { formatDate } from '@/lib/format';
 import { BookOpen, ArrowRight } from 'lucide-react';
-import { fetchLiveIssuesFromSupabase, subscribeToContentUpdates } from '@/lib/liveArticles';
+import { fetchLiveIssuesFromSupabase, subscribeToContentUpdates, getDeletedSlugs } from '@/lib/liveArticles';
 
 interface MagazineFeedClientProps {
   initialIssues: IssuePacket[];
 }
 
 export function MagazineFeedClient({ initialIssues }: MagazineFeedClientProps) {
-  const [issues, setIssues] = useState<IssuePacket[]>(initialIssues);
+  const [issues, setIssues] = useState<IssuePacket[]>(() => {
+    const deleted = getDeletedSlugs();
+    if (deleted.size === 0) return initialIssues;
+    return initialIssues.filter(
+      (issue) => !issue.featuredArticleSlug || !deleted.has(issue.featuredArticleSlug.toLowerCase())
+    );
+  });
 
   useEffect(() => {
     let isMounted = true;
@@ -21,7 +27,7 @@ export function MagazineFeedClient({ initialIssues }: MagazineFeedClientProps) {
     const loadLive = async () => {
       try {
         const live = await fetchLiveIssuesFromSupabase();
-        if (isMounted && live.length > 0) {
+        if (isMounted) {
           setIssues(live);
         }
       } catch (err) {

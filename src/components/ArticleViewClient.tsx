@@ -11,7 +11,12 @@ import { ReadingProgressBar } from '@/components/ReadingProgressBar';
 import { SocialShareBar } from '@/components/SocialShareBar';
 import { ArticlePublisherControls } from '@/components/ArticlePublisherControls';
 import { Calendar, ArrowLeft, Tag, BookOpen, Loader2 } from 'lucide-react';
-import { fetchLiveArticleBySlug, fetchLiveArticlesFromSupabase } from '@/lib/liveArticles';
+import {
+  fetchLiveArticleBySlug,
+  fetchLiveArticlesFromSupabase,
+  getDeletedSlugs,
+  filterDeletedArticles,
+} from '@/lib/liveArticles';
 import { AudioIndicator, isAudioStory } from '@/components/AudioIndicator';
 
 interface ArticleViewClientProps {
@@ -32,6 +37,12 @@ export function ArticleViewClient({
   useEffect(() => {
     let isMounted = true;
 
+    if (getDeletedSlugs().has((slug || '').toLowerCase())) {
+      setArticle(null);
+      setIsLoading(false);
+      return;
+    }
+
     if (!article && slug) {
       setIsLoading(true);
       fetchLiveArticleBySlug(slug)
@@ -50,7 +61,9 @@ export function ArticleViewClient({
       fetchLiveArticlesFromSupabase()
         .then((all) => {
           if (isMounted) {
-            const others = all.filter((a) => a.slug !== slug).slice(0, 3);
+            const others = filterDeletedArticles(all)
+              .filter((a) => a.slug !== slug)
+              .slice(0, 3);
             setRelatedArticles(others);
           }
         })
@@ -98,6 +111,9 @@ export function ArticleViewClient({
   }
 
   const resolvedCategory = (article.category || 'politics').toLowerCase().trim();
+  const packetSlug = article.webzineIssue
+    ? article.webzineIssue.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'packet-1'
+    : null;
 
   return (
     <>
@@ -117,13 +133,13 @@ export function ArticleViewClient({
             <ArrowLeft className="w-4 h-4" /> Back to Webzine
           </Link>
 
-          {article.webzineIssue && (
+          {packetSlug && (
             <Link
-              href={`/magazine/${article.webzineIssue}`}
+              href={`/magazine/${packetSlug}`}
               className="inline-flex items-center gap-1 text-xs font-bold text-brand-600 dark:text-brand-400 hover:underline"
             >
               <BookOpen className="w-3.5 h-3.5" />
-              <span>{article.webzineIssue.toUpperCase()} Issue</span>
+              <span>{article.webzineIssue!.toUpperCase()} Issue</span>
             </Link>
           )}
         </div>
@@ -137,12 +153,12 @@ export function ArticleViewClient({
             >
               {article.category}
             </Link>
-            {article.webzineIssue && (
+            {packetSlug && (
               <Link
-                href={`/magazine/${article.webzineIssue}`}
+                href={`/magazine/${packetSlug}`}
                 className="text-xs sm:text-sm font-semibold uppercase tracking-wider text-neutral-600 dark:text-neutral-400 underline decoration-neutral-300 dark:decoration-neutral-700 underline-offset-4 decoration-1 hover:decoration-brand-600 transition-all"
               >
-                {article.webzineIssue.toUpperCase()} Issue
+                {article.webzineIssue!.toUpperCase()} Issue
               </Link>
             )}
             {article.isPremium && (
@@ -245,9 +261,9 @@ export function ArticleViewClient({
               <h2 className="font-serif text-xl sm:text-2xl font-bold text-neutral-900 dark:text-neutral-50 flex items-center gap-2">
                 More Stories
               </h2>
-              {article.webzineIssue && (
+              {packetSlug && (
                 <Link
-                  href={`/magazine/${article.webzineIssue}`}
+                  href={`/magazine/${packetSlug}`}
                   className="text-xs font-bold text-brand-600 dark:text-brand-400 hover:underline"
                 >
                   View Full Webzine →
@@ -262,18 +278,24 @@ export function ArticleViewClient({
                   className="group relative flex flex-col justify-between pb-6 border-b border-neutral-200 dark:border-neutral-800 transition-colors cursor-pointer"
                 >
                   <div>
-                    <div style={{ position: 'relative' }} className="relative aspect-[16/10] sm:aspect-[16/9] w-full overflow-hidden bg-neutral-100 dark:bg-neutral-800">
-                      <Image
-                        src={rel.coverImage || '/images/logo-oldmangotree.jpg'}
-                        alt={rel.title}
-                        fill
-                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                        className="object-cover"
-                      />
-                      <AudioIndicator hasAudio={isAudioStory(rel)} />
-                    </div>
+                    {rel.coverImage && rel.coverImage.trim() !== '' ? (
+                      <div style={{ position: 'relative' }} className="relative aspect-[16/10] sm:aspect-[16/9] w-full overflow-hidden bg-neutral-100 dark:bg-neutral-800">
+                        <Image
+                          src={rel.coverImage}
+                          alt={rel.title}
+                          fill
+                          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                          className="object-cover"
+                        />
+                        <AudioIndicator hasAudio={isAudioStory(rel)} />
+                      </div>
+                    ) : isAudioStory(rel) ? (
+                      <div className="flex items-center gap-2 mb-2">
+                        <AudioIndicator hasAudio={true} />
+                      </div>
+                    ) : null}
 
-                    <div className="pt-3 space-y-1.5">
+                    <div className={`${rel.coverImage && rel.coverImage.trim() !== '' ? 'pt-3' : 'pt-1'} space-y-1.5`}>
                       <Link
                         href={`/${(rel.category || 'politics').toLowerCase()}`}
                         className="relative z-20 inline-block text-xs sm:text-sm font-bold uppercase tracking-wider text-[#E27A2B] underline decoration-[#E27A2B] underline-offset-2 decoration-1 hover:decoration-2"

@@ -14,6 +14,7 @@ import {
 import {
   fetchSupabaseArticles,
   fetchSupabaseArticleBySlug,
+  fetchSupabasePackets,
   SupabaseArticleRecord,
 } from './supabase';
 import {
@@ -489,6 +490,28 @@ export async function getAllIssues(): Promise<IssuePacket[]> {
     }
   }
 
+  try {
+    const rawPackets = await fetchSupabasePackets();
+    for (const rp of rawPackets) {
+      const slug = rp.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+      if (slug && !liveIssues.some((li) => li.id === slug)) {
+        const numMatch = rp.match(/\d+/);
+        const issueNumber = numMatch ? parseInt(numMatch[0], 10) : liveIssues.length + 1;
+        liveIssues.push({
+          id: slug,
+          title: rp.toLowerCase().startsWith('packet') ? rp : `Packet ${rp}`,
+          issueNumber,
+          theme: `${rp}: Webzine Edition`,
+          publishedAt: new Date().toISOString(),
+          coverImage: '/images/logo-oldmangotree.jpg',
+          isPremium: false,
+          featuredArticleSlug: '',
+          articleSlugs: [],
+        });
+      }
+    }
+  } catch {}
+
   if (liveIssues.length > 0) {
     return liveIssues.sort((a, b) => b.issueNumber - a.issueNumber);
   }
@@ -499,13 +522,59 @@ export async function getAllIssues(): Promise<IssuePacket[]> {
 
 export async function getIssueById(id: string): Promise<IssuePacket | null> {
   const issues = await getAllIssues();
-  const cleanTarget = id.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-  return (
-    issues.find((i) => {
-      const cleanId = i.id.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-      return cleanId === cleanTarget || i.id.toLowerCase() === id.toLowerCase();
-    }) || null
-  );
+  const decoded = (() => {
+    try {
+      return decodeURIComponent(id);
+    } catch {
+      return id;
+    }
+  })();
+  const cleanTarget = decoded.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  const found = issues.find((i) => {
+    const cleanId = i.id.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    return (
+      cleanId === cleanTarget ||
+      i.id.toLowerCase() === decoded.toLowerCase() ||
+      i.title.toLowerCase() === decoded.toLowerCase()
+    );
+  });
+
+  if (found) return found;
+
+  // Future packet resilience: if a packet was created dynamically or referenced before static export,
+  // query live articles to check if any match this packet or synthesize a clean packet shell
+  if (cleanTarget) {
+    const numMatch = cleanTarget.match(/\d+/);
+    const issueNumber = numMatch ? parseInt(numMatch[0], 10) : 1;
+    const formattedTitle = decoded
+      .replace(/[-_]+/g, ' ')
+      .trim()
+      .replace(/\b\w/g, (char) => char.toUpperCase());
+
+    const title = formattedTitle.toLowerCase().startsWith('packet')
+      ? formattedTitle
+      : `Packet ${formattedTitle}`;
+
+    const allArticles = await getAllArticles(false);
+    const matchingArticles = allArticles.filter((art) => {
+      const artIssue = (art.webzineIssue || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+      return artIssue === cleanTarget || (art.webzineIssue || '').toLowerCase() === decoded.toLowerCase();
+    });
+
+    return {
+      id: cleanTarget,
+      title: title || `Packet ${cleanTarget}`,
+      issueNumber,
+      theme: matchingArticles[0]?.title || `${title}: Webzine Edition`,
+      publishedAt: matchingArticles[0]?.publishedAt || new Date().toISOString(),
+      coverImage: matchingArticles[0]?.coverImage || '/images/logo-oldmangotree.jpg',
+      isPremium: matchingArticles.some((a) => a.isPremium),
+      featuredArticleSlug: matchingArticles[0]?.slug || '',
+      articleSlugs: matchingArticles.map((a) => a.slug),
+    };
+  }
+
+  return null;
 }
 
 // -------------------------------------------------------------

@@ -10,6 +10,7 @@ import {
   fetchLiveArticlesFromSupabase,
   subscribeToContentUpdates,
   getCachedLiveArticles,
+  filterDeletedArticles,
 } from '@/lib/liveArticles';
 import { AudioIndicator, isAudioStory } from '@/components/AudioIndicator';
 
@@ -18,18 +19,16 @@ interface LatestFeedClientProps {
 }
 
 export function LatestFeedClient({ articles: initialArticles = [] }: LatestFeedClientProps) {
-  const [articles, setArticles] = useState<Article[]>(() => {
-    const cached = getCachedLiveArticles();
-    return cached !== null ? cached : initialArticles;
-  });
-  const [isLoadingLive, setIsLoadingLive] = useState<boolean>(() => {
-    const cached = getCachedLiveArticles();
-    if (cached !== null) return false;
-    return initialArticles.length === 0;
-  });
+  const [articles, setArticles] = useState<Article[]>(initialArticles);
+  const [isLoadingLive, setIsLoadingLive] = useState<boolean>(() => initialArticles.length === 0);
 
   useEffect(() => {
     let isMounted = true;
+
+    const clean = filterDeletedArticles(initialArticles);
+    if (clean.length !== initialArticles.length) {
+      setArticles(clean);
+    }
 
     const loadLive = async () => {
       try {
@@ -79,21 +78,28 @@ export function LatestFeedClient({ articles: initialArticles = [] }: LatestFeedC
       {writtenArticles.map((article) => (
         <article
           key={article.slug}
+          data-article-slug={article.slug}
           className="relative group flex flex-col justify-between pb-6 border-b border-neutral-200 dark:border-neutral-800 cursor-pointer transition-colors"
         >
           <div>
-            <div style={{ position: 'relative' }} className="relative aspect-[16/10] sm:aspect-[16/9] w-full overflow-hidden bg-neutral-100 dark:bg-neutral-800">
-              <Image
-                src={article.coverImage || '/images/logo-oldmangotree.jpg'}
-                alt={article.title}
-                fill
-                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                className="object-cover"
-              />
-              <AudioIndicator hasAudio={isAudioStory(article)} />
-            </div>
+            {article.coverImage && article.coverImage.trim() !== '' ? (
+              <div style={{ position: 'relative' }} className="relative aspect-[16/10] sm:aspect-[16/9] w-full overflow-hidden bg-neutral-100 dark:bg-neutral-800">
+                <Image
+                  src={article.coverImage}
+                  alt={article.title}
+                  fill
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                  className="object-cover"
+                />
+                <AudioIndicator hasAudio={isAudioStory(article)} />
+              </div>
+            ) : isAudioStory(article) ? (
+              <div className="flex items-center gap-2 mb-2">
+                <AudioIndicator hasAudio={true} />
+              </div>
+            ) : null}
 
-            <div className="pt-3 space-y-1.5">
+            <div className={`${article.coverImage && article.coverImage.trim() !== '' ? 'pt-3' : 'pt-1'} space-y-1.5`}>
               <Link
                 href={`/${article.category.toLowerCase()}`}
                 className="relative z-20 inline-block text-xs sm:text-sm font-bold uppercase tracking-wider text-brand-600 dark:text-brand-400 underline decoration-brand-600 dark:decoration-brand-400 underline-offset-2 decoration-1 hover:decoration-2"

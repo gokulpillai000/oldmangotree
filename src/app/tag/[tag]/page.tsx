@@ -65,17 +65,19 @@ export default async function TagPage({ params }: TagPageProps) {
               className="relative group flex flex-col justify-between pb-6 border-b border-neutral-200 dark:border-neutral-800 cursor-pointer transition-colors"
             >
               <div>
-                <div className="relative aspect-[16/10] sm:aspect-[16/9] w-full overflow-hidden bg-neutral-100 dark:bg-neutral-800">
-                  <Image
-                    src={article.coverImage && article.coverImage.trim() !== '' ? article.coverImage : '/images/logo-oldmangotree.jpg'}
-                    alt={article.title}
-                    fill
-                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                    className="object-cover"
-                  />
-                </div>
+                {article.coverImage && article.coverImage.trim() !== '' ? (
+                  <div className="relative aspect-[16/10] sm:aspect-[16/9] w-full overflow-hidden bg-neutral-100 dark:bg-neutral-800">
+                    <Image
+                      src={article.coverImage}
+                      alt={article.title}
+                      fill
+                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                      className="object-cover"
+                    />
+                  </div>
+                ) : null}
 
-                <div className="pt-3 space-y-2">
+                <div className={`${article.coverImage && article.coverImage.trim() !== '' ? 'pt-3' : 'pt-1'} space-y-2`}>
                   <Link href={`/articles/${article.slug}`}>
                     <span className="absolute inset-0 z-10" aria-hidden="true" />
                     <h2 className="font-serif text-xl sm:text-2xl font-bold text-neutral-900 dark:text-neutral-50 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors line-clamp-2 leading-snug break-words">

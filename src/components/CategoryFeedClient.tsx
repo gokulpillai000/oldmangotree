@@ -11,6 +11,7 @@ import {
   subscribeToContentUpdates,
   getCachedLiveArticles,
   filterCategoryArticles,
+  filterDeletedArticles,
 } from '@/lib/liveArticles';
 import { AudioIndicator, isAudioStory } from '@/components/AudioIndicator';
 
@@ -27,23 +28,19 @@ export function CategoryFeedClient({
 }: CategoryFeedClientProps) {
   const [activeSubcategory, setActiveSubcategory] = useState<string>('all');
 
-  // Synchronously initialize with live cached articles if available in browser
-  const [currentArticles, setCurrentArticles] = useState<Article[]>(() => {
-    const cached = getCachedLiveArticles();
-    if (cached !== null) {
-      return filterCategoryArticles(cached, category);
-    }
-    return initialArticles;
-  });
+  const [currentArticles, setCurrentArticles] = useState<Article[]>(() =>
+    filterCategoryArticles(initialArticles, category)
+  );
 
-  const [isLoadingLive, setIsLoadingLive] = useState<boolean>(() => {
-    const cached = getCachedLiveArticles();
-    if (cached !== null) return false;
-    return initialArticles.length === 0;
-  });
+  const [isLoadingLive, setIsLoadingLive] = useState<boolean>(() => initialArticles.length === 0);
 
   useEffect(() => {
     let isMounted = true;
+
+    const clean = filterDeletedArticles(initialArticles);
+    if (clean.length !== initialArticles.length) {
+      setCurrentArticles(filterCategoryArticles(clean, category));
+    }
 
     const loadLive = async () => {
       try {
@@ -168,21 +165,28 @@ export function CategoryFeedClient({
           {filteredArticles.map((article) => (
             <article
               key={article.slug}
+              data-article-slug={article.slug}
               className="relative group flex flex-col justify-between pb-6 border-b border-neutral-200 dark:border-neutral-800 cursor-pointer transition-colors"
             >
               <div>
-                <div style={{ position: 'relative' }} className="relative aspect-[16/10] sm:aspect-[16/9] w-full overflow-hidden bg-neutral-900">
-                  <Image
-                    src={article.coverImage || '/images/logo-oldmangotree.jpg'}
-                    alt={article.title}
-                    fill
-                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                    className="object-cover"
-                  />
-                  <AudioIndicator hasAudio={isAudioStory(article)} />
-                </div>
+                {article.coverImage && article.coverImage.trim() !== '' ? (
+                  <div style={{ position: 'relative' }} className="relative aspect-[16/10] sm:aspect-[16/9] w-full overflow-hidden bg-neutral-900">
+                    <Image
+                      src={article.coverImage}
+                      alt={article.title}
+                      fill
+                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                      className="object-cover"
+                    />
+                    <AudioIndicator hasAudio={isAudioStory(article)} />
+                  </div>
+                ) : isAudioStory(article) ? (
+                  <div className="flex items-center gap-2 mb-2">
+                    <AudioIndicator hasAudio={true} />
+                  </div>
+                ) : null}
 
-                <div className="pt-3 space-y-1.5">
+                <div className={`${article.coverImage && article.coverImage.trim() !== '' ? 'pt-3' : 'pt-1'} space-y-1.5`}>
                   <div className="flex items-center gap-2 relative z-20">
                     <span className="text-xs sm:text-sm uppercase font-bold tracking-wider text-[#E27A2B] underline decoration-[#E27A2B] underline-offset-2 decoration-1">
                       {article.category}
