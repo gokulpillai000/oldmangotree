@@ -15,8 +15,14 @@ export async function GET() {
       authorNames: a.authorNames || '',
     }));
 
-    return NextResponse.json({ articles: searchable });
+    return NextResponse.json(
+      { articles: searchable },
+      { headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' } }
+    );
   } catch (error) {
-    return NextResponse.json({ articles: [], error: 'Failed to load articles' }, { status: 500 });
+    return NextResponse.json(
+      { articles: [], error: 'Failed to load articles' },
+      { status: 500, headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' } }
+    );
   }
 }

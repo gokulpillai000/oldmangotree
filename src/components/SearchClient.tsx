@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { performSearch, SearchableArticle, SearchResult } from '@/lib/search';
 import { formatDate } from '@/lib/format';
 import { Search, Calendar } from 'lucide-react';
+import { filterDeletedArticles } from '@/lib/articleHelpers';
 
 interface SearchClientProps {
   initialArticles: SearchableArticle[];
@@ -15,10 +16,11 @@ export function SearchClient({ initialArticles }: SearchClientProps) {
   const [results, setResults] = useState<SearchResult[]>([]);
 
   useEffect(() => {
+    const cleanArticles = filterDeletedArticles(initialArticles);
     if (query.trim() === '') {
       setResults([]);
     } else {
-      const res = performSearch(initialArticles, query);
+      const res = performSearch(cleanArticles, query);
       setResults(res);
     }
   }, [query, initialArticles]);

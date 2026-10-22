@@ -10,6 +10,7 @@ import {
   fetchLiveArticlesFromSupabase,
   subscribeToContentUpdates,
   getCachedLiveArticles,
+  filterDeletedArticles,
 } from '@/lib/liveArticles';
 import { AudioIndicator, isAudioStory } from '@/components/AudioIndicator';
 
@@ -33,18 +34,17 @@ const CATEGORY_TABS = [
 
 export function WidgetGrid({ articles: initialArticles = [] }: WidgetGridProps) {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [articles, setArticles] = useState<Article[]>(() => {
-    const cached = getCachedLiveArticles();
-    return cached !== null ? cached : initialArticles;
-  });
-  const [isLoadingLive, setIsLoadingLive] = useState<boolean>(() => {
-    const cached = getCachedLiveArticles();
-    if (cached !== null) return false;
-    return initialArticles.length === 0;
-  });
+  const [articles, setArticles] = useState<Article[]>(initialArticles);
+  const [isLoadingLive, setIsLoadingLive] = useState<boolean>(() => initialArticles.length === 0);
 
   useEffect(() => {
     let isMounted = true;
+
+    // Immediately sanitize initial articles if any deletions are registered locally
+    const clean = filterDeletedArticles(initialArticles);
+    if (clean.length !== initialArticles.length) {
+      setArticles(clean);
+    }
 
     const loadLive = async () => {
       try {
@@ -128,7 +128,10 @@ export function WidgetGrid({ articles: initialArticles = [] }: WidgetGridProps) 
       {/* 1. Lead & Top Highlights Section (Latest 4 Items) */}
       <section className={`grid grid-cols-1 ${highlightArticles.length > 0 ? 'lg:grid-cols-12' : ''} gap-6 sm:gap-8 items-start`}>
         {/* Left Column: Top Latest Lead Story */}
-        <div className={`relative ${highlightArticles.length > 0 ? 'lg:col-span-7 lg:border-r lg:pr-8' : 'w-full'} pb-6 border-b lg:border-b-0 border-neutral-200 dark:border-neutral-800 group flex flex-col justify-between cursor-pointer transition-colors`}>
+        <div
+          data-article-slug={leadArticle.slug}
+          className={`relative ${highlightArticles.length > 0 ? 'lg:col-span-7 lg:border-r lg:pr-8' : 'w-full'} pb-6 border-b lg:border-b-0 border-neutral-200 dark:border-neutral-800 group flex flex-col justify-between cursor-pointer transition-colors`}
+        >
           <div>
             {leadArticle.coverImage && leadArticle.coverImage.trim() !== '' ? (
               <div style={{ position: 'relative' }} className="relative h-64 sm:h-80 md:h-96 w-full overflow-hidden bg-neutral-100 dark:bg-neutral-800">
@@ -216,15 +219,16 @@ export function WidgetGrid({ articles: initialArticles = [] }: WidgetGridProps) 
               {highlightArticles.map((art) => (
               <article
                 key={art.slug}
-                className="relative flex items-center gap-3 sm:gap-4 pb-4 border-b border-neutral-200 dark:border-neutral-800 last:border-b-0 group cursor-pointer transition-colors"
+                data-article-slug={art.slug}
+                className="relative flex items-start gap-3.5 sm:gap-4 pb-4 border-b border-neutral-200 dark:border-neutral-800 last:border-b-0 group cursor-pointer transition-colors"
               >
                 {art.coverImage && art.coverImage.trim() !== '' ? (
-                  <div style={{ position: 'relative' }} className="relative w-24 h-24 sm:w-28 sm:h-28 overflow-hidden shrink-0 bg-neutral-100 dark:bg-neutral-800">
+                  <div style={{ position: 'relative' }} className="relative w-28 sm:w-32 aspect-[16/10] overflow-hidden shrink-0 bg-neutral-100 dark:bg-neutral-800">
                     <Image
                       src={art.coverImage}
                       alt={art.title}
                       fill
-                      sizes="112px"
+                      sizes="(max-width: 640px) 112px, 128px"
                       className="object-cover"
                     />
                     <AudioIndicator hasAudio={isAudioStory(art)} size="sm" />
@@ -303,6 +307,7 @@ export function WidgetGrid({ articles: initialArticles = [] }: WidgetGridProps) 
             {displayArticles.map((art) => (
               <article
                 key={art.slug}
+                data-article-slug={art.slug}
                 className="relative group flex flex-col justify-between pb-6 border-b border-neutral-200 dark:border-neutral-800 cursor-pointer transition-colors"
               >
                 <div>

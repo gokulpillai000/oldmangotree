@@ -30,8 +30,45 @@ export default function RootLayout({
   const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
 
   return (
-    <html lang="en" className="scroll-smooth">
-      <head>
+    <html lang="en" className="scroll-smooth" suppressHydrationWarning>
+      <head suppressHydrationWarning>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var raw = localStorage.getItem('omt_deleted_slugs_v1');
+                  if (raw) {
+                    var list = JSON.parse(raw);
+                    if (Array.isArray(list) && list.length > 0) {
+                      var now = Date.now();
+                      var maxAge = 14 * 24 * 60 * 60 * 1000;
+                      var valid = list.filter(function(item) {
+                        if (!item) return false;
+                        if (typeof item === 'string') return item.trim().length > 0;
+                        if (item.slug) {
+                          return !item.deletedAt || (now - item.deletedAt < maxAge);
+                        }
+                        return false;
+                      }).map(function(item) {
+                        return (typeof item === 'string' ? item : item.slug).trim().toLowerCase();
+                      });
+                      if (valid.length > 0) {
+                        var style = document.createElement('style');
+                        style.id = 'omt-deleted-content-guard';
+                        var selectors = valid.map(function(slug) {
+                          return '[data-article-slug="' + slug + '"], [data-podcast-slug="' + slug + '"]';
+                        }).join(', ');
+                        style.textContent = selectors + ' { display: none !important; }';
+                        document.head.appendChild(style);
+                      }
+                    }
+                  }
+                } catch(e) {}
+              })();
+            `,
+          }}
+        />
         <link rel="preconnect" href="https://images.unsplash.com" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://images.unsplash.com" />
         <link rel="preconnect" href="https://blogger.googleusercontent.com" crossOrigin="anonymous" />

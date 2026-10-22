@@ -6,7 +6,7 @@ import Image from 'next/image';
 import type { Series } from '@/lib/content';
 import { formatDate } from '@/lib/format';
 import { Calendar } from 'lucide-react';
-import { fetchLiveSeriesFromSupabase, subscribeToContentUpdates } from '@/lib/liveArticles';
+import { fetchLiveSeriesFromSupabase, subscribeToContentUpdates, getDeletedSlugs } from '@/lib/liveArticles';
 import { AudioIndicator, isAudioStory } from '@/components/AudioIndicator';
 
 interface SeriesFeedClientProps {
@@ -14,7 +14,13 @@ interface SeriesFeedClientProps {
 }
 
 export function SeriesFeedClient({ initialSeries }: SeriesFeedClientProps) {
-  const [seriesList, setSeriesList] = useState<Series[]>(initialSeries);
+  const [seriesList, setSeriesList] = useState<Series[]>(() => {
+    const deleted = getDeletedSlugs();
+    if (deleted.size === 0) return initialSeries;
+    return initialSeries.filter(
+      (s) => !deleted.has(s.slug.toLowerCase()) && s.episodes.some((ep) => !deleted.has(ep.slug.toLowerCase()))
+    );
+  });
 
   useEffect(() => {
     let isMounted = true;
@@ -22,7 +28,7 @@ export function SeriesFeedClient({ initialSeries }: SeriesFeedClientProps) {
     const loadLive = async () => {
       try {
         const live = await fetchLiveSeriesFromSupabase();
-        if (isMounted && live.length > 0) {
+        if (isMounted) {
           setSeriesList(live);
         }
       } catch (err) {

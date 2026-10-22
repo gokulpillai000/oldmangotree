@@ -13,6 +13,10 @@ import {
   filterCategoryArticles,
   buildIssuesFromArticles,
   buildSeriesFromArticles,
+  filterDeletedArticles,
+  recordDeletedSlug,
+  getDeletedSlugs,
+  removeDeletedSlug,
 } from './articleHelpers';
 
 export {
@@ -22,6 +26,10 @@ export {
   filterCategoryArticles,
   buildIssuesFromArticles,
   buildSeriesFromArticles,
+  filterDeletedArticles,
+  recordDeletedSlug,
+  getDeletedSlugs,
+  removeDeletedSlug,
 };
 
 let memoryArticlesCache: Article[] | null = null;
@@ -30,16 +38,45 @@ let memoryIssuesCache: IssuePacket[] | null = null;
 let memorySeriesCache: Series[] | null = null;
 let lastFetchTime: number = 0;
 const CACHE_TTL_MS = 60000; // 60 seconds fresh cache
+const CACHE_TIMESTAMP_KEY = 'omt_live_cache_ts_v2';
+const CACHE_STORAGE_KEY = 'omt_content_last_updated';
+
+function isClientCacheStale(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    const lastUpdateStr = localStorage.getItem(CACHE_STORAGE_KEY);
+    const cacheTsStr = sessionStorage.getItem(CACHE_TIMESTAMP_KEY);
+    if (!lastUpdateStr) return false;
+    const lastUpdate = parseInt(lastUpdateStr, 10);
+    const cacheTs = cacheTsStr ? parseInt(cacheTsStr, 10) : 0;
+    return lastUpdate > cacheTs;
+  } catch {
+    return false;
+  }
+}
 
 export function getCachedLiveArticles(): Article[] | null {
-  if (memoryArticlesCache) return memoryArticlesCache;
+  if (isClientCacheStale()) {
+    memoryArticlesCache = null;
+    return null;
+  }
+
+  if (memoryArticlesCache) {
+    const filtered = filterDeletedArticles(memoryArticlesCache);
+    if (filtered.length !== memoryArticlesCache.length) {
+      memoryArticlesCache = filtered;
+    }
+    return memoryArticlesCache;
+  }
+
   if (typeof window !== 'undefined') {
     try {
       const stored = sessionStorage.getItem('omt_live_articles_v2');
       if (stored) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed)) {
-          memoryArticlesCache = parsed;
+          const filtered = filterDeletedArticles(parsed);
+          memoryArticlesCache = filtered;
           return memoryArticlesCache;
         }
       }
@@ -49,14 +86,27 @@ export function getCachedLiveArticles(): Article[] | null {
 }
 
 export function getCachedLivePodcasts(): Podcast[] | null {
-  if (memoryPodcastsCache) return memoryPodcastsCache;
+  if (isClientCacheStale()) {
+    memoryPodcastsCache = null;
+    return null;
+  }
+
+  if (memoryPodcastsCache) {
+    const filtered = filterDeletedArticles(memoryPodcastsCache);
+    if (filtered.length !== memoryPodcastsCache.length) {
+      memoryPodcastsCache = filtered;
+    }
+    return memoryPodcastsCache;
+  }
+
   if (typeof window !== 'undefined') {
     try {
       const stored = sessionStorage.getItem('omt_live_podcasts_v2');
       if (stored) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed)) {
-          memoryPodcastsCache = parsed;
+          const filtered = filterDeletedArticles(parsed);
+          memoryPodcastsCache = filtered;
           return memoryPodcastsCache;
         }
       }
@@ -70,34 +120,35 @@ export async function fetchLiveArticlesFromSupabase(
   forceRefresh: boolean = false
 ): Promise<Article[]> {
   const now = Date.now();
-  if (!forceRefresh && memoryArticlesCache && now - lastFetchTime < CACHE_TTL_MS) {
+  if (!forceRefresh && !isClientCacheStale() && memoryArticlesCache && now - lastFetchTime < CACHE_TTL_MS) {
+    const filtered = filterDeletedArticles(memoryArticlesCache);
     return includeScheduled
-      ? memoryArticlesCache
-      : memoryArticlesCache.filter((a) => !a.isScheduled);
+      ? filtered
+      : filtered.filter((a) => !a.isScheduled);
   }
 
   try {
     const raw = await fetchSupabaseArticles();
-    const articles = (raw || [])
+    const rawArticles = (raw || [])
       .map(mapSupabaseRecordToArticle)
       .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+
+    const articles = filterDeletedArticles(rawArticles);
 
     memoryArticlesCache = articles;
     lastFetchTime = now;
     if (typeof window !== 'undefined') {
       try {
         sessionStorage.setItem('omt_live_articles_v2', JSON.stringify(articles));
+        sessionStorage.setItem(CACHE_TIMESTAMP_KEY, now.toString());
       } catch {}
     }
 
     return includeScheduled ? articles : articles.filter((a) => !a.isScheduled);
   } catch (err) {
     console.warn('Error fetching live articles from Supabase:', err);
-    return memoryArticlesCache
-      ? includeScheduled
-        ? memoryArticlesCache
-        : memoryArticlesCache.filter((a) => !a.isScheduled)
-      : [];
+    const fallback = memoryArticlesCache ? filterDeletedArticles(memoryArticlesCache) : [];
+    return includeScheduled ? fallback : fallback.filter((a) => !a.isScheduled);
   }
 }
 
@@ -134,28 +185,31 @@ export async function fetchLiveArticleBySlug(
 
 export async function fetchLivePodcastsFromSupabase(forceRefresh: boolean = false): Promise<Podcast[]> {
   const now = Date.now();
-  if (!forceRefresh && memoryPodcastsCache && now - lastFetchTime < CACHE_TTL_MS) {
-    return memoryPodcastsCache;
+  if (!forceRefresh && !isClientCacheStale() && memoryPodcastsCache && now - lastFetchTime < CACHE_TTL_MS) {
+    return filterDeletedArticles(memoryPodcastsCache);
   }
 
   try {
     const raw = await fetchSupabaseArticles();
-    const podcasts = (raw || [])
+    const rawPodcasts = (raw || [])
       .filter((art) => isAudioArticle(art))
       .map(mapSupabaseRecordToPodcast)
       .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+
+    const podcasts = filterDeletedArticles(rawPodcasts);
 
     memoryPodcastsCache = podcasts;
     if (typeof window !== 'undefined') {
       try {
         sessionStorage.setItem('omt_live_podcasts_v2', JSON.stringify(podcasts));
+        sessionStorage.setItem(CACHE_TIMESTAMP_KEY, now.toString());
       } catch {}
     }
 
     return podcasts;
   } catch (err) {
     console.warn('Error fetching live podcasts from Supabase:', err);
-    return memoryPodcastsCache || [];
+    return memoryPodcastsCache ? filterDeletedArticles(memoryPodcastsCache) : [];
   }
 }
 
@@ -170,7 +224,7 @@ export async function fetchLiveSeriesFromSupabase(): Promise<Series[]> {
 }
 
 const CONTENT_UPDATE_EVENT = 'omt:content-updated';
-const CACHE_STORAGE_KEY = 'omt_content_last_updated';
+const CONTENT_BROADCAST_CHANNEL = 'omt_content_broadcast_v1';
 
 export function notifyContentUpdated(): void {
   if (typeof window === 'undefined') return;
@@ -182,9 +236,19 @@ export function notifyContentUpdated(): void {
   try {
     sessionStorage.removeItem('omt_live_articles_v2');
     sessionStorage.removeItem('omt_live_podcasts_v2');
+    sessionStorage.removeItem(CACHE_TIMESTAMP_KEY);
     const timestamp = Date.now().toString();
     localStorage.setItem(CACHE_STORAGE_KEY, timestamp);
     window.dispatchEvent(new CustomEvent(CONTENT_UPDATE_EVENT, { detail: { timestamp } }));
+
+    // Cross-tab broadcast channel for instant zero-delay sync
+    if (typeof BroadcastChannel !== 'undefined') {
+      try {
+        const bc = new BroadcastChannel(CONTENT_BROADCAST_CHANNEL);
+        bc.postMessage({ type: 'CONTENT_UPDATED', timestamp });
+        bc.close();
+      } catch {}
+    }
   } catch {}
 }
 
@@ -200,6 +264,7 @@ export function subscribeToContentUpdates(callback: () => void): () => void {
     try {
       sessionStorage.removeItem('omt_live_articles_v2');
       sessionStorage.removeItem('omt_live_podcasts_v2');
+      sessionStorage.removeItem(CACHE_TIMESTAMP_KEY);
     } catch {}
     callback();
   };
@@ -213,6 +278,14 @@ export function subscribeToContentUpdates(callback: () => void): () => void {
 
   window.addEventListener(CONTENT_UPDATE_EVENT, handleCustomEvent);
   window.addEventListener('storage', handleStorageEvent);
+
+  let bc: BroadcastChannel | null = null;
+  if (typeof BroadcastChannel !== 'undefined') {
+    try {
+      bc = new BroadcastChannel(CONTENT_BROADCAST_CHANNEL);
+      bc.onmessage = () => invalidateAndCall();
+    } catch {}
+  }
 
   // Auto-release heartbeat: checks periodically (every 30s) so scheduled articles go live automatically
   const heartbeatTimer = setInterval(() => {
@@ -241,6 +314,11 @@ export function subscribeToContentUpdates(callback: () => void): () => void {
     clearInterval(heartbeatTimer);
     window.removeEventListener(CONTENT_UPDATE_EVENT, handleCustomEvent);
     window.removeEventListener('storage', handleStorageEvent);
+    if (bc) {
+      try {
+        bc.close();
+      } catch {}
+    }
     if (channel) {
       try {
         const client = getSupabase();

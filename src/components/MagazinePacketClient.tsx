@@ -10,6 +10,7 @@ import {
   fetchLiveArticlesFromSupabase,
   buildIssuesFromArticles,
   subscribeToContentUpdates,
+  filterDeletedArticles,
 } from '@/lib/liveArticles';
 
 interface MagazinePacketClientProps {
@@ -22,7 +23,7 @@ export function MagazinePacketClient({
   initialArticles,
 }: MagazinePacketClientProps) {
   const [issue, setIssue] = useState<IssuePacket>(initialIssue);
-  const [articles, setArticles] = useState<Article[]>(initialArticles);
+  const [articles, setArticles] = useState<Article[]>(() => filterDeletedArticles(initialArticles));
 
   useEffect(() => {
     let isMounted = true;

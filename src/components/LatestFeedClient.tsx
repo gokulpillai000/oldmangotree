@@ -10,6 +10,7 @@ import {
   fetchLiveArticlesFromSupabase,
   subscribeToContentUpdates,
   getCachedLiveArticles,
+  filterDeletedArticles,
 } from '@/lib/liveArticles';
 import { AudioIndicator, isAudioStory } from '@/components/AudioIndicator';
 
@@ -18,18 +19,16 @@ interface LatestFeedClientProps {
 }
 
 export function LatestFeedClient({ articles: initialArticles = [] }: LatestFeedClientProps) {
-  const [articles, setArticles] = useState<Article[]>(() => {
-    const cached = getCachedLiveArticles();
-    return cached !== null ? cached : initialArticles;
-  });
-  const [isLoadingLive, setIsLoadingLive] = useState<boolean>(() => {
-    const cached = getCachedLiveArticles();
-    if (cached !== null) return false;
-    return initialArticles.length === 0;
-  });
+  const [articles, setArticles] = useState<Article[]>(initialArticles);
+  const [isLoadingLive, setIsLoadingLive] = useState<boolean>(() => initialArticles.length === 0);
 
   useEffect(() => {
     let isMounted = true;
+
+    const clean = filterDeletedArticles(initialArticles);
+    if (clean.length !== initialArticles.length) {
+      setArticles(clean);
+    }
 
     const loadLive = async () => {
       try {
@@ -79,6 +78,7 @@ export function LatestFeedClient({ articles: initialArticles = [] }: LatestFeedC
       {writtenArticles.map((article) => (
         <article
           key={article.slug}
+          data-article-slug={article.slug}
           className="relative group flex flex-col justify-between pb-6 border-b border-neutral-200 dark:border-neutral-800 cursor-pointer transition-colors"
         >
           <div>

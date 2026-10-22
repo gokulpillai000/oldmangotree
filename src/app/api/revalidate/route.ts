@@ -43,6 +43,11 @@ async function handleRevalidate(request: NextRequest) {
   const path = searchParams.get('path') || '/';
   try {
     revalidatePath(path, 'layout');
+    revalidatePath('/', 'layout');
+    revalidatePath('/podcasts');
+    revalidatePath('/latest');
+    revalidatePath('/magazine');
+    revalidatePath('/series');
   } catch {}
 
   return NextResponse.json({

@@ -11,6 +11,7 @@ import {
   subscribeToContentUpdates,
   getCachedLiveArticles,
   filterCategoryArticles,
+  filterDeletedArticles,
 } from '@/lib/liveArticles';
 import { AudioIndicator, isAudioStory } from '@/components/AudioIndicator';
 
@@ -27,23 +28,19 @@ export function CategoryFeedClient({
 }: CategoryFeedClientProps) {
   const [activeSubcategory, setActiveSubcategory] = useState<string>('all');
 
-  // Synchronously initialize with live cached articles if available in browser
-  const [currentArticles, setCurrentArticles] = useState<Article[]>(() => {
-    const cached = getCachedLiveArticles();
-    if (cached !== null) {
-      return filterCategoryArticles(cached, category);
-    }
-    return initialArticles;
-  });
+  const [currentArticles, setCurrentArticles] = useState<Article[]>(() =>
+    filterCategoryArticles(initialArticles, category)
+  );
 
-  const [isLoadingLive, setIsLoadingLive] = useState<boolean>(() => {
-    const cached = getCachedLiveArticles();
-    if (cached !== null) return false;
-    return initialArticles.length === 0;
-  });
+  const [isLoadingLive, setIsLoadingLive] = useState<boolean>(() => initialArticles.length === 0);
 
   useEffect(() => {
     let isMounted = true;
+
+    const clean = filterDeletedArticles(initialArticles);
+    if (clean.length !== initialArticles.length) {
+      setCurrentArticles(filterCategoryArticles(clean, category));
+    }
 
     const loadLive = async () => {
       try {
@@ -168,6 +165,7 @@ export function CategoryFeedClient({
           {filteredArticles.map((article) => (
             <article
               key={article.slug}
+              data-article-slug={article.slug}
               className="relative group flex flex-col justify-between pb-6 border-b border-neutral-200 dark:border-neutral-800 cursor-pointer transition-colors"
             >
               <div>

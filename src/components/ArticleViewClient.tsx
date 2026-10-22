@@ -11,7 +11,12 @@ import { ReadingProgressBar } from '@/components/ReadingProgressBar';
 import { SocialShareBar } from '@/components/SocialShareBar';
 import { ArticlePublisherControls } from '@/components/ArticlePublisherControls';
 import { Calendar, ArrowLeft, Tag, BookOpen, Loader2 } from 'lucide-react';
-import { fetchLiveArticleBySlug, fetchLiveArticlesFromSupabase } from '@/lib/liveArticles';
+import {
+  fetchLiveArticleBySlug,
+  fetchLiveArticlesFromSupabase,
+  getDeletedSlugs,
+  filterDeletedArticles,
+} from '@/lib/liveArticles';
 import { AudioIndicator, isAudioStory } from '@/components/AudioIndicator';
 
 interface ArticleViewClientProps {
@@ -32,6 +37,12 @@ export function ArticleViewClient({
   useEffect(() => {
     let isMounted = true;
 
+    if (getDeletedSlugs().has((slug || '').toLowerCase())) {
+      setArticle(null);
+      setIsLoading(false);
+      return;
+    }
+
     if (!article && slug) {
       setIsLoading(true);
       fetchLiveArticleBySlug(slug)
@@ -50,7 +61,9 @@ export function ArticleViewClient({
       fetchLiveArticlesFromSupabase()
         .then((all) => {
           if (isMounted) {
-            const others = all.filter((a) => a.slug !== slug).slice(0, 3);
+            const others = filterDeletedArticles(all)
+              .filter((a) => a.slug !== slug)
+              .slice(0, 3);
             setRelatedArticles(others);
           }
         })
