@@ -12,7 +12,8 @@ import {
   getCachedLiveArticles,
   filterDeletedArticles,
 } from '@/lib/liveArticles';
-import { AudioIndicator, isAudioStory } from '@/components/AudioIndicator';
+import { AudioIndicator } from '@/components/AudioIndicator';
+import { isAudioStory, filterCategoryArticles } from '@/lib/articleHelpers';
 
 interface WidgetGridProps {
   articles: Article[];
@@ -98,30 +99,7 @@ export function WidgetGrid({ articles: initialArticles = [] }: WidgetGridProps) 
   const displayArticles =
     selectedCategory === 'all'
       ? remainingArticles
-      : writtenArticles.filter((a) => {
-          const cat = a.category?.toLowerCase() || '';
-          if (selectedCategory === 'the-shade') {
-            return (
-              cat === 'the-shade' ||
-              cat === 'the shade' ||
-              cat === 'arts-culture' ||
-              cat === 'arts & culture' ||
-              a.tags?.some((t) => ['the-shade', 'the shade', 'arts-culture', 'arts & culture'].includes(t.toLowerCase()))
-            );
-          }
-          if (selectedCategory === 'fallen-mangoes') {
-            return (
-              cat === 'fallen-mangoes' ||
-              cat === 'fallen mangoes' ||
-              cat === 'miscellaneous' ||
-              a.tags?.some((t) => ['fallen-mangoes', 'fallen mangoes', 'miscellaneous'].includes(t.toLowerCase()))
-            );
-          }
-          return (
-            cat === selectedCategory.toLowerCase() ||
-            a.tags?.some((t) => t.toLowerCase() === selectedCategory.toLowerCase())
-          );
-        });
+      : filterCategoryArticles(writtenArticles, selectedCategory);
 
   return (
     <div className="space-y-12 sm:space-y-16">
@@ -268,41 +246,41 @@ export function WidgetGrid({ articles: initialArticles = [] }: WidgetGridProps) 
     </section>
 
       {/* 2. Latest Stories Feed Grid */}
-      {displayArticles.length > 0 && (
-        <section className="space-y-6 pt-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-neutral-200 dark:border-neutral-800 pb-4">
-            <div>
-              <h2 className="font-serif text-2xl sm:text-3xl font-bold text-neutral-900 dark:text-neutral-50">
-                <span className="inline-block underline decoration-[#E27A2B] underline-offset-4 decoration-2">
-                  {selectedCategory === 'all'
-                    ? 'More Latest Stories'
-                    : `${CATEGORY_TABS.find((t) => t.slug === selectedCategory)?.label || selectedCategory}`}
-                </span>
-              </h2>
-                <p className="text-sm sm:text-base text-neutral-700 dark:text-neutral-300">
-                  Chronological essays, critiques, and narratives from oldmangotree.
-                </p>
-              </div>
-
-            {/* Category Filter Tabs */}
-            <div className="flex items-center gap-3 overflow-x-auto scrollbar-none py-1">
-              {CATEGORY_TABS.map((tab) => (
-                <button
-                  key={tab.slug}
-                  type="button"
-                  onClick={() => setSelectedCategory(tab.slug)}
-                  className={`shrink-0 text-sm sm:text-base font-semibold transition-all underline underline-offset-4 ${
-                    selectedCategory === tab.slug
-                      ? 'text-brand-600 dark:text-brand-400 decoration-brand-600 dark:decoration-brand-400 decoration-2 font-bold'
-                      : 'text-neutral-600 dark:text-neutral-400 decoration-neutral-300 dark:decoration-neutral-700 hover:text-neutral-900 dark:hover:text-neutral-100 hover:decoration-brand-600 decoration-1'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
+      <section className="space-y-6 pt-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-neutral-200 dark:border-neutral-800 pb-4">
+          <div>
+            <h2 className="font-serif text-2xl sm:text-3xl font-bold text-neutral-900 dark:text-neutral-50">
+              <span className="inline-block underline decoration-[#E27A2B] underline-offset-4 decoration-2">
+                {selectedCategory === 'all'
+                  ? 'More Latest Stories'
+                  : `${CATEGORY_TABS.find((t) => t.slug === selectedCategory)?.label || selectedCategory}`}
+              </span>
+            </h2>
+            <p className="text-sm sm:text-base text-neutral-700 dark:text-neutral-300">
+              Chronological essays, critiques, and narratives from oldmangotree.
+            </p>
           </div>
 
+          {/* Category Filter Tabs */}
+          <div className="flex items-center gap-3 overflow-x-auto scrollbar-none py-1">
+            {CATEGORY_TABS.map((tab) => (
+              <button
+                key={tab.slug}
+                type="button"
+                onClick={() => setSelectedCategory(tab.slug)}
+                className={`shrink-0 text-sm sm:text-base font-semibold transition-all underline underline-offset-4 ${
+                  selectedCategory === tab.slug
+                    ? 'text-brand-600 dark:text-brand-400 decoration-brand-600 dark:decoration-brand-400 decoration-2 font-bold'
+                    : 'text-neutral-600 dark:text-neutral-400 decoration-neutral-300 dark:decoration-neutral-700 hover:text-neutral-900 dark:hover:text-neutral-100 hover:decoration-brand-600 decoration-1'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {displayArticles.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
             {displayArticles.map((art) => (
               <article
@@ -367,8 +345,19 @@ export function WidgetGrid({ articles: initialArticles = [] }: WidgetGridProps) 
               </article>
             ))}
           </div>
-        </section>
-      )}
+        ) : (
+          <div className="py-14 px-4 text-center rounded-2xl border border-dashed border-neutral-200 dark:border-neutral-800 bg-neutral-50/60 dark:bg-neutral-900/40">
+            <p className="font-serif text-base sm:text-lg text-neutral-800 dark:text-neutral-200 mb-1">
+              {selectedCategory === 'all'
+                ? 'All recent stories are currently featured in the highlights above.'
+                : `No stories published in ${CATEGORY_TABS.find((t) => t.slug === selectedCategory)?.label || selectedCategory} yet.`}
+            </p>
+            <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400">
+              Check back soon or explore other categories using the tabs above.
+            </p>
+          </div>
+        )}
+      </section>
 
       {/* 3. Link to Full Chronological Archive */}
       <div className="flex justify-center pt-4 pb-2">
