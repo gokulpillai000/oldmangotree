@@ -12,21 +12,38 @@ jobs:
     steps:
       - name: Ping Supabase Database
         env:
-          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          SUPABASE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || secrets.SUPABASE_ANON_KEY || secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
         run: |
-          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_KEY" ]; then
-            echo "Supabase secrets not configured in repository settings; skipping ping."
+          # Helper function to sanitize secret values (strip prefixes, quotes, newlines, whitespace)
+          clean_val() {
+            local val="$1"
+            val=$(echo "$val" | sed -E 's/^[A-Za-z0-9_]+=\s*//')
+            val=$(echo "$val" | tr -d '\r\n' | sed -E 's/^["'"'"' ]+//; s/["'"'"' ]+$//')
+            echo "$val"
+          }
+
+          CLEAN_URL=$(clean_val "$SUPABASE_URL")
+          CLEAN_KEY=$(clean_val "$SUPABASE_KEY")
+          CLEAN_URL="${CLEAN_URL%/}"
+
+          if [ -z "$CLEAN_URL" ] || [ -z "$CLEAN_KEY" ]; then
+            echo "::warning::Supabase secrets (NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY) are not configured in repository settings; skipping ping."
             exit 0
           fi
-          echo "Pinging Supabase articles table to maintain active status..."
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-            -H "apikey: $SUPABASE_KEY" \
-            -H "Authorization: Bearer $SUPABASE_KEY" \
-            "$SUPABASE_URL/rest/v1/articles?select=slug&limit=1")
+
+          echo "Pinging Supabase database to maintain active status..."
+          STATUS=$(curl -sS --retry 3 --retry-delay 2 --max-time 15 -o /dev/null -w "%{http_code}" \
+            -H "apikey: $CLEAN_KEY" \
+            -H "Authorization: Bearer $CLEAN_KEY" \
+            "$CLEAN_URL/rest/v1/articles?select=slug&limit=1" 2>&1 || echo "000")
+
           echo "HTTP response status code: $STATUS"
-          if [ "$STATUS" -eq 200 ] || [ "$STATUS" -eq 204 ]; then
-            echo "Supabase successfully pinged! Database is active."
+
+          # Any 2xx status code indicates a live, successfully responding database
+          if [[ "$STATUS" =~ ^2[0-9]{2}$ ]]; then
+            echo "Supabase successfully pinged! Database is active (HTTP $STATUS)."
           else
-            echo "Ping returned code $STATUS"
+            echo "::error::Ping failed with status code: $STATUS"
+            exit 1
           fi
