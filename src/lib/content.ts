@@ -14,7 +14,6 @@ import {
 import {
   fetchSupabaseArticles,
   fetchSupabaseArticleBySlug,
-  fetchSupabasePackets,
   SupabaseArticleRecord,
 } from './supabase';
 import {
@@ -485,35 +484,20 @@ export async function getAllIssues(): Promise<IssuePacket[]> {
   }
 
   for (const bp of bloggerPackets) {
-    if (!liveIssues.some((li) => li.id === bp.id || li.issueNumber === bp.issueNumber)) {
+    if (
+      bp.articleSlugs &&
+      bp.articleSlugs.length > 0 &&
+      !liveIssues.some((li) => li.id === bp.id || li.issueNumber === bp.issueNumber)
+    ) {
       liveIssues.push(bp);
     }
   }
 
-  try {
-    const rawPackets = await fetchSupabasePackets();
-    for (const rp of rawPackets) {
-      const slug = rp.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-      if (slug && !liveIssues.some((li) => li.id === slug)) {
-        const numMatch = rp.match(/\d+/);
-        const issueNumber = numMatch ? parseInt(numMatch[0], 10) : liveIssues.length + 1;
-        liveIssues.push({
-          id: slug,
-          title: rp.toLowerCase().startsWith('packet') ? rp : `Packet ${rp}`,
-          issueNumber,
-          theme: `${rp}: Webzine Edition`,
-          publishedAt: new Date().toISOString(),
-          coverImage: '/images/logo-oldmangotree.jpg',
-          isPremium: false,
-          featuredArticleSlug: '',
-          articleSlugs: [],
-        });
-      }
-    }
-  } catch {}
+  // Only return issues that have published articles to guarantee parity with client live fetch
+  const validIssues = liveIssues.filter((i) => i.articleSlugs && i.articleSlugs.length > 0);
 
-  if (liveIssues.length > 0) {
-    return liveIssues.sort((a, b) => b.issueNumber - a.issueNumber);
+  if (validIssues.length > 0) {
+    return validIssues.sort((a, b) => b.issueNumber - a.issueNumber);
   }
 
   if (HIDE_DUMMY_CONTENT) return [];

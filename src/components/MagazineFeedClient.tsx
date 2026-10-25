@@ -14,9 +14,10 @@ interface MagazineFeedClientProps {
 
 export function MagazineFeedClient({ initialIssues }: MagazineFeedClientProps) {
   const [issues, setIssues] = useState<IssuePacket[]>(() => {
+    const valid = (initialIssues || []).filter((i) => i.articleSlugs && i.articleSlugs.length > 0);
     const deleted = getDeletedSlugs();
-    if (deleted.size === 0) return initialIssues;
-    return initialIssues.filter(
+    if (deleted.size === 0) return valid;
+    return valid.filter(
       (issue) => !issue.featuredArticleSlug || !deleted.has(issue.featuredArticleSlug.toLowerCase())
     );
   });
@@ -28,7 +29,8 @@ export function MagazineFeedClient({ initialIssues }: MagazineFeedClientProps) {
       try {
         const live = await fetchLiveIssuesFromSupabase();
         if (isMounted) {
-          setIssues(live);
+          const validLive = (live || []).filter((i) => i.articleSlugs && i.articleSlugs.length > 0);
+          setIssues(validLive);
         }
       } catch (err) {
         console.warn('Error fetching live webzine issues:', err);
@@ -60,6 +62,8 @@ export function MagazineFeedClient({ initialIssues }: MagazineFeedClientProps) {
       {issues.map((issue) => (
         <article
           key={issue.id}
+          data-issue-id={issue.id}
+          data-article-slug={issue.featuredArticleSlug || undefined}
           className="group relative flex flex-col justify-between pb-6 border-b border-neutral-200 dark:border-neutral-800 cursor-pointer transition-colors"
         >
           <div>
