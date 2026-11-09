@@ -1,6 +1,7 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
+import DOMPurify from 'isomorphic-dompurify';
 import { X, Volume2, Calendar, Tag, ArrowLeft, BookOpen } from 'lucide-react';
 
 interface ArticlePreviewModalProps {
@@ -31,6 +32,16 @@ export function ArticlePreviewModal({
   packet,
 }: ArticlePreviewModalProps) {
   if (!isOpen) return null;
+
+  const cleanHtml = useMemo(() => {
+    if (!contentHtml) {
+      return '<p class="text-neutral-400 italic">No article content written yet...</p>';
+    }
+    return DOMPurify.sanitize(contentHtml, {
+      ADD_TAGS: ['iframe', 'audio', 'video', 'source'],
+      ADD_ATTR: ['allow', 'allowfullscreen', 'frameborder', 'scrolling', 'controls', 'target', 'rel'],
+    });
+  }, [contentHtml]);
 
   const plainText = contentHtml.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
   const wordCount = plainText ? plainText.split(' ').length : 0;
@@ -146,9 +157,7 @@ export function ArticlePreviewModal({
           <div
             className="prose dark:prose-invert max-w-none font-text is__text text-lg sm:text-xl leading-relaxed mt-6 [&_img]:pointer-events-none [&_img]:select-none [&_img]:cursor-default [&_img]:hover:ring-0 [&_a:has(img)]:pointer-events-none [&_a:has(img)]:cursor-default"
             dangerouslySetInnerHTML={{
-              __html:
-                contentHtml ||
-                '<p class="text-neutral-400 italic">No article content written yet...</p>',
+              __html: cleanHtml,
             }}
           />
 

@@ -4,27 +4,81 @@
 .pnp.js
 .yarn/install-state.gz
 
-# Next.js build output
+# Planning, Architecture, Internal Records & Documents
+*_PLAN*.md
+*plan*.md
+*_plan*.md
+*REPORT*.md
+*report*.md
+*REPORT*.html
+*report*.html
+*SNAPSHOT*.md
+*snapshot*.md
+*RECORD*.md
+*record*.md
+*GUIDE*.md
+*guide*.md
+*ARCHITECTURE*.md
+*architecture*.md
+BLOGGER_INTEGRATION_PLAN.md
+functinal-implementation-plan.md
+oldmangotree_databaseless_architecture.md
+STATUS_RECORD.md
+WEBSITE_STATE_SNAPSHOT.md
+AGENTS.md
+SECURITY_AUDIT_REPORT.*
+OldMangoTree_CMS_Publisher_Guide.pdf
+HOW_TO_TEST.md
+
+# Office & Document formats
+*.pdf
+*.docx
+*.doc
+*.pptx
+*.ppt
+*.xlsx
+*.xls
+*.csv
+
+# Scratch and Temporary files
+scratch/
+*.tmp
+*.temp
+*.bak
+*~
+
+# Next.js build output & caches
 /.next/
 /out/
 /build
+/dist
 
-# Blogger xml
+# Blogger theme & generated artifacts
 /blogger-theme
+extracted-tailwind.css
+*.xml
 
+# Content / CMS local files
 /content
+/backup_db
+/storage_backup
+database_backup*.json
 
-# TypeScript
+# TypeScript & tooling caches
 *.tsbuildinfo
 next-env.d.ts
 
-# Environment variables
+# Environment variables & credentials
 .env
 .env*.local
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+*.pem
+*.key
+*.cert
+*.crt
 
 # Debug & runtime logs
 npm-debug.log*

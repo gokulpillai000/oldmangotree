@@ -14,76 +14,34 @@ export interface UserSession {
 const COOKIE_NAME = 'omt_auth_session';
 const USERS_FILE_PATH = path.join(process.cwd(), 'content', 'users.json');
 
-// Default salted scrypt hash for editorial desk PIN when EDITORIAL_DESK_PIN env var is not explicitly set
+// Salted scrypt digest used only for local dev fallback PIN when EDITORIAL_DESK_PIN is unset
 const DEFAULT_PIN_SCRYPT_HASH =
   'scrypt:omt_salt_pin:e467271b0ac0f7c5512c3c24c5df203c2ff843cc1ceaa95a3e05dab7127da411';
 
-// Pre-seeded accounts using salted scrypt password digests (no plaintext passwords in source code)
+// No hardcoded passwords or pre-seeded accounts in source code
 const DEFAULT_USERS: Record<
   string,
   { name: string; passwordHash: string; role: 'publisher' | 'reader' }
-> = {
-  'akhil@oldmangotree.media': {
-    name: 'Akhil U Krishnan',
-    passwordHash:
-      'scrypt:omt_salt_akhil:b745b73f2576142c267ad9d2cf5bc064b413004c4e596f7bf289f307e4900a64',
-    role: 'publisher',
-  },
-  'amala@oldmangotree.media': {
-    name: 'Amala Thomas',
-    passwordHash:
-      'scrypt:omt_salt_amala:f9d8f60f4428c7e112c04a1504482081623cd81fd3de705631d22be9f1d9a9fd',
-    role: 'publisher',
-  },
-  'gokulpillai000@gmail.com': {
-    name: 'Akhil U Krishnan',
-    passwordHash:
-      'scrypt:omt_salt_desk:f788611582538e14c5849c38127146ae29782a9ff0f9a946009bc9f78d7aec4f',
-    role: 'publisher',
-  },
-  'editorial@oldmangotree.com': {
-    name: 'Akhil U Krishnan',
-    passwordHash:
-      'scrypt:omt_salt_desk:f788611582538e14c5849c38127146ae29782a9ff0f9a946009bc9f78d7aec4f',
-    role: 'publisher',
-  },
-  'editor@oldmangotree.media': {
-    name: 'Akhil U Krishnan',
-    passwordHash:
-      'scrypt:omt_salt_akhil:b745b73f2576142c267ad9d2cf5bc064b413004c4e596f7bf289f307e4900a64',
-    role: 'publisher',
-  },
-  'admin@oldmangotree.media': {
-    name: 'Amala Thomas',
-    passwordHash:
-      'scrypt:omt_salt_admin:f6bce67b4fa0b0d907d0cee951c46162f1d121c5dfd803773feb5a981a3740eb',
-    role: 'publisher',
-  },
-  'reader@oldmangotree.media': {
-    name: 'Ananya Nair',
-    passwordHash:
-      'scrypt:omt_salt_reader:3924f1e8d465641d06c06882e39a122a63be979cc33402d86b73e0aa54920ab2',
-    role: 'reader',
-  },
-  'subscriber@oldmangotree.media': {
-    name: 'Rahul Menon',
-    passwordHash:
-      'scrypt:omt_salt_sub:d76c6ab600b9413638516d1f3ccf9097a3a51d5a4b86408bd211b3d39f112d58',
-    role: 'reader',
-  },
-};
+> = {};
 
 let userStore: Record<
   string,
   { name: string; passwordHash: string; role: 'publisher' | 'reader' }
-> = { ...DEFAULT_USERS };
+> = {};
 
+let ephemeralSecret: string | null = null;
 function getAuthSecret(): string {
-  return (
-    process.env.AUTH_SECRET ||
-    process.env.REVALIDATION_SECRET ||
-    'omt_hmac_signing_key_v1_change_in_prod'
-  );
+  if (process.env.AUTH_SECRET) {
+    return process.env.AUTH_SECRET;
+  }
+  if (process.env.REVALIDATION_SECRET) {
+    return process.env.REVALIDATION_SECRET;
+  }
+  // Generate an unguessable per-boot random key if unset, eliminating static forgery vectors
+  if (!ephemeralSecret) {
+    ephemeralSecret = crypto.randomBytes(32).toString('hex');
+  }
+  return ephemeralSecret;
 }
 
 export function hashPassword(password: string, salt?: string): string {
@@ -110,8 +68,7 @@ export function verifyPassword(password: string, storedHash: string): boolean {
     }
   }
 
-  // Legacy fallback if a custom hash wasn't migrated yet
-  return storedHash === password;
+  return false;
 }
 
 export function signSessionToken(session: UserSession): string {
@@ -165,7 +122,7 @@ function loadUsers(): void {
       userStore = { ...DEFAULT_USERS, ...loaded };
     }
   } catch {
-    // If running in readonly/serverless environment, in-memory store remains active
+    // Graceful fallback
   }
 }
 
@@ -262,7 +219,7 @@ export function authenticateEditorialPin(pin: string): UserSession | { error: st
   const configuredPin = process.env.EDITORIAL_DESK_PIN;
   const isValid = configuredPin
     ? trimmed === configuredPin
-    : verifyPassword(trimmed, DEFAULT_PIN_SCRYPT_HASH);
+    : (process.env.NODE_ENV !== 'production' && verifyPassword(trimmed, DEFAULT_PIN_SCRYPT_HASH));
 
   if (!isValid) {
     return {
@@ -271,8 +228,8 @@ export function authenticateEditorialPin(pin: string): UserSession | { error: st
   }
 
   return {
-    email: 'akhil@oldmangotree.media',
-    name: 'Akhil U Krishnan',
+    email: 'editorial@oldmangotree.media',
+    name: 'Editorial Desk',
     role: 'publisher',
     authenticatedAt: new Date().toISOString(),
   };
