@@ -59,7 +59,7 @@ extracted-tailwind.css
 *.xml
 
 # Content / CMS local files
-/content
+/content/users.json
 /backup_db
 /storage_backup
 database_backup*.json
