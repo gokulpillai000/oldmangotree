@@ -44,8 +44,7 @@ import {
   getStoredSession,
   setStoredSession,
   getAuthHeaders,
-  hashPinClient,
-  verifyPinWithClientHash,
+  checkServerSession,
 } from '@/lib/clientAuth';
 import {
   fetchLettersToEditor,
@@ -335,48 +334,28 @@ export default function EditorialDeskPage() {
       .catch(() => {});
   }, [isAuthenticated]);
 
-  // Check and synchronize publisher session (with 1-hour inactivity check)
+  // Check and synchronize publisher session via server verification
   useEffect(() => {
-    const ONE_HOUR_MS = 60 * 60 * 1000;
+    let mounted = true;
 
-    const syncAuth = () => {
-      const storedSess = getStoredSession();
-      const now = Date.now();
-      let lastActive = 0;
-      try {
-        lastActive = Number(localStorage.getItem('omt_editorial_last_active') || '0');
-      } catch {}
+    const syncAuth = async () => {
+      setIsCheckingAuth(true);
+      const serverSess = await checkServerSession();
+      if (!mounted) return;
 
-      if (storedSess && storedSess.role === 'publisher') {
-        if (lastActive > 0 && now - lastActive >= ONE_HOUR_MS) {
-          // Session timed out after 1 hour of inactivity
-          setIsAuthenticated(false);
-          sessionStorage.removeItem('omt_editorial_auth');
-          try {
-            localStorage.removeItem('omt_editorial_last_active');
-          } catch {}
-          setStoredSession(null);
-        } else {
-          // Active session within 1 hour
-          setIsAuthenticated(true);
-          try {
-            localStorage.setItem('omt_editorial_last_active', now.toString());
-          } catch {}
-        }
+      if (serverSess && serverSess.role === 'publisher') {
+        setIsAuthenticated(true);
       } else {
         setIsAuthenticated(false);
-        sessionStorage.removeItem('omt_editorial_auth');
       }
       setIsCheckingAuth(false);
     };
 
     syncAuth();
     window.addEventListener('omt-auth-changed', syncAuth);
-    window.addEventListener('storage', syncAuth);
-
     return () => {
+      mounted = false;
       window.removeEventListener('omt-auth-changed', syncAuth);
-      window.removeEventListener('storage', syncAuth);
     };
   }, []);
 
@@ -432,50 +411,30 @@ export default function EditorialDeskPage() {
       return;
     }
 
-    let authenticatedSession: any = null;
+    setPinError('');
     const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
 
-    // 1. Verify against server-side /api/auth when available
     try {
       const res = await fetch(`${basePath}/api/auth`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'pin_login', pin: trimmed }),
       });
+
       if (res.ok) {
         const data = await res.json();
-        if (data?.session) {
-          authenticatedSession = data.session;
+        if (data?.session && data.session.role === 'publisher') {
+          setIsAuthenticated(true);
+          setStoredSession(data.session);
+          setPinError('');
+          return;
         }
       }
+
+      const errData = await res.json().catch(() => null);
+      setPinError(errData?.error || 'Invalid editorial PIN. Please check your passcode or consult the editorial desk.');
     } catch {
-      // Static export or offline fallback
-    }
-
-    // 2. Fallback to SHA-256 digest check (supports custom local passcode hash or static hosting)
-    if (!authenticatedSession) {
-      const isHashValid = await verifyPinWithClientHash(trimmed);
-      if (isHashValid) {
-        authenticatedSession = {
-          name: 'Akhil U Krishnan',
-          email: 'akhil@oldmangotree.media',
-          role: 'publisher' as const,
-          authenticatedAt: new Date().toISOString(),
-        };
-      }
-    }
-
-    if (authenticatedSession) {
-      setIsAuthenticated(true);
-      sessionStorage.setItem('omt_editorial_auth', 'true');
-      try {
-        localStorage.setItem('omt_editorial_last_active', Date.now().toString());
-      } catch {}
-      setStoredSession(authenticatedSession);
-      window.dispatchEvent(new Event('omt-auth-changed'));
-      setPinError('');
-    } else {
-      setPinError('Invalid editorial PIN. Please check your passcode or consult the editorial desk.');
+      setPinError('Unable to connect to authentication server. Please check your network.');
     }
   };
 
@@ -501,46 +460,7 @@ export default function EditorialDeskPage() {
 
   const handleChangePasscode = async (e: React.FormEvent) => {
     e.preventDefault();
-    setPasscodeModalError('');
-    setPasscodeModalSuccess('');
-
-    const trimmedCurrent = currentPassInput.trim();
-    const trimmedNew = newPassInput.trim();
-    const trimmedConfirm = confirmPassInput.trim();
-
-    const isCurrentValid = await verifyPinWithClientHash(trimmedCurrent);
-    if (!isCurrentValid) {
-      setPasscodeModalError('Current passcode is incorrect.');
-      return;
-    }
-
-    if (!trimmedNew || trimmedNew.length < 4) {
-      setPasscodeModalError('New passcode must be at least 4 characters.');
-      return;
-    }
-
-    if (trimmedNew !== trimmedConfirm) {
-      setPasscodeModalError('New passcode and confirm passcode do not match.');
-      return;
-    }
-
-    try {
-      const newHash = await hashPinClient(trimmedNew);
-      if (newHash) {
-        localStorage.setItem('omt_editorial_passcode_hash', newHash);
-      }
-      localStorage.removeItem('omt_editorial_passcode');
-      setPasscodeModalSuccess('Passcode updated successfully! Use this new passcode for future logins.');
-      setCurrentPassInput('');
-      setNewPassInput('');
-      setConfirmPassInput('');
-      setTimeout(() => {
-        setPasscodeModalSuccess('');
-        setShowPasscodeModal(false);
-      }, 1800);
-    } catch {
-      setPasscodeModalError('Failed to save new passcode to storage.');
-    }
+    setPasscodeModalError('To change the editorial PIN, update the EDITORIAL_DESK_PIN environment variable in your server or .env configuration.');
   };
 
   const verifyRecoveryCredential = (cred: string): { valid: boolean; authorName: string; email: string } => {
@@ -564,95 +484,11 @@ export default function EditorialDeskPage() {
 
   const handleResetForgottenPasscode = async (e: React.FormEvent) => {
     e.preventDefault();
-    setForgotError('');
-    setForgotSuccess('');
-
-    const verification = verifyRecoveryCredential(recoveryCredential);
-    if (!verification.valid) {
-      setForgotError('Invalid registered editor email. Please check your credentials.');
-      return;
-    }
-
-    const trimmedNew = forgotNewPass.trim();
-    const trimmedConfirm = forgotConfirmPass.trim();
-
-    if (!trimmedNew || trimmedNew.length < 4) {
-      setForgotError('New passcode must be at least 4 characters long.');
-      return;
-    }
-
-    if (trimmedNew !== trimmedConfirm) {
-      setForgotError('New passcode and confirm passcode do not match.');
-      return;
-    }
-
-    try {
-      const newHash = await hashPinClient(trimmedNew);
-      if (newHash) {
-        localStorage.setItem('omt_editorial_passcode_hash', newHash);
-      }
-      localStorage.removeItem('omt_editorial_passcode');
-      localStorage.setItem('omt_editorial_last_active', Date.now().toString());
-      setForgotSuccess('Passcode successfully reset! Logging you into the Newsroom...');
-
-      setTimeout(() => {
-        setIsAuthenticated(true);
-        sessionStorage.setItem('omt_editorial_auth', 'true');
-        setStoredSession({
-          name: verification.authorName,
-          email: verification.email,
-          role: 'publisher',
-          authenticatedAt: new Date().toISOString(),
-        });
-        window.dispatchEvent(new Event('omt-auth-changed'));
-        setShowForgotModal(false);
-        setRecoveryCredential('');
-        setForgotNewPass('');
-        setForgotConfirmPass('');
-        setForgotSuccess('');
-        setPinError('');
-      }, 1200);
-    } catch {
-      setForgotError('Failed to save new passcode to storage.');
-    }
+    setForgotError('To reset credentials, update EDITORIAL_DESK_PIN in your deployment dashboard or environment variables.');
   };
 
   const handleRestoreDefaultPasscode = () => {
-    setForgotError('');
-    setForgotSuccess('');
-
-    const verification = verifyRecoveryCredential(recoveryCredential);
-    if (!verification.valid) {
-      setForgotError('Please enter your registered editor email first to authorize restore.');
-      return;
-    }
-
-    try {
-      localStorage.removeItem('omt_editorial_passcode_hash');
-      localStorage.removeItem('omt_editorial_passcode');
-      localStorage.setItem('omt_editorial_last_active', Date.now().toString());
-      setForgotSuccess('Passcode restored to default! Logging you into the Newsroom...');
-
-      setTimeout(() => {
-        setIsAuthenticated(true);
-        sessionStorage.setItem('omt_editorial_auth', 'true');
-        setStoredSession({
-          name: verification.authorName,
-          email: verification.email,
-          role: 'publisher',
-          authenticatedAt: new Date().toISOString(),
-        });
-        window.dispatchEvent(new Event('omt-auth-changed'));
-        setShowForgotModal(false);
-        setRecoveryCredential('');
-        setForgotNewPass('');
-        setForgotConfirmPass('');
-        setForgotSuccess('');
-        setPinError('');
-      }, 1200);
-    } catch {
-      setForgotError('Failed to restore default passcode.');
-    }
+    alert('Editorial authentication is managed via server environment variables (EDITORIAL_DESK_PIN).');
   };
 
   const renderForgotPasscodeModal = () => {

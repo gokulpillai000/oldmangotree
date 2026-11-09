@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
+import DOMPurify from 'isomorphic-dompurify';
 import { ArticleReaderToolbar } from './ArticleReaderToolbar';
 
 interface ArticleBodyProps {
@@ -20,6 +21,14 @@ export function ArticleBody({
 }: ArticleBodyProps) {
   const [fontSize, setFontSize] = useState<'sm' | 'md' | 'lg'>('md');
 
+  const cleanHtml = useMemo(() => {
+    if (!contentHtml) return '';
+    return DOMPurify.sanitize(contentHtml, {
+      ADD_TAGS: ['iframe', 'audio', 'video', 'source'],
+      ADD_ATTR: ['allow', 'allowfullscreen', 'frameborder', 'scrolling', 'controls', 'target', 'rel'],
+    });
+  }, [contentHtml]);
+
   const sizeClasses = {
     sm: 'text-base sm:text-lg [&_p]:text-base [&_p]:sm:text-lg leading-relaxed [&_p]:leading-relaxed',
     md: 'text-lg sm:text-xl [&_p]:text-lg [&_p]:sm:text-xl leading-relaxed [&_p]:leading-relaxed',
@@ -38,7 +47,7 @@ export function ArticleBody({
 
       <div
         className={`prose dark:prose-invert max-w-none font-text is__text ${sizeClasses[fontSize]} space-y-4 overflow-hidden break-words [&_img]:pointer-events-none [&_img]:select-none [&_img]:cursor-default [&_img]:hover:ring-0 [&_a:has(img)]:pointer-events-none [&_a:has(img)]:cursor-default`}
-        dangerouslySetInnerHTML={{ __html: contentHtml }}
+        dangerouslySetInnerHTML={{ __html: cleanHtml }}
       />
     </div>
   );

@@ -1,6 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import DOMPurify from 'isomorphic-dompurify';
 import { getPageContent, getAllPages } from '@/lib/content';
 import { FileText, ArrowLeft } from 'lucide-react';
 
@@ -25,6 +26,11 @@ export default async function StaticInfoPage({ params }: StaticPageProps) {
   if (!page) {
     notFound();
   }
+
+  const cleanHtml = DOMPurify.sanitize(page.contentHtml || '', {
+    ADD_TAGS: ['iframe', 'audio', 'video', 'source'],
+    ADD_ATTR: ['allow', 'allowfullscreen', 'frameborder', 'scrolling', 'controls', 'target', 'rel'],
+  });
 
   return (
     <article className="max-w-4xl mx-auto py-4 sm:py-8 space-y-6 sm:space-y-8">
@@ -55,7 +61,7 @@ export default async function StaticInfoPage({ params }: StaticPageProps) {
 
       <div
         className="prose prose-neutral dark:prose-invert max-w-none font-serif text-base sm:text-lg leading-relaxed space-y-4 overflow-hidden break-words [&_img]:pointer-events-none [&_img]:select-none [&_img]:cursor-default [&_img]:hover:ring-0 [&_a:has(img)]:pointer-events-none [&_a:has(img)]:cursor-default"
-        dangerouslySetInnerHTML={{ __html: page.contentHtml || '' }}
+        dangerouslySetInnerHTML={{ __html: cleanHtml }}
       />
     </article>
   );

@@ -7,40 +7,45 @@ export interface UserSession {
   name: string;
   role: 'publisher' | 'reader';
   authenticatedAt: string;
-  token?: string;
 }
 
-// Salted SHA-256 digest used only as an offline/static-export fallback when /api/auth is not running
-const DEFAULT_EDITORIAL_PIN_SHA256 =
-  process.env.NEXT_PUBLIC_EDITORIAL_PIN_HASH ||
-  '4afc8e194930dad59ad3e7d1eb2f7b46fc0da68166df75e16a1e4a8abb60abe1';
-
-export async function hashPinClient(pin: string): Promise<string> {
-  const clean = pin.trim();
-  if (typeof window !== 'undefined' && window.crypto?.subtle) {
-    const data = new TextEncoder().encode(`omt_pin_v1:${clean}`);
-    const hashBuffer = await window.crypto.subtle.digest('SHA-256', data);
-    return Array.from(new Uint8Array(hashBuffer))
-      .map((b) => b.toString(16).padStart(2, '0'))
-      .join('');
-  }
-  return '';
-}
-
-export async function verifyPinWithClientHash(pin: string): Promise<boolean> {
-  const digest = await hashPinClient(pin);
-  if (!digest) return false;
+/**
+ * Verifies active session on the server via HTTP-only cookie.
+ * Never relies on client-side state alone for security decisions.
+ */
+export async function checkServerSession(): Promise<UserSession | null> {
+  if (typeof window === 'undefined') return null;
 
   try {
-    const customHash = localStorage.getItem('omt_editorial_passcode_hash');
-    if (customHash && digest === customHash) {
-      return true;
-    }
-  } catch {}
+    const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
+    const res = await fetch(`${basePath}/api/auth`, {
+      method: 'GET',
+      credentials: 'include',
+      headers: {
+        'Cache-Control': 'no-cache',
+      },
+    });
 
-  return digest === DEFAULT_EDITORIAL_PIN_SHA256;
+    if (res.ok) {
+      const data = await res.json();
+      if (data?.session && data.session.role) {
+        setStoredSession(data.session);
+        return data.session;
+      }
+    }
+  } catch (err) {
+    console.warn('Failed to verify session with server:', err);
+  }
+
+  // If server check fails or returns null, clear optimistic cache
+  setStoredSession(null);
+  return null;
 }
 
+/**
+ * Optimistic client-side cached session display (for UI header names/avatars).
+ * Security gates MUST verify with checkServerSession() or server-side API.
+ */
 export function getStoredSession(): UserSession | null {
   if (typeof window === 'undefined') return null;
   try {
@@ -48,7 +53,12 @@ export function getStoredSession(): UserSession | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (parsed && parsed.email && parsed.role) {
-      return parsed;
+      return {
+        email: parsed.email,
+        name: parsed.name,
+        role: parsed.role,
+        authenticatedAt: parsed.authenticatedAt || new Date().toISOString(),
+      };
     }
     return null;
   } catch {
@@ -61,19 +71,23 @@ export function setStoredSession(session: UserSession | null) {
   try {
     if (!session) {
       localStorage.removeItem(AUTH_STORAGE_KEY);
+      sessionStorage.removeItem('omt_editorial_auth');
     } else {
-      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
+      // Store only non-sensitive display profile; secret tokens are kept in HttpOnly cookies
+      const safeDisplaySession: UserSession = {
+        email: session.email,
+        name: session.name,
+        role: session.role,
+        authenticatedAt: session.authenticatedAt || new Date().toISOString(),
+      };
+      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(safeDisplaySession));
+      sessionStorage.setItem('omt_editorial_auth', 'true');
     }
     window.dispatchEvent(new Event('omt-auth-changed'));
   } catch {}
 }
 
 export function getAuthHeaders(): HeadersInit {
-  const session = getStoredSession();
-  if (session?.token) {
-    return {
-      Authorization: `Bearer ${session.token}`,
-    };
-  }
+  // Session cookies are automatically included via credentials: 'include'.
   return {};
 }

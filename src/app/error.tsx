@@ -13,6 +13,7 @@ export default function ErrorBoundary({
   reset: () => void;
 }) {
   const [showDetails, setShowDetails] = React.useState(false);
+  const isDev = process.env.NODE_ENV !== 'production';
 
   useEffect(() => {
     reportError(error, 'error-boundary');
@@ -40,7 +41,7 @@ export default function ErrorBoundary({
           {info.suggestion}
         </p>
 
-        {error?.message && (
+        {isDev && error?.message && (
           <div className="pt-2">
             <button
               type="button"
@@ -51,7 +52,7 @@ export default function ErrorBoundary({
             </button>
             {showDetails && (
               <div className="mt-2 text-xs font-mono text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 p-3 rounded-lg border border-red-200 dark:border-red-900/50 max-w-lg mx-auto text-left break-words">
-                <p className="font-semibold">Diagnostic details:</p>
+                <p className="font-semibold">Diagnostic details (Development only):</p>
                 <p className="mt-1">{error.message}</p>
                 {error.digest && <p className="mt-1 text-neutral-500">Digest: {error.digest}</p>}
               </div>
