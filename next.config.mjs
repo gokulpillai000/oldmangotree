@@ -1,3 +1,4 @@
+const isVercel = process.env.VERCEL === '1' || Boolean(process.env.VERCEL);
 const isGithubActions = process.env.GITHUB_ACTIONS === 'true';
 let basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -9,8 +10,9 @@ if (isGithubActions && !process.env.CUSTOM_DOMAIN && process.env.NEXT_PUBLIC_BAS
   }
 }
 
-const isProd = process.env.NODE_ENV === 'production';
-const isExport = isProd || process.env.NEXT_EXPORT === 'true';
+// On Vercel, run native Next.js with Serverless API routes, ISR, and HTTP security headers.
+// For GitHub Pages or explicit static exports, use Next.js static export.
+const isExport = !isVercel && (isGithubActions || process.env.NEXT_EXPORT === 'true');
 
 const securityHeaders = [
   {
