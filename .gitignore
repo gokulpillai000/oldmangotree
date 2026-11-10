@@ -1,10 +1,57 @@
-# Dependencies
-/node_modules
-/.pnp
+# ==========================================
+# DEPENDENCIES
+# ==========================================
+node_modules/
+.pnp/
 .pnp.js
 .yarn/install-state.gz
 
-# Planning, Architecture, Internal Records & Documents
+# ==========================================
+# ENVIRONMENT VARIABLES & SECRETS
+# ==========================================
+.env*
+!.env.example
+
+# Private keys and certificates
+*.pem
+*.key
+*.cert
+*.crt
+
+# ==========================================
+# NEXT.JS BUILD OUTPUT & CACHES
+# ==========================================
+.next/
+out/
+build/
+dist/
+next-env.d.ts
+*.tsbuildinfo
+
+# ==========================================
+# VERCEL
+# ==========================================
+.vercel/
+
+# ==========================================
+# DATABASE BACKUPS & USER DATA
+# ==========================================
+/backup_db/
+/storage_backup/
+/scratch/
+/content/users.json
+database_backup*.json
+
+# ==========================================
+# BLOGGER DEVELOPMENT ARTIFACTS
+# ==========================================
+/blogger-theme/
+extracted-tailwind.css
+*.xml
+
+# ==========================================
+# INTERNAL PLANNING & DOCUMENTATION
+# ==========================================
 *_PLAN*.md
 *plan*.md
 *_plan*.md
@@ -20,17 +67,18 @@
 *guide*.md
 *ARCHITECTURE*.md
 *architecture*.md
+
+AGENTS.md
 BLOGGER_INTEGRATION_PLAN.md
 functinal-implementation-plan.md
 oldmangotree_databaseless_architecture.md
 STATUS_RECORD.md
 WEBSITE_STATE_SNAPSHOT.md
-AGENTS.md
 SECURITY_AUDIT_REPORT.*
 OldMangoTree_CMS_Publisher_Guide.pdf
 HOW_TO_TEST.md
 
-# Office & Document formats
+# General Office & Document Formats
 *.pdf
 *.docx
 *.doc
@@ -40,63 +88,34 @@ HOW_TO_TEST.md
 *.xls
 *.csv
 
-# Scratch and Temporary files
-scratch/
+# ==========================================
+# TEMPORARY FILES
+# ==========================================
 *.tmp
 *.temp
 *.bak
 *~
 
-# Next.js build output & caches
-/.next/
-/out/
-/build
-/dist
-
-# Blogger theme & generated artifacts
-/blogger-theme
-extracted-tailwind.css
-*.xml
-
-# Content / CMS local files
-/content/users.json
-/backup_db
-/storage_backup
-database_backup*.json
-
-# TypeScript & tooling caches
-*.tsbuildinfo
-next-env.d.ts
-
-# Environment variables & credentials
-.env
-.env*.local
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-*.pem
-*.key
-*.cert
-*.crt
-
-# Debug & runtime logs
+# ==========================================
+# LOGS
+# ==========================================
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
-*.log
 
-# Testing & code coverage
-/coverage
-/.nyc_output
+# ==========================================
+# TESTING & COVERAGE
+# ==========================================
+coverage/
+.nyc_output/
 *.lcov
 
-# Vercel & deployment
-.vercel
-
-# Editor & IDE files
+# ==========================================
+# EDITOR & IDE
+# ==========================================
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
@@ -107,7 +126,9 @@ lerna-debug.log*
 *.sln
 *.sw?
 
-# Operating System files
+# ==========================================
+# OPERATING SYSTEM FILES
+# ==========================================
 .DS_Store
 .DS_Store?
 ._*
