@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { isPublisherAuthenticated } from '@/lib/auth';
 import { getAllIssues } from '@/lib/content';
+import { issuePacketSchema } from '@/lib/validations';
 
 export async function GET(req: NextRequest) {
   try {
@@ -27,7 +28,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const body = await req.json();
+    let rawBody: unknown;
+    try {
+      rawBody = await req.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 });
+    }
+
+    // Strict schema validation using Zod (Check 11 & Path Traversal Prevention)
+    const parseResult = issuePacketSchema.safeParse(rawBody);
+    if (!parseResult.success) {
+      const firstError = parseResult.error.issues[0]?.message || 'Invalid issue packet data';
+      return NextResponse.json({ error: firstError }, { status: 400 });
+    }
+
     const {
       id,
       title,
@@ -35,16 +49,12 @@ export async function POST(req: NextRequest) {
       theme,
       publishedAt,
       coverImage,
-      isPremium = false,
+      isPremium,
       featuredArticleSlug,
-      articleSlugs = [],
-    } = body;
+      articleSlugs,
+    } = parseResult.data;
 
-    if (!id || !title) {
-      return NextResponse.json({ error: 'Packet ID and Title are required.' }, { status: 400 });
-    }
-
-    const cleanId = id.toLowerCase().trim().replace(/[^a-z0-9-]/g, '-');
+    const cleanId = id.toLowerCase().trim();
     const issuesDir = path.join(process.cwd(), 'content', 'issues');
     if (!fs.existsSync(issuesDir)) {
       fs.mkdirSync(issuesDir, { recursive: true });
@@ -53,7 +63,7 @@ export async function POST(req: NextRequest) {
     const issueObj = {
       id: cleanId,
       title,
-      issueNumber: Number(issueNumber) || 1,
+      issueNumber: issueNumber || 1,
       theme: theme || title,
       publishedAt: publishedAt || new Date().toISOString(),
       coverImage: coverImage || 'https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=1200&q=80',

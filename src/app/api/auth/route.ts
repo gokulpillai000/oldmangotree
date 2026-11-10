@@ -6,6 +6,8 @@ import {
   getCurrentSession,
   signSessionToken,
 } from '@/lib/auth';
+import { authSchema } from '@/lib/validations';
+import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 
 export async function GET(req: NextRequest) {
   const session = getCurrentSession(req);
@@ -23,8 +25,21 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { action, email, password, name, pin } = body;
+    let rawBody: unknown;
+    try {
+      rawBody = await req.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON request payload' }, { status: 400 });
+    }
+
+    // 1. Validate payload schema with Zod (Check 11)
+    const parseResult = authSchema.safeParse(rawBody);
+    if (!parseResult.success) {
+      const firstError = parseResult.error.issues[0]?.message || 'Invalid authentication payload';
+      return NextResponse.json({ error: firstError }, { status: 400 });
+    }
+
+    const { action, email, password, name, pin } = parseResult.data;
 
     if (action === 'logout') {
       const response = NextResponse.json(
@@ -39,8 +54,28 @@ export async function POST(req: NextRequest) {
       return response;
     }
 
+    // 2. Rate Limiting: Max 5 login/pin attempts per 60 seconds per IP (Check 16)
+    const clientIp = getClientIp(req);
+    const rateLimit = checkRateLimit(`auth:${clientIp}`, 5, 60);
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: 'Too many authentication attempts. Please wait 1 minute before trying again.' },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': String(rateLimit.resetSeconds),
+            'X-RateLimit-Limit': '5',
+            'X-RateLimit-Remaining': '0',
+          },
+        }
+      );
+    }
+
     let result;
     if (action === 'pin_login') {
+      if (!pin) {
+        return NextResponse.json({ error: 'PIN is required' }, { status: 400 });
+      }
       result = authenticateEditorialPin(pin);
     } else if (action === 'signup') {
       if (!email || !password) {
